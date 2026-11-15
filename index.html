@@ -1059,6 +1059,19 @@ body.envmode .toast{bottom:calc(16px + var(--safe-b))}
 .amore{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;padding:0;min-height:44px;font-weight:600}
 .ahead{font-family:var(--font-body);font-size:15px;font-weight:600;margin-top:4px}
 .acard{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+/* histórico (15/11): linhas leves dentro do cartão, separadas por um fio */
+.acard h3 .icon{width:15px;height:15px;color:var(--muted);vertical-align:-2px;margin-left:2px}
+.hlist{display:flex;flex-direction:column}
+.hrow{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+.hrow:first-child{border-top:0;padding-top:4px}
+.hrow > .icon{flex:none;width:17px;height:17px;margin-top:2px;color:var(--muted)}
+.hrow .t{min-width:0;flex:1}
+.hrow b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14.5px;font-weight:600;line-height:1.3}
+.hrow small{display:block;margin-top:3px;font-size:12.5px;color:var(--muted)}
+.hrow q{display:block;margin-top:4px;font-size:14px;line-height:1.4;color:var(--ink)}
+.hrow .hst{color:var(--danger, #b42318)}
+a.hrow:hover b{text-decoration:underline}
+.acard .partchips{margin:0}
 .acard h3{font-family:var(--font-body);font-size:15px;font-weight:600}
 .acard .anote{font-size:12.5px;color:var(--muted);margin-top:-4px}
 .abars{display:flex;flex-direction:column;gap:8px}
@@ -1222,6 +1235,19 @@ a.setting{color:var(--ink);text-decoration:none}
 @container (max-width:659px){ .qchip .icon{display:none} .qchip{padding:0 9px;height:34px;font-size:13px} .qf{gap:4px} }
 @container (min-width:510px){ .ctlrow{flex-wrap:nowrap} }
 @container (max-width:509px){ .ctlrow{flex-wrap:wrap} .qf{order:4;flex-basis:100%;padding:0 0 4px} }
+/* 15/11 (Amanda): uma linha só em qualquer largura. Os ícones (ajustes, forma de ver, filtrar, ordenar) ficam juntos do Algoritmo,
+   num bloco enxuto; os atalhos seguem à direita e deslizam para o lado. */
+.ctlrow{flex-wrap:nowrap;justify-content:flex-start}
+.ctlrow .algogroup .status.tools{display:flex;align-items:center;gap:0;min-height:40px;margin:0;padding-right:3px}
+.ctlrow .algogroup .iconbtn{width:34px;height:40px;border-radius:10px}
+.ctlrow .algogroup .adj{width:38px;border-radius:0;margin-right:1px}
+.ctlrow .algosw{min-height:40px;padding:4px 6px 4px 12px}
+.ctlrow .qf{order:2;flex:1 1 auto;min-width:0;padding:4px 16px 4px 0;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+@container (max-width:509px){ .ctlrow{flex-wrap:nowrap} .qf{order:2;flex-basis:auto;padding:4px 16px 4px 0} }
+@container (max-width:509px){ .ctlrow .algogroup .iconbtn{width:31px} .ctlrow .algogroup .adj{width:35px} .ctlrow .algogroup .iconbtn .icon{width:19px;height:19px}
+  .ctlrow .algosw{gap:7px;padding-left:11px} .ctlrow .algosw .switch{width:40px;height:24px} .ctlrow .algosw .switch::after{width:18px;height:18px} .ctlrow .algosw .switch[aria-checked="true"]::after{transform:translateX(16px)}
+  .ctlrow .qchip{padding:0 10px;height:32px} }
+@container (max-width:380px){ .ctlrow .algosw{padding-left:9px;gap:6px} .ctlrow .algosw .lbl{font-size:13px} }
 .altafaixa{margin:4px 0 12px;padding:12px 14px 14px;border-radius:var(--r);background:var(--surface-2)}
 .altafaixa .afh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .altafaixa .afh b{font-size:14.5px}
@@ -4262,9 +4288,25 @@ S.orgFiltro = store.get("orgFiltro", "tudo"); S.orgAba = store.get("orgAba", "fe
 const secDe = k => S.secoes.find(x=>x.pastas.includes(k));
 const pastaAberta = f => { const x = secDe(f[0]); return !!(x && x.aberta && !f[3]); };
 const secLimpa = () => S.secoes.forEach(x=>{ x.pastas = x.pastas.filter(k=>FOLDERS.some(f=>f[0]===k)).slice(0, MAX_PSEC); });
-const persist = k => { store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); if (CONTA_SYNC.includes(k)) contaDadosAgenda(k); };
+/* VITRINE (15/11, Amanda): retrato das pastas das seções abertas, para quem visita o perfil (aba Pastas).
+   Vai para conta_dados (chave "vitrine"), que só a dona lê; quem visita usa perfil_pastas, que confere de novo no servidor
+   as seções abertas, as pastas secretas e o perfil público. Conteúdo de comunidade criada por pessoas não sai do perfil. */
+var VIT_T = null;
+function vitItem(it){ if (!it) return null; const o = ORG[it.org] || {}; if (o.comunidade) return null;
+  const https = v => typeof v === "string" && /^https:\/\//.test(v) && v.length <= 1000 ? v : undefined;
+  return {id:String(it.id), tipo:it.tipo || "texto", titulo:String(it.titulo || "").slice(0, 160), tema:it.tema || undefined, org:o.nome || undefined,
+    foto:https(it.foto) || https(it.poster), yt:/^[A-Za-z0-9_-]{6,20}$/.test(it.yt || "") ? it.yt : undefined, url:it.ext ? https(it.ext.url) : undefined}; }
+function vitrineMonta(){ secLimpa(); let n = 30, v;
+  do { v = {publico:!!S.publico, secoes:S.secoes.filter(x=>x.aberta).map(x=>({id:x.id, nome:x.nome,
+      pastas:x.pastas.map(k=>FOLDERS.find(f=>f[0]===k)).filter(f=>f && !f[3] && f[0] !== "salvos").map(f=>({k:f[0], nome:f[1], itens:folderItems(f[0]).map(vitItem).filter(Boolean).slice(0, n)}))}))};
+    n = Math.floor(n * .7); } while (JSON.stringify(v).length > 90000 && n > 2);   /* cabe no limite de 64 KB da linha */
+  return v; }
+function vitrineAgenda(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return; clearTimeout(VIT_T); VIT_T = setTimeout(vitrineEnvia, 2000); }
+async function vitrineEnvia(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return;
+  try{ await SB.from("conta_dados").upsert({user_id:ME.user.id, chave:"vitrine", valor:vitrineMonta(), atualizada_em:new Date().toISOString()}); }catch(e){} }
+const persist = k => { store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); if (CONTA_SYNC.includes(k)) contaDadosAgenda(k); if (k === "publico") vitrineAgenda(); };
 const cdValor = k => k==="pastas" ? (store.get("pastas", []) || []) : (S[k] instanceof Set ? [...S[k]] : (S[k] || {}));
-function contaDadosAgenda(k){ if (!SB || !ME.user || CD_DE!==ME.user.id) return; CD_FILA.add(k); clearTimeout(CD_T); CD_T = setTimeout(contaDadosEnvia, 1200); }
+function contaDadosAgenda(k){ if (!SB || !ME.user || CD_DE!==ME.user.id) return; CD_FILA.add(k); if (["saved","savedIn","secoes","pastas"].includes(k)) vitrineAgenda(); clearTimeout(CD_T); CD_T = setTimeout(contaDadosEnvia, 1200); }
 async function contaDadosEnvia(){ if (!SB || !ME.user || CD_DE!==ME.user.id || !CD_FILA.size) return; const ks = [...CD_FILA], uid = ME.user.id; CD_FILA = new Set();
   try{ const {error} = await SB.from("conta_dados").upsert(ks.map(k=>({user_id:uid, chave:k, valor:cdValor(k), atualizada_em:new Date().toISOString()})));
     if (error) ks.forEach(k=>CD_FILA.add(k)); }catch(e){ ks.forEach(k=>CD_FILA.add(k)); } }
@@ -4279,7 +4321,7 @@ async function contaDadosCarrega(){ if (!SB || !ME.user || CD_DE===ME.user.id) r
     if (k==="secoes"){ if (Array.isArray(v)){ S.secoes = v.filter(x=>x && Array.isArray(x.pastas)).slice(0, MAX_SEC); store.set("secoes", S.secoes); mudou = true; } return; }
     if (S[k] instanceof Set) S[k] = new Set(Array.isArray(v) ? v : []); else S[k] = (v && typeof v==="object" && !Array.isArray(v)) ? v : {};
     store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); mudou = true; });
-  CD_DE = uid; contaDadosEnvia(); if (mudou) render(); }
+  CD_DE = uid; contaDadosEnvia(); vitrineAgenda(); if (mudou) render(); }
 const sessionStart = Date.now();
 const HOST_THEME = document.documentElement.getAttribute("data-theme");
 function applyTheme(){ const r = document.documentElement;
@@ -5423,9 +5465,9 @@ function screenHome(){
       <span id="topconta" class="topconta">${topContaHTML()}</span></div>
     <div class="tabs" role="tablist" aria-label="Tipos de conteúdo">${ftabs().map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ftab" data-tab="${k}" aria-selected="${S.tab===k}">${n}</button>`).join("")}</div>
     <div class="ctlwrap"><div class="ctlrow"><div class="algogroup"><button class="algosw" type="button" role="switch" data-act="algo" aria-checked="${S.algo}" aria-label="Algoritmo"><span class="lbl">Algoritmo</span><span class="switch" aria-hidden="true" aria-checked="${S.algo}"></span></button>
-        <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button></div>
-      ${rapidosHTML()}
-      <div class="status tools" id="status">${statusLine()}</div></div></div>`)
+        <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
+        <div class="status tools" id="status">${statusLine()}</div></div>
+      ${rapidosHTML()}</div></div>`)
   + `<div class="container"><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="aovivo" class="aovivo" aria-label="Transmissões ao vivo de canais oficiais" hidden></section><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
@@ -6306,13 +6348,17 @@ const ORGF = [["tudo","Tudo"],["comunidades","Comunidades"],["paginas","Páginas
 function orgVerTodas(f){ if (f === "mercado") return ""; return (f !== "paginas" && !MODELOS[f] ? verMais("cmnver", 'data-f="todas"', "Todas as comunidades") : "") + (f !== "comunidades" ? verMais("pgtodas", "", "Todas as páginas") : ""); }
 /* 14/11, segunda rodada: um feed só, sem seções, equilibrado entre comunidades e páginas (uma de cada, alternando);
    quem você participa ou segue vem primeiro, com a marca "Você participa" / "Você segue". Votações e consultas ficam numa aba à parte. */
-const DECIDE = ["votacao","enquete"];
-function decidirHTML(){ const todos = partDestaques().filter(it=>DECIDE.includes(it.tipo)), f = S.decTipo || "todos", n = k => todos.filter(it=>it.tipo===k).length;
-  const l = todos.filter(it=>(f==="todos" || it.tipo===f) && (!S.decFeito || partFeito(it)));
+/* 15/11 (Amanda): Organizações tem três abas. Consultas junta votações e consultas (decidir); Eventos junta eventos e chamados (ir junto, ajudar). */
+const DECIDE = ["votacao","enquete"], IRJUNTO = ["evento","chamado"];
+function decidirHTML(aba){ const tipos = aba === "eventos" ? IRJUNTO : DECIDE, todos = partDestaques().filter(it=>tipos.includes(it.tipo)), n = k => todos.filter(it=>it.tipo===k).length;
+  if (S.decTipo && S.decTipo !== "todos" && !tipos.includes(S.decTipo)) S.decTipo = "todos";
+  const f = S.decTipo || "todos", l = todos.filter(it=>(f==="todos" || it.tipo===f) && (!S.decFeito || partFeito(it)));
   const chip = (k, nome, q) => `<button class="chip" type="button" data-act="dectipo" data-pt="${k}" aria-pressed="${f===k}">${nome} <span class="pcn">${q}</span></button>`;
-  return `<p class="pgintro">Votação decide, com quórum e voto secreto. Consulta só colhe opinião.</p>
-    <div class="partchips" role="group" aria-label="Filtrar">${chip("todos","Todas",todos.length)}${chip("votacao","Votações",n("votacao"))}${chip("enquete","Consultas",n("enquete"))}<button class="chip" type="button" data-act="decfeito" aria-pressed="${!!S.decFeito}">${ic("check","sm")} Já participei</button></div>
-    ${l.length ? `<div class="partgrid">${l.map(partCard).join("")}</div>` : `<p class="empty">${S.decFeito ? "Você ainda não votou nem respondeu nada com esses filtros." : "Nada em aberto agora."}</p>`}`; }
+  const intro = aba === "eventos" ? "Evento é para ir junto; chamado pede ajuda, como um mutirão. Das comunidades que você segue primeiro." : "Votação decide, com quórum e voto secreto. Consulta só colhe opinião.";
+  const vazio = S.decFeito ? (aba === "eventos" ? "Você ainda não confirmou presença nem ajuda com esses filtros." : "Você ainda não votou nem respondeu nada com esses filtros.") : (aba === "eventos" ? "Nenhum evento ou chamado agora." : "Nada em aberto agora.");
+  return `<p class="pgintro">${intro}</p>
+    <div class="partchips" role="group" aria-label="Filtrar">${chip("todos","Todos",todos.length)}${tipos.map(k=>chip(k, PART[k][1], n(k))).join("")}<button class="chip" type="button" data-act="decfeito" aria-pressed="${!!S.decFeito}">${ic("check","sm")} Já participei</button></div>
+    ${l.length ? `<div class="partgrid">${l.map(partCard).join("")}</div>` : `<p class="empty">${vazio}</p>`}`; }
 function orgFeed(f){ const eu = ME.user ? ME.user.id : null, nicho = !!MODELOS[f], cm = f !== "paginas" && !nicho, pg = f !== "comunidades";
   const C = !cm ? [] : CMNS.map(c=>cmnCard(ORG[c.id], c)).concat(ORGS.filter(o=>isOrg(o) && S.follow.has(o.id)).map(o=>cmnCard(o)), cmnParaVoce(ORGS.filter(o=>isOrg(o) && !S.follow.has(o.id))).map(o=>cmnCard(o)));
   const ar = PAGS.lista.filter(p=>p.status === "aprovada" && (!nicho || modeloDe(p) === f)), segue = p => p.dono === eu || S.follow.has("pg-" + p.id);
@@ -6340,9 +6386,9 @@ function screenOrgs(){
   const vistaOrg = `<button class="iconbtn tool" type="button" data-act="orgvista" aria-label="Forma de ver: ${v==="soltos" ? "cartões soltos" : "em blocos"}. Tocar para ver ${v==="soltos" ? "em blocos" : "em cartões soltos"}" title="${v==="soltos" ? "Cartões soltos" : "Em blocos"}">${ic(v==="soltos" ? "vsoltos" : "vblocos")}</button>`;
   const feed = t === "feed" && f !== "mercado" ? orgFeed(f) : [];
   return header(`<div class="toprow"><h1 class="pagehead">Organizações</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
-    <div class="tabs" role="tablist" aria-label="Organizações">${aba("feed","Organizações")}${aba("decidir","Consultas")}</div>
+    <div class="tabs" role="tablist" aria-label="Organizações">${aba("feed","Organizações")}${aba("decidir","Consultas")}${aba("eventos","Eventos")}</div>
     ${t === "feed" ? `<div class="orgbar"><div class="chips umalinha" role="group" aria-label="Mostrar">${ORGF.map(chip).join("")}</div>${vistaOrg}</div>` : ""}`)
-    + `<div class="container">${t === "decidir" ? decidirHTML() : f === "mercado" ? mercadoHTML(v) : `
+    + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : f === "mercado" ? mercadoHTML(v) : `
       ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${PAGS.carregou || f === "comunidades" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
       <div class="orgfim">${orgVerTodas(f)}</div>
       <p class="cmnpe">Comunidade é criada por qualquer conta, em torno de qualquer tema; organização com selo “oficial” passa pela curadoria. Página é de uma pessoa verificada, que responde pelo que ela publica. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
@@ -6476,7 +6522,7 @@ function intBody(){ const d = S.intDraft, full = d.length >= MAX_INT;
 /* 15/11: um perfil só. A dona vê e organiza ali mesmo o que é público (cadeado aberto) e o que é só dela (cadeado fechado), como na página.
    Mesmas abas que quem visita vê, mais o Algoritmo, que é só seu. "Pastas" junta as seções (abertas ou fechadas) e, embaixo, o que é só seu: salvos, curtidas, compartilhadas, agenda e passaporte. */
 const PTABS = [["publicacoes","Publicações"],["salvos","Pastas"],["redes","Outras redes"],["algoritmo","Algoritmo"]];
-const PFILT = [["tudo","Salvos"],["curtidas","Curtidas"],["compartilhadas","Compartilhadas"],["agenda","Agenda"],["passaporte","Passaporte"]];
+const PFILT = [["tudo","Salvos"],["agenda","Agenda"],["passaporte","Passaporte"]];   /* 15/11: curtidas e compartilhadas foram para o histórico, na aba Algoritmo */
 const PFILT_TIT = {tudo:"Tudo o que você salvou", curtidas:"Suas curtidas", compartilhadas:"O que você compartilhou", agenda:"Sua agenda", passaporte:"Seu passaporte"};
 /* o que pode aparecer no perfil público (Publicações e as pastas que não são secretas) e o que é sempre só seu */
 const PRIVADAS = new Set(["agenda","compartilhadas","curtidas","algoritmo"]);
@@ -6495,7 +6541,9 @@ const visTag = t => { const [i, c, x] = visOf(t); return `<span class="vis ${c}"
 const tabVis = aberto => `<span class="tvis" role="img" aria-label="${aberto ? "aparece no perfil público" : "não aparece no perfil público"}" title="${aberto ? "Aparece no perfil público" : "Não aparece no perfil público"}">${ic(aberto ? "cadaberto" : "lock","sm")}</span>`;
 const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(S.publico && (k==="publicacoes" || (k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha"))))}</button>`).join("");
 function screenProfile(){
-  if (["agenda","compartilhadas","curtidas"].includes(S.profTab)){ S.profFiltro = S.profTab; S.profTab = "salvos"; }   /* abas antigas viram filtros de Salvos */
+  if (S.profTab === "agenda"){ S.profFiltro = "agenda"; S.profTab = "salvos"; }   /* abas antigas viram filtros de Salvos */
+  if (S.profTab === "curtidas" || S.profTab === "compartilhadas"){ S.histTipo = S.profTab; S.profTab = "algoritmo"; }   /* 15/11: agora no histórico */
+  if (S.profFiltro === "curtidas" || S.profFiltro === "compartilhadas") S.profFiltro = "tudo";
   if (!PTABS.some(t=>t[0]===S.profTab)) S.profTab = "publicacoes";
   const pf = ME.user && ME.perfil;
   /* 15/11: o topo do seu perfil é o mesmo da prévia e do perfil dos outros: linha do alto (tipo e ações) e, embaixo, o bloco de identidade */
@@ -6510,6 +6558,36 @@ function screenProfile(){
 /* SEU ALGORITMO, COM TRANSPARÊNCIA: o que o alimenta, do que é feito o seu feed, o tamanho da bolha
    e a confiabilidade do que chega até você. Gráficos simples, sempre com rótulo e número (nunca só cor). */
 const FAIXAS = [["Alta confiança",s=>s!==null&&s>=SELO_ALTA,95],["Confiável",s=>s!==null&&s>=SELO_CONF&&s<SELO_ALTA,82],["Confiança moderada",s=>s!==null&&s>=SELO_BAIXA&&s<SELO_CONF,60],["Baixa confiança",s=>s!==null&&s<SELO_BAIXA,20],["Sem fatos a checar",s=>s===null,null]];
+/* HISTÓRICO (15/11, Amanda): na aba Algoritmo do perfil, só a dona vê o que curtiu, comentou e compartilhou em publicações de outras pessoas.
+   Curtidas e compartilhamentos vêm da conta; comentários, do servidor (a pessoa lê os próprios, inclusive os ocultos pela moderação). */
+const HIST = {coms:null, carregando:false};
+const ehMeu = it => !!it && (S.created.some(c=>c.uid === it.uid) || (ME.user && it.conta && it.autorId === ME.user.id) || MINE.includes(it.id));
+async function histComsCarrega(){ if (HIST.carregando) return; HIST.carregando = true; let l = [];
+  if (SB && ME.user && !ME.offline){ try{ const r = await SB.from("comentarios").select("id,texto,marca,status,criado_em,noticia_id,publicacao_id,noticias(titulo,url),publicacoes(titulo,autor)").eq("autor", ME.user.id).order("criado_em", {ascending:false}).limit(300); if (!r.error) l = r.data || []; }catch(e){} }
+  HIST.coms = l.filter(c=>!(c.publicacoes && c.publicacoes.autor === (ME.user || {}).id)); HIST.carregando = false;
+  if (route() === "perfil" && S.profTab === "algoritmo" && $("#historico")){ const y = scrollY; profShow(); scrollTo(0, y); } }
+function histItemCom(c){ const it = c.noticia_id ? POOL.find(p=>String(p.id) === "n" + String(c.noticia_id).replace(/-/g, "")) : POOL.find(p=>p.uuid === c.publicacao_id);
+  return {it:it ? withUid(it) : null, titulo:(it && it.titulo) || (c.noticias || {}).titulo || (c.publicacoes || {}).titulo || "Publicação que não está mais na rede", url:(c.noticias || {}).url}; }
+function histHTML(){ const t = S.histTipo || "curtidas", lim = S.histN || 10;
+  const lk = fromUids(S.liked, "hl").filter(i=>!ehMeu(i)), sh = fromUids(S.shared, "hs").filter(i=>!ehMeu(i));
+  if (!HIST.coms && ME.user && SB) histComsCarrega();
+  const cm = HIST.coms || [], n = {curtidas:lk.length, comentarios:cm.length, compartilhadas:sh.length};
+  const chip = (k, nome) => `<button class="chip" type="button" data-act="histtipo" data-t="${k}" aria-pressed="${t===k}">${nome} <span class="pcn">${n[k]}</span></button>`;
+  const quando = d => { try{ return new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short", year:"numeric"}); }catch(e){ return ""; } };
+  const linha = (it, icone, extra) => { const o = ORG[it.org] || {}; return `<a class="hrow" href="#pin-${esc(it.uid)}">${ic(icone,"sm")}<span class="t"><b>${esc(it.titulo || "")}</b><small>${esc(o.nome || "")}</small>${extra || ""}</span></a>`; };
+  let corpo;
+  if (t === "comentarios"){
+    if (!ME.user) corpo = `<p class="empty">Entre na sua conta para ver seus comentários.</p>`;
+    else if (!HIST.coms) corpo = `<p class="empty">Carregando…</p>`;
+    else corpo = cm.length ? cm.slice(0, lim).map(c=>{ const x = histItemCom(c), m = MARCAS[c.marca] ? `${MARCAS[c.marca]} · ` : "", st = c.status !== "publicado" ? ` · <span class="hst">oculto pela moderação</span>` : "";
+        const inner = `${ic("message","sm")}<span class="t"><b>${esc(x.titulo)}</b><q>${esc(String(c.texto || "").slice(0, 280))}</q><small>${m}${quando(c.criado_em)}${st}</small></span>`;
+        return x.it ? `<a class="hrow" href="#pin-${esc(x.it.uid)}">${inner}</a>` : /^https:\/\//.test(x.url || "") ? `<a class="hrow" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>` : `<div class="hrow">${inner}</div>`; }).join("")
+      : `<p class="empty">Você ainda não comentou em publicações de outras pessoas.</p>`;
+  } else { const l = t === "curtidas" ? lk : sh;
+    corpo = l.length ? l.slice(0, lim).map(it=>linha(it, t === "curtidas" ? "heart" : "share")).join("") : `<p class="empty">${t === "curtidas" ? "Você ainda não curtiu publicações de outras pessoas." : "Você ainda não compartilhou publicações de outras pessoas."}</p>`; }
+  const total = n[t];
+  return `<div class="partchips" role="group" aria-label="Histórico">${chip("curtidas","Curtidas")}${chip("comentarios","Comentários")}${chip("compartilhadas","Compartilhadas")}</div>
+    <div class="hlist" id="histlista">${corpo}</div>${total > lim ? `<button class="btn ghost sm" type="button" data-act="histmais">Ver mais (${total - lim})</button>` : ""}`; }
 function algoPanel(){
   const feed = POOL.filter(inProfile), n = feed.length, pct = k => Math.round(k/n*100);
   const scOf = it => sealOf(withUid(it)).sc;
@@ -6550,6 +6628,7 @@ function algoPanel(){
       ${moder.length ? `<p class="anote">${moder.length} com confiança moderada: dados colaborativos ou com fontes parciais.</p>` : ""}</section>
     <section class="acard"><h3>Suas interações</h3><p class="anote">O que você curtiu, compartilhou ou salvou: ${inter.length} conteúdos</p>
       ${interBad.length ? `<div class="note warnnote">${ic("info")}<span>${interBad.length} ${interBad.length===1?"tem":"têm"} baixa confiança. Antes de compartilhar, vale abrir o selo e ver o que foi checado.</span></div>` : `<div class="note">${ic("check")}<span>Nada de baixa confiança entre as suas interações.</span></div>`}</section>
+    <section class="acard" id="historico"><h3>Seu histórico ${ic("lock","sm")}</h3><p class="anote">Só você vê. Curtidas, comentários e compartilhamentos em publicações de outras pessoas.</p>${histHTML()}</section>
   </div>`;
 }
 /* AGENDA: eventos em que você vai e chamados de que participa (os da data mais próxima primeiro) */
@@ -6703,8 +6782,35 @@ function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu 
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
   return header(`<div class="toprow">${topoLugar(`<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)}</div>`)
     + `<div class="container">${pessoaHead({nome:o.nome, cor:o.cor, verificado:o.verificado, meta:esc(o.cidade || ""), bio:o.sobre, chips:pgChips(uid)})}
-      <div class="tabs" role="tablist" aria-label="Perfil"><button class="tab" type="button" role="tab" aria-selected="true">Publicações</button></div>
-      <div id="orgbody" style="padding-top:var(--gap)">${(S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+      <div class="tabs" role="tablist" aria-label="Perfil">${[["publicacoes","Publicações"],["pastas","Pastas"]].map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
+      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+/* PASTAS NO PERFIL DE OUTRA PESSOA (15/11): só as seções abertas, sem as pastas secretas, e só se o perfil é público.
+   Quem decide é o servidor (perfil_pastas). Um item que existe aqui abre na rede; os outros, no link de origem. */
+const PESS_PASTAS = {};
+const pessAba = uid => S.pessAba && S.pessAba.u === uid ? S.pessAba.t : "publicacoes";
+async function pessPastasCarrega(uid){ let l = [];
+  if (SB){ try{ const {data} = await SB.rpc("perfil_pastas", {p_user:uid}); if (Array.isArray(data)) l = data; }catch(e){} }
+  PESS_PASTAS[uid] = l; if (route() === "org-u-" + uid && pessAba(uid) === "pastas") render(); }
+function vitVer(x){ const b = POOL.find(p=>String(p.id) === String(x.id)) || S.created.find(c=>String(c.id) === String(x.id));
+  if (b) return Object.assign({}, b, {_rede:true});
+  const h = hashN(String(x.id)); return Object.assign({art:CAPAS[h % 5]}, x, {id:"v" + h}); }
+function vitBoard(x, f){ const l = f.itens.map(vitVer), n = l.length, sl = l.slice(0, 6);
+  const capa = !n ? `<span class="bmini"><span class="bempty">${ic("bookmark")}</span></span>`
+    : `<span class="bmini bcar" aria-hidden="true"><span class="bcartrack">${sl.map(slideDe).join("")}</span>${sl.length > 1 ? `<span class="bdots">${sl.map((y, i)=>`<i${i ? "" : ' class="on"'}></i>`).join("")}</span><span class="bcarseta ant" data-act="bcarpassa" data-d="-1" role="button" aria-label="Anterior">${ic("back","sm")}</span><span class="bcarseta prox" data-act="bcarpassa" data-d="1" role="button" aria-label="Próxima">${ic("back","sm flip")}</span>` : ""}</span>`;
+  return `<button class="board" type="button" data-act="vpasta" data-s="${esc(x.id)}" data-f="${esc(f.k)}">${capa}<b>${esc(f.nome)}</b><small>${n} ${n===1 ? "item" : "itens"}</small></button>`; }
+function vitCard(x){ const it = vitVer(x), h = hashN(String(x.id));
+  const corpo = `<span class="mfoto">${it.foto ? `<img src="${esc(it.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : art({id:h, art:CAPAS[h % 5]}, .45, false)}</span>
+    <span class="mtx"><b>${esc(it.titulo || "")}</b>${x.org || (ORG[it.org] || {}).nome ? `<span class="mquem">${esc(x.org || ORG[it.org].nome)}</span>` : ""}</span>`;
+  return it._rede ? `<a class="mcard" href="#pin-${esc(String(it.id))}-0">${corpo}</a>` : x.url ? `<a class="mcard" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${corpo}</a>` : `<div class="mcard">${corpo}</div>`; }
+function pessPastasHTML(uid){ const l = PESS_PASTAS[uid]; if (!l){ pessPastasCarrega(uid); return `<p class="empty">Carregando…</p>`; }
+  if (!l.length) return `<p class="empty">Nenhuma pasta à mostra.</p>`;
+  const v = S.vPasta && S.vPasta.u === uid ? S.vPasta : null, x = v && l.find(y=>y.id === v.s), f = x && x.pastas.find(y=>y.k === v.f);
+  if (f) return `<div class="status"><button class="iconbtn tool" type="button" data-act="vpasta" data-s="" aria-label="Voltar para as pastas">${ic("back")}</button><span class="txt"><b>${esc(f.nome)}</b> · ${esc(x.nome)} · ${f.itens.length} ${f.itens.length===1 ? "item" : "itens"}</span></div>
+    ${(()=>{ if (!f.itens.length) return `<p class="empty">Pasta vazia.</p>`;   /* o que existe na rede usa a mesma grade do feed; o resto, cartão com link de origem */
+      const aqui = f.itens.filter(i=>vitVer(i)._rede), fora = f.itens.filter(i=>!vitVer(i)._rede);
+      return (aqui.length ? `<div data-mas="${esc(aqui.map(i=>String(i.id)).join(","))}"></div>` : "") + (fora.length ? `<div class="cmngrid orgblocos" style="margin-top:var(--gap)">${fora.map(vitCard).join("")}</div>` : ""); })()}`;
+  return l.map(x=>`<section class="psecao" aria-label="Seção ${esc(x.nome)}"><div class="psechead"><h3>${esc(x.nome)}</h3><span class="psecn">${x.pastas.length} ${x.pastas.length===1 ? "pasta" : "pastas"}</span></div>
+    <div class="pboards prow" role="list">${x.pastas.map(f=>vitBoard(x, f)).join("")}</div></section>`).join(""); }
 function screenPublic(){
   const orgs = ORGS.filter(o=>S.follow.has(o.id));
   const pf0 = (ME.user && ME.perfil) || {};
@@ -7425,6 +7531,15 @@ function mockSB(){
     pub(28, "Fim de tarde na ladeira", "Da esquina dá para ver o sol se esconder atrás da caixa-d'água. Às 17h40 a ladeira para um minuto, todo mundo olhando para o mesmo lado.", null);
     for (let i = 0; i < 57; i++) tab("pagina_seguidores").push({pagina_id:id, seguidor:novoId(), criado_em:dias(i)});
     salva(); }
+  if (!db.histMig){ const outras = tab("publicacoes").filter(x=>x.autor && x.autor !== TESTE_EU).slice(0, 3), hoje = Date.now();   /* 15/11: comentários da conta de teste em publicações de outras pessoas */
+    outras.forEach((x, i)=>tab("comentarios").push({id:novoId(), publicacao_id:x.id, noticia_id:null, autor:TESTE_EU, texto:["Que bom ver isso no bairro. Dá para levar sementes de casa?","Confirmo: estive lá no sábado e a troca começou no horário.","Faltou dizer o horário de encerramento."][i], marca:i === 1 ? "confirma" : null, fonte_url:null, uteis:i, status:i === 2 ? "oculto" : "publicado", criado_em:new Date(hoje - (i + 1) * 864e5).toISOString()}));
+    db.histMig = 1; salva(); }
+  if (!db.vitMig){ const ids = POOL.filter(p=>!p.coletada && p.titulo).map(p=>({id:String(p.id), tipo:p.tipo, titulo:p.titulo, tema:p.tema}));   /* 15/11: pastas à mostra da Maria Teste */
+    const pg = (k, nome, de, n) => ({k, nome, itens:ids.slice(de, de + n)});
+    tab("conta_dados").push({user_id:TESTE_M, chave:"secoes", valor:[{id:"m1", nome:"Para a horta", aberta:true, pastas:["mh1","mh2","mh3"]}, {id:"m2", nome:"Sala de aula", aberta:true, pastas:["mh4"]}, {id:"m3", nome:"Rascunhos", aberta:false, pastas:["mh5"]}]},
+      {user_id:TESTE_M, chave:"pastas", valor:[["mh1","Sementes",[],false],["mh2","Feiras e trocas",[],false],["mh3","Só minha",[],true],["mh4","Leituras com a turma",[],false],["mh5","Ideias soltas",[],false]]},
+      {user_id:TESTE_M, chave:"vitrine", valor:{publico:true, secoes:[{id:"m1", nome:"Para a horta", pastas:[pg("mh1","Sementes",0,6), pg("mh2","Feiras e trocas",6,5), pg("mh3","Só minha",11,3)]}, {id:"m2", nome:"Sala de aula", pastas:[pg("mh4","Leituras com a turma",14,4)]}, {id:"m3", nome:"Rascunhos", pastas:[pg("mh5","Ideias soltas",18,3)]}]}});
+    db.vitMig = 1; salva(); }
   if (!db.agMig){ const f8 = tab("pagina_tatuagem").find(f=>f.pagina_id === "00000000-0000-4000-8000-0000000000a8"); if (f8 && f8.agenda_aberta === undefined) f8.agenda_aberta = false; db.agMig = 1; salva(); }   /* exemplo de agenda fechada */
   if (!db.arvMig){ const P0 = "00000000-0000-4000-8000-0000000000a", map = {[P0+"6"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"7"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"8"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"9"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"d"]:["arte","Tatuagem","Corpo e tatuagem"],
       [P0+"b"]:["arte","Fotografia","Cuidado e bem-estar"], [P0+"c"]:["arte","Objeto e artesanato","Artes visuais"], [P0+"e"]:["cronica","Crônica","Literatura"], [P0+"1"]:["arte","Fotografia","Agricultura familiar"], [P0+"2"]:["arte","Fotografia","Bicicleta"], [P0+"3"]:["arte","Objeto e artesanato","Pequenos negócios"], [P0+"5"]:["arte","Fotografia","Festas e tradições"]};
@@ -7444,7 +7559,9 @@ function mockSB(){
     if (f.o === "gte") return v >= f.v; if (f.o === "lte") return v <= f.v; if (f.o === "gt") return v > f.v; if (f.o === "lt") return v < f.v; if (f.o === "is") return v == f.v; return true; };
   const embute = (t, r, cols) => { const o = Object.assign({}, r);
     if (/perfis\s*\(/.test(cols || "")) o.perfis = perfil(r.autor || r.user_id || r.dono) || null;
-    if (/paginas\s*\(/.test(cols || "")) o.paginas = r.pagina_id ? (tab("paginas").find(p=>p.id === r.pagina_id) || null) : null; return o; };
+    if (/paginas\s*\(/.test(cols || "")) o.paginas = r.pagina_id ? (tab("paginas").find(p=>p.id === r.pagina_id) || null) : null;
+    if (/publicacoes\s*\(/.test(cols || "") && "publicacao_id" in r) o.publicacoes = r.publicacao_id ? (tab("publicacoes").find(p=>p.id === r.publicacao_id) || null) : null;
+    if (/noticias\s*\(/.test(cols || "") && "noticia_id" in r) o.noticias = r.noticia_id ? (tab("noticias").find(p=>p.id === r.noticia_id) || null) : null; return o; };
   function from(t){ const st = {op:"select", f:[], ord:[], lim:null, um:null, ret:false, cols:"*"}, b = {};
     b.select = (c="*") => { st.cols = c; if (st.op === "select") st.ret = true; else st.ret = true; return b; };
     b.insert = v => { st.op = "insert"; st.v = Array.isArray(v) ? v : [v]; return b; };
@@ -7489,6 +7606,11 @@ function mockSB(){
     pagina_edita:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; Object.assign(p, {descricao:a.p_descricao, cidade:a.p_cidade, tema:a.p_tema, site:a.p_site, contato:a.p_contato}); salva(); return null; },
     pagina_cnpj:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.cnpj = a.p_cnpj; p.cnpj_conferido = false; salva(); } return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
+    perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
+      if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
+      const ab = Object.fromEntries(sec.filter(x=>x && x.aberta === true && Array.isArray(x.pastas)).map(x=>[x.id, x.pastas])), secr = ps.filter(f=>Array.isArray(f) && f[3] === true).map(f=>f[0]);
+      return (v.secoes || []).filter(x=>ab[x.id]).slice(0, 3).map(x=>({id:x.id, nome:x.nome, pastas:(x.pastas || []).filter(f=>ab[x.id].includes(f.k) && !secr.includes(f.k) && f.k !== "salvos").slice(0, 5)
+        .map(f=>({k:f.k, nome:f.nome, itens:(f.itens || []).slice(0, 30).map(i=>({id:i.id, tipo:i.tipo, titulo:i.titulo, tema:i.tema, org:i.org, foto:/^https:\/\//.test(i.foto || "") ? i.foto : undefined, url:/^https:\/\//.test(i.url || "") ? i.url : undefined}))}))})).filter(x=>x.pastas.length); },
     tat_sessao_codigo:a=>{ const y = tab("tat_sessoes").find(x=>x.id === a.p_sessao); return y && y.status === "marcada" ? y.codigo : null; },
     tat_checkin:a=>{ const y = tab("tat_sessoes").find(x=>x.id === a.p_sessao); if (!y || y.cliente !== eu()) throw {message:"valor: esta sessão não é sua"};
       if (y.status === "verificada") return null; if (y.status !== "marcada") throw {message:"valor: a sessão precisa estar confirmada"};
@@ -9200,7 +9322,11 @@ const A = {
   cmnmodo: b => { S.orgFiltro = b.dataset.m === "paginas" ? "paginas" : "comunidades"; render(); },
   orgfiltro: b => { S.orgFiltro = b.dataset.f; if (S.orgFiltro === "mercado") MERC.itens = null; store.set("orgFiltro", S.orgFiltro); const y = window.scrollY; render(); window.scrollTo(0, Math.min(y, 0)); if (S.orgFiltro !== "comunidades" && !PAGS.carregou) paginasCarrega(); },
   orgvista: () => { S.orgVista = (S.orgVista || "soltos") === "soltos" ? "blocos" : "soltos"; store.set("orgVista", S.orgVista); const y = window.scrollY; render(); window.scrollTo(0, y); const n = $('[data-act="orgvista"]'); n && n.focus({preventScroll:true}); },
-  orgaba: b => { S.orgAba = b.dataset.t; store.set("orgAba", S.orgAba); render(); },
+  histtipo: b => { S.histTipo = b.dataset.t; S.histN = 10; const y = scrollY; profShow(); scrollTo(0, y); },
+  histmais: () => { S.histN = (S.histN || 10) + 20; const y = scrollY; profShow(); scrollTo(0, y); },
+  pessaba: b => { S.pessAba = {u:b.dataset.u, t:b.dataset.t}; S.vPasta = null; if (b.dataset.t === "pastas") delete PESS_PASTAS[b.dataset.u]; const y = scrollY; render(); scrollTo(0, y); },
+  vpasta: b => { const uid = route().slice(6); S.vPasta = b.dataset.s ? {u:uid, s:b.dataset.s, f:b.dataset.f} : null; const y = scrollY; render(); if (b.dataset.s) scrollTo(0, Math.min(y, ($("#orgbody") || {offsetTop:0}).offsetTop - 80)); else scrollTo(0, y); },
+  orgaba: b => { S.orgAba = b.dataset.t; S.decTipo = "todos"; store.set("orgAba", S.orgAba); render(); },
   dectipo: b => { S.decTipo = b.dataset.pt; render(); },
   decfeito: () => { S.decFeito = !S.decFeito; render(); },
   orgcria: () => openSheet(shead("Criar um espaço") + criarEspacos().replace(/^<h3[^>]*>Criar um espaço<\/h3>/, ""), "Criar um espaço"),   /* 15/11: sem título repetido */
@@ -9654,7 +9780,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 09:36";
+const VERSAO = "v1 registrada · 15/11 10:06";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
