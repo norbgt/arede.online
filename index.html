@@ -7501,7 +7501,7 @@ function mockSB(){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), minhas_sugestoes:()=>[], prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return null; } };
   const sb = {
     from, rpc:(nome, args={}) => Promise.resolve().then(()=>{ try{ return {data:RPC[nome] ? RPC[nome](args || {}) : null, error:null}; }catch(e){ return {data:null, error:{message:e.message || String(e)}}; } }),
@@ -8923,15 +8923,17 @@ const A = {
   sairtodos: async () => { try{ await SB.auth.signOut({scope:"global"}); }catch(e){} ME.user = null; ME.perfil = null; ME.acesso = null; toast("Você saiu da conta em todos os aparelhos."); go("conta"); },
   baixadados: async b => { ocupado(b, true); const uid = ME.user.id, q = (t, c, col="user_id") => SB.from(t).select(c).eq(col, uid).then(r=>r.data || []).catch(()=>[]);
     const [perfil, publicacoes, contas, orgs, aceites, verif, comentarios, guardados, sigo] = await Promise.all([q("perfis","id,nome,usuario,cidade,bio,criado_em,verificado,verificado_em,colaborador","id"), q("publicacoes","*","autor"), q("contas_externas","*"), q("org_pedidos","*"), q("aceites","*"), q("verificacao_pedidos","*"), q("comentarios","id,noticia_id,publicacao_id,texto,marca,fonte_url,uteis,status,criado_em","autor"), q("conta_dados","chave,valor,atualizada_em"), q("seguidores","seguido,criado_em","seguidor")]);
+    const [pedidos, mensagens, horarios, avaliacoes] = await Promise.all([q("tat_pedidos","id,pagina_id,tipo,item,preco,descricao,local,tamanho,cor,status,criado_em","cliente"), q("tat_mensagens","pedido_id,de,texto,criado_em","autor"), q("tat_sessoes","id,pagina_id,quando,duracao_min,valor,status,checkin_em,avaliada","cliente"),
+      SB.rpc("minhas_avaliacoes").then(r=>r.data || []).catch(()=>[])]);   /* 15/11 */
     const local = {}; try{ for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith("arede-")) local[k] = store.get(k.slice(6), null); } }catch(e){}
     const doc = {arquivo:"Dados da sua conta na rede.online", gerado_em:new Date().toISOString(),
       conta:{id:uid, email:ME.user.email, criada_em:ME.user.created_at, email_confirmado_em:ME.user.email_confirmed_at || null, ultimo_acesso:ME.user.last_sign_in_at || null, nivel:nivel()},
-      perfil:perfil[0] || null, publicacoes, comentarios, contas_de_outras_redes:contas, pedidos_de_organizacao:orgs, aceites, pedido_de_verificacao:verif[0] || null, curtidas_pastas_e_votos:guardados, contas_que_voce_segue:sigo,
+      perfil:perfil[0] || null, publicacoes, comentarios, contas_de_outras_redes:contas, pedidos_de_organizacao:orgs, aceites, pedido_de_verificacao:verif[0] || null, curtidas_pastas_e_votos:guardados, contas_que_voce_segue:sigo, pedidos_de_orcamento:pedidos, mensagens_que_voce_escreveu:mensagens, horarios_de_atendimento:horarios, avaliacoes_que_voce_fez:avaliacoes,
       guardado_so_neste_aparelho:local, nota:"A senha não está aqui: o servidor guarda só uma versão embaralhada, que ninguém consegue ler."};
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], {type:"application/json"})); a.download = "arede.online-meus-dados.json";
     document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); ocupado(b, false); toast("Arquivo baixado."); },
   apagaconta: () => openSheet(shead("Apagar minha conta") + `<div class="cform sform">
-      <div class="note">${ic("info")}<span><b class="ntit">Isso não tem volta</b>São apagados do servidor: seu perfil, suas publicações e imagens, as contas de outras redes que você ligou, seus pedidos e o histórico de leitura. Se quiser guardar uma cópia, baixe seus dados antes.</span></div>
+      <div class="note">${ic("info")}<span><b class="ntit">Isso não tem volta</b>São apagados do servidor: seu perfil, suas publicações e imagens, as contas de outras redes que você ligou, seus pedidos (inclusive de orçamento, com as conversas e os horários), suas avaliações e o histórico de leitura. Se quiser guardar uma cópia, baixe seus dados antes.</span></div>
       <div class="field"><label for="apsen">Sua senha</label><div class="pw"><input id="apsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="apsen">Mostrar</button></div></div>
       <div class="field"><label for="aptxt">Para confirmar, escreva APAGAR</label><input id="aptxt" type="text" autocomplete="off" autocapitalize="characters" maxlength="10"></div>
       <p class="ferr" role="alert" hidden></p><button class="btn perigo block" type="button" data-act="apagacontaok">Apagar minha conta para sempre</button></div>`, "Apagar minha conta"),
@@ -9652,7 +9654,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 09:26";
+const VERSAO = "v1 registrada · 15/11 09:36";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
