@@ -5164,7 +5164,9 @@ let AD_MODO = "desligado", AD_PEDIDOS = null;
 const adPodePagar = () => AD_MODO==="producao" || (AD_MODO==="teste" && nivel()==="admin");
 const AD_STATUS = {aguardando:["na","Aguardando pagamento"], pago:["warn","Pago · em conferência"], aprovado:["ok","No ar"], recusado:["bad","Recusado · devolução em andamento"], cancelado:["na","Cancelado"], expirado:["na","Expirado"], encerrado:["na","Encerrado"], devolvido:["na","Recusado · valor devolvido"]};
 const AD_VAZIO = {nome:"", frase:"", cta:"", seg:"", link:"", cor:0, fmt:"s", pos:"rot", dias:7, meio:"pix"};
-const adDraft = () => { if (!S.adDraft) S.adDraft = Object.assign({}, AD_VAZIO, store.get("anuncio", {})); return S.adDraft; };
+/* 15/11 (Amanda): fluxo começa vazio para quem navega; o rascunho só guarda o que a própria pessoa digitou e some quando vira pedido */
+const adDraft = () => { if (!S.adDraft) S.adDraft = Object.assign({}, AD_VAZIO, store.get("anuncioRascunho", {})); return S.adDraft; };
+function adLimpa(){ S.adDraft = Object.assign({}, AD_VAZIO); S.adPasso = 0; S.adConta = false; store.set("anuncioRascunho", {}); }
 const adBRL = v => v.toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
 const adDias = n => n + (n===1 ? " dia" : " dias");
 function adPreco(d){ const P = AD_PRECO, f = P.formatos.find(x=>x[0]===d.fmt) || P.formatos[0], p = P.posicoes.find(x=>x[0]===d.pos) || P.posicoes[0];
@@ -5194,6 +5196,7 @@ function adPedidosHTML(){ if (!AD_PEDIDOS || !AD_PEDIDOS.length) return ""; cons
 /* volta do Mercado Pago: confere o pagamento no servidor e mostra a situação */
 function adVolta(){ let q; try{ q = new URLSearchParams(location.search); }catch(e){ return; } const id = q.get("pedido"); if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
   const pay = q.get("payment_id") || q.get("collection_id") || "", st = q.get("status") || q.get("collection_status") || "";
+  adLimpa();   /* o pedido já existe no servidor: o próximo anúncio começa do zero */
   ["pedido","payment_id","collection_id","status","collection_status","external_reference","payment_type","merchant_order_id","preference_id","site_id","processing_mode","merchant_account_id"].forEach(k=>q.delete(k));
   try{ history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + "#anunciar"); }catch(e){}
   if (route()!=="anunciar") go("anunciar");
@@ -5278,7 +5281,7 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
 /* o que falta na mensagem (passo 1): avisa, volta ao passo 1 e põe o cursor no campo */
 function adFalta(){ const d = adDraft(); return !d.nome.trim() ? ["adnome","Diga a marca ou organização."] : !d.frase.trim() ? ["adfrase","Escreva a mensagem do anúncio."] : !/^https:\/\/[^\s.]+\.[^\s]+$/i.test(d.link.trim()) ? ["adlink","Informe o endereço de destino, começando com https://"] : null; }
 function adMostraFalta(){ const f = adFalta(); if (!f) return; toast(f[1]); if (S.adPasso){ S.adPasso = 0; adRefaz(); } const el = $("#" + f[0]); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"center", behavior:"smooth"}); } }
-function adGuarda(){ store.set("anuncio", adDraft()); }
+function adGuarda(){ store.set("anuncioRascunho", adDraft()); }
 function adRefaz(){ if (route()!=="anunciar") return; const y = window.scrollY; $("#main").innerHTML = screenAnunciar(); window.scrollTo(0, y); }
 function sheetAdRevisar(){ const d = adDraft(), v = adPreco(d);
   openSheet(shead("Revisar e pagar") + `<div class="adrev">${adPrevia(d, true)}</div>
@@ -6052,9 +6055,9 @@ const TAT = {fich:{}, rep:{}, equipe:[], aval:{}, carregou:false};
    Os módulos ligam e desligam depois, em Editar página. A loja usa a vitrine e também aparece no Mercado; a compra
    continua combinada direto com a pessoa, fora da rede, até o pagamento dentro da rede ser testado. */
 const MODELOS = {
-  tatuagem:{nome:"Tatuagem", ic:"lapis", desc:"Portfólio, orçamento por tabela ou personalizado, agenda e reputação.", mods:["orcamento","agenda","reputacao"], esp:ESTILOS_TAT, espRot:"Estilos", papeis:["Tatuador(a)","Estúdio"], tab:"flash até 8 cm"},
+  tatuagem:{nome:"Tatuagem", ic:"lapis", desc:"Portfólio, orçamento por tabela ou personalizado, agenda e reputação.", mods:["orcamento","agenda","reputacao"], esp:ESTILOS_TAT, espRot:"Estilos", papeis:["Tatuador","Estúdio"], tab:"flash até 8 cm"},
   beleza:{nome:"Beleza e cuidado", ic:"heart", desc:"Cabelo, unhas, barba: tabela de serviços, agenda e reputação.", mods:["orcamento","agenda","reputacao"], esp:["Corte","Coloração","Escova","Tranças","Manicure","Pedicure","Unhas em gel","Barba","Sobrancelha","Maquiagem","Depilação","Estética"], espRot:"Serviços", papeis:["Profissional","Salão"], tab:"corte feminino"},
-  artesanato:{nome:"Artesanato e produtos", ic:"bookmark", desc:"Loja com seus produtos no Mercado e encomendas personalizadas.", mods:["loja","orcamento"], esp:["Cerâmica","Bordado","Crochê","Joias","Papelaria","Madeira","Couro","Velas","Sabonetes","Pintura","Costura","Reciclados"], espRot:"O que você faz", papeis:["Artesã(o)","Ateliê"], tab:"caneca personalizada"},
+  artesanato:{nome:"Artesanato e produtos", ic:"bookmark", desc:"Loja com seus produtos no Mercado e encomendas personalizadas.", mods:["loja","orcamento"], esp:["Cerâmica","Bordado","Crochê","Joias","Papelaria","Madeira","Couro","Velas","Sabonetes","Pintura","Costura","Reciclados"], espRot:"O que você faz", papeis:["Artesão","Ateliê"], tab:"caneca personalizada"},
   escrita:{nome:"Escrita", ic:"doc", desc:"Crônica, conto, poesia, coluna. O feed mostra o texto primeiro, em cartões.", mods:[], esp:["Crônica","Conto","Poesia","Coluna","Ensaio","Reportagem"], espRot:"Gêneros", papeis:null, tab:"", feed:"texto", aba:"Textos"},
   negocio:{nome:"Outro negócio", ic:"globe", desc:"Loja ou serviço: você liga os módulos que quiser depois.", mods:["loja"], esp:[], espRot:"Especialidades", papeis:null, tab:"serviço"},
   pessoal:{nome:"Pessoal", ic:"pessoa", desc:"Projeto, coluna, hobby, fotos da família. Sem loja.", mods:[], esp:[], espRot:"", papeis:null, tab:""}};
@@ -6244,7 +6247,7 @@ function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; PE
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
-    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date" value="${hoje}"></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time" value="14:00"></div></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date"></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time"></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
       <div class="field" style="flex:1"><label for="sesval">Valor combinado (opcional)</label><input id="sesval" maxlength="40" placeholder="R$ 350"></div></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}">Propor</button>`, "Marcar"); }
@@ -6332,7 +6335,7 @@ function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.pa
 /* 15/11 (Amanda): profissional e estúdio convivem no mesmo feed e se diferenciam no cartão:
    o papel fica ao lado de "Página" (ícone de pessoa ou de prédio) e o vínculo aparece numa linha própria:
    o profissional mostra onde atende; o estúdio mostra a equipe. */
-/* 15/11 (Amanda): o tipo diz o papel: "Página · Tatuador(a)" ou "Página · Estúdio de tatuagem", no cartão e no alto da página */
+/* 15/11 (Amanda): o tipo diz o papel: "Página · Tatuador" ou "Página · Estúdio de tatuagem", no cartão e no alto da página */
 const PAPEL_NEGOCIO = {tatuagem:"Estúdio de tatuagem", beleza:"Salão de beleza"};
 function papelNome(p){ const t = tatDe(p), m = modeloDe(p), M = MODELOS[m] || {}; if (!t || !M.papeis) return "";
   return t.papel === "estudio" ? (PAPEL_NEGOCIO[m] || M.papeis[1]) : M.papeis[0]; }
@@ -9122,7 +9125,7 @@ function sheetCreateForm(k){
     <div class="field"><label for="corg">Em qual organização</label><select id="corg">${mine.map(o=>`<option value="${o.id}">${o.nome}</option>`).join("")}</select></div>
     <div class="field"><label for="ctit">Título</label><input id="ctit" type="text" enterkeyhint="next" placeholder="Ex.: Reunião da comissão de comunicação" value="${S.mobRef ? esc(({evento:"Encontro sobre: ",chamado:"Chamado: ",abaixo:"Abaixo-assinado: ",votacao:"Proposta: "}[k]||"") + (POOL.find(p=>p.id===S.mobRef)||{}).titulo) : ""}"></div>
     ${S.mobRef ? (n => n ? `<div class="note">${ic("ext")}<span>Ligado à notícia <b>${esc(n.titulo)}</b> · ${esc(ORG[n.org].nome)}</span></div>` : "")(POOL.find(p=>p.id===S.mobRef)) : ""}
-    ${k==="evento" ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="cdata">Data</label><input id="cdata" type="date" min="2026-11-08"></div><div class="field" style="flex:1"><label for="chora">Hora</label><input id="chora" type="time" value="19:00"></div></div>
+    ${k==="evento" ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="cdata">Data</label><input id="cdata" type="date" min="2026-11-08"></div><div class="field" style="flex:1"><label for="chora">Hora</label><input id="chora" type="time"></div></div>
       <div class="field"><label for="clocal">Local</label><input id="clocal" type="text" placeholder="Ex.: Praça da Sé"></div>` : ""}
     ${k==="chamado" || k==="abaixo" ? `<div class="field"><label for="cmeta">${k==="abaixo"?"Meta de assinaturas":"Quantas pessoas"}</label><input id="cmeta" type="number" min="1" inputmode="numeric" value="${k==="abaixo"?300:20}"></div>` : ""}
     <div class="field"><label for="ctxt">Texto</label><textarea id="ctxt" placeholder="Escreva aqui"></textarea></div>
@@ -9573,7 +9576,7 @@ const A = {
     <button class="btn primary block" type="button" data-act="proporok" data-org="${o.id}">Abrir para apoios</button>`, "Propor votação"); },
   proporok: b => { const tit = $("#ptit").value.trim(); if (!tit){ toast("Escreva a proposta."); $("#ptit").focus(); return; }
     const o = ORG[b.dataset.org], n = S.created.length, vt = Math.round(o.membros*.66);
-    S.created.push({id:950+n, uid:"c"+n, tipo:"votacao", fase:"apoios", org:o.id, tema:o.tema, min:0, titulo:tit, texto:$("#ptxt").value.trim() || "Proposta aberta para apoios.", quorum:Math.ceil(vt/2), votantes:vt, votaram:0, apoios:0, prazo:"—", opcoes:["Aprovar a proposta","Rejeitar","Abster-se"], critico:false, autor:"você"});
+    S.created.push({id:950+n, uid:"c"+n, tipo:"votacao", fase:"apoios", org:o.id, tema:o.tema, min:0, titulo:tit, texto:$("#ptxt").value.trim() , quorum:Math.ceil(vt/2), votantes:vt, votaram:0, apoios:0, prazo:"—", opcoes:["Aprovar a proposta","Rejeitar","Abster-se"], critico:false, autor:"você"});
     S.support["c"+n] = true; closeSheet(); S.orgTab = "votacoes"; render(); toast("Proposta aberta. Seu apoio já conta."); },
   contest: () => toast("Contestação recebida: nova verificação automática, com registro público."),
   notifprefs: () => notifPrefs(),
@@ -9791,16 +9794,16 @@ const A = {
   esub: b => { S.exploreSub = S.exploreSub===b.dataset.t ? null : b.dataset.t; $$('[data-act="esub"]').forEach(c=>c.setAttribute("aria-pressed", c.dataset.t===S.exploreSub)); fillExplore(); },
   publish: b => { const tit = $("#ctit").value.trim(); if (!tit){ toast("Dê um título à publicação."); $("#ctit").focus(); return; }
     const k = b.dataset.k, n = S.created.length, ref = S.mobRef || null, txt = $("#ctxt").value.trim();
-    if (k==="evento" && $("#cdata")){ const d = $("#cdata").value; if (!d){ toast("Escolha a data do evento."); $("#cdata").focus(); return; }
-      const dd = dmy(d); S.created.push({id:900+n, uid:"c"+n, tipo:"evento", org:$("#corg").value, tema:$("#ctema").value, min:0, titulo:tit, texto:txt || "Evento criado agora.", dia:String(dd.getDate()), mes:MESES[dd.getMonth()], hora:($("#chora").value||"").replace(":00","h").replace(":","h"), local:$("#clocal").value.trim() || "Local a definir", vao:0, ref});
+    if (k==="evento" && $("#cdata")){ const d = $("#cdata").value; if (!d){ toast("Escolha a data do evento."); $("#cdata").focus(); return; } if ($("#chora") && !$("#chora").value){ toast("Escolha a hora do evento."); $("#chora").focus(); return; }
+      const dd = dmy(d); S.created.push({id:900+n, uid:"c"+n, tipo:"evento", org:$("#corg").value, tema:$("#ctema").value, min:0, titulo:tit, texto:txt, dia:String(dd.getDate()), mes:MESES[dd.getMonth()], hora:($("#chora").value||"").replace(":00","h").replace(":","h"), local:$("#clocal").value.trim() || "Local a definir", vao:0, ref});
       S.rsvp["c"+n] = "vou"; return A.published(k); }
     if ((k==="chamado" || k==="abaixo") && $("#cmeta")){ const meta = Math.max(1, +$("#cmeta").value || 1);
       S.created.push({id:900+n, uid:"c"+n, tipo:"chamado", org:$("#corg").value, tema:$("#ctema").value, min:0, titulo:tit, texto:txt || (k==="abaixo"?"Abaixo-assinado aberto agora.":"Chamado aberto agora."), meta, tem:0, un:k==="abaixo"?"assinaturas":"pessoas", quando:"aberto agora", ate:99, ref});
       S.help["c"+n] = true; return A.published(k); }
     if (k==="votacao"){ const o = ORG[$("#corg").value], vt = Math.round(o.membros*.66);
-      S.created.push({id:900+n, uid:"c"+n, tipo:"votacao", fase:"apoios", org:o.id, tema:$("#ctema").value, min:0, titulo:tit, texto:$("#ctxt").value.trim() || "Proposta aberta para apoios.", quorum:Math.ceil(vt/2), votantes:vt, votaram:0, apoios:0, prazo:"—", opcoes:["Aprovar a proposta","Rejeitar","Abster-se"], critico:false, autor:"você"});
+      S.created.push({id:900+n, uid:"c"+n, tipo:"votacao", fase:"apoios", org:o.id, tema:$("#ctema").value, min:0, titulo:tit, texto:$("#ctxt").value.trim() , quorum:Math.ceil(vt/2), votantes:vt, votaram:0, apoios:0, prazo:"—", opcoes:["Aprovar a proposta","Rejeitar","Abster-se"], critico:false, autor:"você"});
       S.created[S.created.length-1].ref = ref; S.support["c"+n] = true; }
-    else S.created.push({ref, id:900+n, uid:"c"+n, tipo:"texto", org:$("#corg").value, tema:$("#ctema").value, min:0, titulo:tit, texto:$("#ctxt").value.trim() || ({evento:"Evento criado agora. Detalhes em breve.",enquete:"Consulta criada agora.",votacao:"Aviso de votação.",chamado:"Chamado criado agora.",documento:"Documento anexado."}[k]||"")});
+    else S.created.push({ref, id:900+n, uid:"c"+n, tipo:"texto", org:$("#corg").value, tema:$("#ctema").value, min:0, titulo:tit, texto:$("#ctxt").value.trim()});
     A.published(k); },
   /* depois de publicar: se veio de uma notícia, volta para ela mostrando a mobilização ligada */
   published: k => { const ref = S.mobRef; S.mobRef = null; closeSheet();
@@ -10042,7 +10045,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:33";
+const VERSAO = "v1 registrada · 15/11 11:42";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
