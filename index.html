@@ -5179,8 +5179,9 @@ async function adPrecosCarrega(){ if (LOCAL) adPrecosAplica(store.get("anuncioPr
 async function adPedidosCarrega(){ if (!SB || !ME.user){ AD_PEDIDOS = null; return; }
   try{ const r = await SB.from("anuncio_pedidos").select("id,criado_em,nome,formato,posicao,dias,valor,status,teste,motivo,fim").order("criado_em", {ascending:false}).limit(20); AD_PEDIDOS = r.data || []; }catch(e){ AD_PEDIDOS = null; }
   const box = $("#adpedidos"); if (box) box.innerHTML = adPedidosHTML(); }
+/* 15/11 (Amanda): a lista de pedidos de anúncio fica em Sua conta, não no fluxo de anunciar */
 function adPedidosHTML(){ if (!AD_PEDIDOS || !AD_PEDIDOS.length) return ""; const P = AD_PRECO;
-  return `<h2 class="adh">Seus pedidos</h2><div class="adsum">${AD_PEDIDOS.map(p=>{ const f = P.formatos.find(x=>x[0]===p.formato) || ["", p.formato], st = AD_STATUS[p.status] || ["na", p.status];
+  return `<h2 class="adh">Seus anúncios</h2><div class="adsum">${AD_PEDIDOS.map(p=>{ const f = P.formatos.find(x=>x[0]===p.formato) || ["", p.formato], st = AD_STATUS[p.status] || ["na", p.status];
     return `<div class="kv"><span><b>${esc(p.nome)}</b> · ${f[1]} · ${adDias(p.dias)}${p.status==="aprovado" && p.fim ? " · até " + new Date(p.fim).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}) : ""}${p.teste ? " · teste" : ""}${p.motivo ? `<small class="admot">${esc(p.motivo)}</small>` : ""}</span><b>${adBRL(+p.valor)}<small class="adst ${st[0]}">${st[1]}</small></b></div>`; }).join("")}</div>`; }
 /* volta do Mercado Pago: confere o pagamento no servidor e mostra a situação */
 function adVolta(){ let q; try{ q = new URLSearchParams(location.search); }catch(e){ return; } const id = q.get("pedido"); if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
@@ -5231,10 +5232,10 @@ function adConta(v){ return `<div class="kv"><span>${v.f[1]} · ${v.p[1].toLower
     ${v.desc ? `<div class="kv"><span>Desconto de ${Math.round(v.desc * 100)}% pelo tempo</span><b>− ${adBRL(v.abat)}</b></div>` : ""}
     <div class="kv tot"><span>Total</span><b>${adBRL(v.total)}</b></div>`; }
 function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), val = k => esc(d[k] || ""), passo = [0,1,2].includes(S.adPasso) ? S.adPasso : 0;
-  /* 15/11 (Amanda): três passos em abas, com ida e volta — 1 Mensagem · 2 Formato e posição · 3 Tempo e valor.
+  /* 15/11 (Amanda): três passos em abas, com ida e volta — 1 Mensagem · 2 Posição · 3 Tempo e valor (o formato se escolhe no quadro).
      O quadro dos formatos fica sempre no alto (é a prévia); a régua de posição só aparece no passo 2. */
   const opt = (k, x, sel, preco) => `<button class="adopt" type="button" role="radio" aria-checked="${sel}" data-act="adset" data-k="${k}" data-v="${x[0]}"><span class="t"><b>${x[1]}</b><small>${x[2]}</small></span><span class="pr">${adBRL(preco)}<small>por dia</small></span></button>`;
-  const fAtual = v.f[3], PASSOS = ["Mensagem",`<span>Formato<span class="adplong"> e posição</span></span>`,"Tempo e valor"];
+  const fAtual = v.f[3], PASSOS = ["Mensagem","Posição","Tempo e valor"];
   const painel = [
 `<div class="adpainel" role="tabpanel" aria-label="Mensagem">
     <p class="adpdica">O que as pessoas vão ler no anúncio. A prévia no alto muda enquanto você escreve.</p>
@@ -5245,9 +5246,7 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
     <div class="field"><label for="adlink">Para onde o anúncio leva</label><input id="adlink" data-ad="link" type="url" inputmode="url" maxlength="200" placeholder="https://" value="${val("link")}"></div>
     <div class="field"><span class="flabel" id="adcorl">Cor</span><div class="adcores" role="radiogroup" aria-labelledby="adcorl">${AD_CORES.map(([c],i)=>`<button type="button" class="adcor" role="radio" aria-checked="${d.cor===i}" aria-label="Cor ${i + 1}" data-act="adset" data-k="cor" data-v="${i}" style="--c:${c}"></button>`).join("")}</div></div>
     </div>`,
-`<div class="adpainel" role="tabpanel" aria-label="Formato e posição">
-    <h2 class="adh">Formato</h2>
-    <p class="adpdica">Toque num formato no quadro do alto para escolher. Escolhido: <b>${v.f[1]}</b>.</p>
+`<div class="adpainel" role="tabpanel" aria-label="Posição">
     <h2 class="adh">Posição no feed</h2>
     <p class="adpdica">Quanto mais perto do início, mais gente vê, e mais custa.</p>
     <div class="adopts" role="radiogroup" aria-label="Posição no feed">${P.posicoes.slice().reverse().map(x=>opt("pos", x, d.pos===x[0], P.dia * fAtual * x[3])).join("")}</div>
@@ -5264,11 +5263,10 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
   const botao = passo < 2 ? `<button class="btn primary" type="button" data-act="adpasso" data-v="${passo + 1}" data-checa="1">Próximo</button>` : `<button class="btn primary" type="button" data-act="adrevisar">Revisar e pagar</button>`;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Anuncie aqui</h1></div>`)
   + `<div class="container adflow">
-    <p class="adlead">Monte o anúncio em três passos e veja o valor na hora. Ele aparece igual para todo mundo: a rede.online não usa o perfil de quem lê.</p>
+    <p class="adlead">Toque num formato no quadro abaixo para escolher, e monte o anúncio em três passos. O valor aparece na hora. O anúncio é igual para todo mundo: a rede.online não usa o perfil de quem lê.</p>
     <div class="adsticky"><div id="adpvbox">${adModulo(d)}</div>${passo===1 ? `<div id="admapbox">${adMapa(d)}</div>` : ""}</div>
     <div class="tabs adpassos" role="tablist" aria-label="Passos do anúncio">${PASSOS.map((n,i)=>`<button class="tab" type="button" role="tab" data-act="adpasso" data-v="${i}" aria-selected="${passo===i}"><span class="adpn">${i + 1}</span>${n}</button>`).join("")}</div>
     ${painel}
-    ${passo===0 ? `<div id="adpedidos">${adPedidosHTML()}</div>` : ""}
   </div>
   <div class="adbar"><div class="container adbarin"><span class="tt"><small>Total · ${adDias(v.dias)}</small><b id="adtotal">${adBRL(v.total)}</b></span>${botao}</div></div>`; }
 /* o que falta na mensagem (passo 1): avisa, volta ao passo 1 e põe o cursor no campo */
@@ -7387,8 +7385,8 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r.startsWith("pg-")){ if (S.pgPasta && S.pgPasta.p !== r.slice(3)) S.pgPasta = null; main.innerHTML = screenPagina(r.slice(3)); paginaPreenche(r.slice(3)); }
   else if (r.startsWith("pin-")){ main.innerHTML = screenPin(r.slice(4)); fillPin(r.slice(4)); }
   else if (r==="ate-depois") main.innerHTML = screenBye();
-  else if (r==="conta") main.innerHTML = screenConta();
-  else if (r==="anunciar"){ main.innerHTML = screenAnunciar(); adPedidosCarrega(); }
+  else if (r==="conta"){ main.innerHTML = screenConta(); adPedidosCarrega(); }
+  else if (r==="anunciar") main.innerHTML = screenAnunciar();
   else if (r==="em-alta"){ main.innerHTML = screenAlta(); if (ME.pronto) altaCarrega(); }
   else if (r==="curadoria"){ main.innerHTML = screenCuradoria(); curadoriaCarrega(); }
   else if (r==="nova-senha") main.innerHTML = screenNovaSenha();
@@ -8739,7 +8737,7 @@ function screenConta(){
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
 ${/* 15/11: Sua conta fica só com os dados da conta. Publicar está no Criar; sugerir fonte, em "Origem das notícias"; a fila do coletor, no Painel (Conteúdo › Fila de notícias). */""}
       <div class="note">${ic("lock")}<span>Seu e-mail não aparece para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
-      ${acessoCard()}<div id="histbox"></div>${contaSeguranca()}
+      ${acessoCard()}<div id="histbox"></div><div id="adpedidos">${adPedidosHTML()}</div>${contaSeguranca()}
       <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`; }
   const t = S.contaTab || "entrar";
   return topo + `<div class="container cform">
@@ -10036,7 +10034,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:26";
+const VERSAO = "v1 registrada · 15/11 11:30";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
