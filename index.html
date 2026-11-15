@@ -1455,13 +1455,16 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adtile.casa .adtop{display:none}
 .adtile.faixa .admk{order:-1;flex:none}
 .adtile.faixa .admk svg{width:24px;height:24px}
-.adtile.faixa .adbot{flex:1;min-width:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;align-self:center}
+.adtile.faixa .adbot{flex:1;min-width:0;align-self:center}
 .adtile.faixa .adnome{font-size:15px}
 .adtile.faixa .adseg{display:none}
 .adcard .adtile.faixa{aspect-ratio:auto;height:88px}
 .adcard .adtile.faixa .adtxt{font-size:12px;line-height:1.3}
-.adpv.faixa{grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}
-.adpv.faixa > .tile{height:auto}
+.adpv.fx{grid-template-rows:minmax(0,3fr) minmax(0,1fr)}
+.adpv.fx > .tile{height:auto}
+.adtile.faixa .adbot{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:1px}
+.adtile.faixa .adnome,.adtile.faixa .adtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.adtile.faixa .adtop{flex-wrap:nowrap}
 .adcard .adtile{position:relative;aspect-ratio:1 / 1;border-radius:var(--r);overflow:hidden}
 .adcard .tbtn{cursor:pointer}
 .csnotas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px}
@@ -5162,7 +5165,8 @@ function adFace(d){ const nome = d.nome.trim() || "Sua marca", frase = d.frase.t
     <span class="adbot"><b class="adnome">${esc(nome)}</b><span class="adtxt">${esc(frase)}</span>${d.seg.trim() ? `<span class="adseg">${esc(d.seg.trim())}</span>` : ""}</span></span>`; }
 /* prévia: um bloco do feed (mosaico) com o anúncio no tamanho escolhido e os vizinhos em silhueta */
 function adPrevia(d, mini){ const [c1, c2] = AD_CORES[d.cor] || AD_CORES[0], area = {s:"1 / 1 / span 1 / span 2", t:"1 / 1 / span 2 / span 2", w:"1 / 1 / span 2 / span 4"}[d.fmt];
-  if (d.fmt === "f") return `<div class="blk adpv faixa${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio em faixa no feed"><div class="tile adtile faixa f" style="grid-area:1 / 1 / span 1 / span 6;--adc:${c1};--adc2:${c2}">${adFace(d)}</div></div>`;
+  if (d.fmt === "f"){ const sk = (a, img) => `<div class="adsk${img ? " img" : ""}" style="grid-area:${a}"><i></i><i></i><i></i></div>`;   /* 15/11: como os outros formatos, a faixa aparece no meio dos cartões */
+    return `<div class="blk adpv fx${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio em faixa no feed">${sk("1 / 1 / span 1 / span 4")}${sk("1 / 5 / span 1 / span 2", 1)}<div class="tile adtile faixa f" style="grid-area:2 / 1 / span 1 / span 6;--adc:${c1};--adc2:${c2}">${adFace(d)}</div></div>`; }
   const sk = (a, img) => `<div class="adsk${img ? " img" : ""}" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
   const resto = d.fmt==="s" ? sk("2 / 1 / span 1 / span 2", 1) + sk("1 / 3 / span 2 / span 4") : d.fmt==="t" ? sk("1 / 3 / span 2 / span 4") : sk("1 / 5 / span 1 / span 2", 1) + sk("2 / 5 / span 1 / span 2", 1);
   return `<div class="blk adpv${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio no feed"><div class="tile adtile ${d.fmt}" style="grid-area:${area};--adc:${c1};--adc2:${c2}">${adFace(d)}</div>${resto}</div>`; }
@@ -9885,7 +9889,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:55";
+const VERSAO = "v1 registrada · 15/11 11:05";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
