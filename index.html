@@ -1436,6 +1436,16 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adface.casa .adnome{font-size:16px}
 .adface.casa .adtxt{color:var(--muted);font-size:12px}
 .adtile:has(.casa) .tbtn{color:var(--ink)}
+.blk.casa{grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}
+.blk.casa > .tile{height:auto;min-height:0;align-self:stretch;aspect-ratio:auto}
+@container (min-width:560px){ .blk.casa{aspect-ratio:12/1} }
+.adtile.casa .adface{display:flex;align-items:center;gap:10px;padding:0 14px}
+.adtile.casa .adtop{display:none}
+.adtile.casa .admk{order:-1;flex:none}
+.adtile.casa .adbot{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;align-self:center}
+.adtile.casa .adnome{font-size:15px}
+.adcard .adtile.casa{aspect-ratio:auto;height:88px}
+.adcard .adtile.casa .adtxt{font-size:12px;line-height:1.3}
 .adcard .adtile{position:relative;aspect-ratio:1 / 1;border-radius:var(--r);overflow:hidden}
 .adcard .tbtn{cursor:pointer}
 .csnotas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px}
@@ -4892,7 +4902,7 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
 const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt">Seu negócio neste espaço, igual para todo mundo.</span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
-const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile" style="--adc:${a.cor};--adc2:${a.cor2}">
+const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile${a.casa ? " casa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
   <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
 const cardFor = (it, mode, v) => it.anuncio ? adCard(it, mode) : v && v!=="masonry" && v!=="video" ? tabCard(it, mode, v) : card(it, mode);
 const EST = {anuncio:()=>200, video:it=>it.ar*170+70, imagem:it=>(it.ph || 1.25)*170+80, texto:()=>270, evento:()=>320, enquete:()=>330, votacao:()=>330, chamado:()=>330, documento:()=>290};
@@ -5055,8 +5065,7 @@ ORG["ad-casa"] = {id:"ad-casa", nome:"a rede.online", sigla:"AR", cor:"#8D9BFF",
 function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anúncio na aba Vídeos, onde ficam as transmissões oficiais */
   if (S.tab==="tudo" || S.tab==="publicacoes"){   /* 15/11 (Amanda): enquanto a rede cresce, um espaço só, pequeno, no primeiro scroll; o resto é conteúdo */
     if (l.length < 4) return l; const pagos = AD_REAIS.filter(x=>!S.adOculta.has(x.id)), a = pagos.length ? pagos[AD_ROD % pagos.length] : AD_CASA, out = l.slice();
-    let at = out.findIndex((x, i)=>i >= 2 && x.tipo==="imagem" && !x.anuncio);   /* ao lado de uma imagem, o espaço fica pequeno: se a primeira imagem está longe, ela sobe */
-    if (at > 8){ out.splice(3, 0, out.splice(at, 1)[0]); at = 3; } at = at < 0 ? 3 : at + 1;
+    const at = a.casa ? 2 : 3;   /* o convite é uma faixa fina depois dos primeiros cartões */
     out.splice(at, 0, {id:"anuncio-1" + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:1, titulo:a.nome + " · " + a.frase, tema:"", min:l[Math.min(at, l.length) - 1].min}); return out; }
   const out = []; let n = 0, antes = "";
   l.forEach((it,i)=>{ out.push(it); if ((i + 1) % ANUNCIO_CADA === 0){ n++; const a = adDoEspaco(n, antes); if (!a) return; antes = a.id;
@@ -5568,15 +5577,16 @@ function planBlock(Q, final, g){
   const take = (pred, w=LOOK+1) => { const n = Math.min(Q.length, w); for (let i=0;i<n;i++) if (pred(Q[i])) return Q.splice(i,1)[0]; return null; };
   const cell = (it, size, r, c, rs, cs) => ({uid:it.uid, size, area:[r,c,rs,cs]});
   /* a mídia só sobe para o bloco atual se já estiver perto (janela curta): assim imagens e vídeos ficam espalhados pelo feed */
-  const adFmt = it => it.anuncio ? (it.ad.fmt || "s") : "", adPeq = it => it.anuncio && adFmt(it)!=="w";
+  const adFmt = it => it.anuncio ? (it.ad.fmt || "s") : "", adPeq = it => it.anuncio && !it.ad.casa && adFmt(it)!=="w";
+  if (Q[0] && Q[0].anuncio && Q[0].ad.casa) return {casa:true, cells:[cell(Q.shift(),"bar",1,1,1,6)]};   /* 15/11: "Anuncie aqui" é uma faixa fina, do tamanho de uma linha */
   const mediaCol = (c, w=LOOK+1) => { let m = take(it=>!isTextual(it) && !it.anuncio, w);
     if (!m){ const a = take(adPeq, w); if (!a) return null; if (adFmt(a)==="t") return [cell(a,"t",1,c,2,2)];
-      const p = take(it=>it.tipo==="imagem", a.ad && a.ad.casa ? LOOK+30 : LOOK+6);   /* 15/11: o convite fica sempre pequeno */
+      const p = take(it=>it.tipo==="imagem", LOOK+6);
       return p ? [cell(p,"s",1,c,1,2), cell(a,"s",2,c,1,2)] : [cell(a,"t",1,c,2,2)]; }   /* anúncio sozinho ocupa a coluna toda: sem buraco embaixo dele */
     if (m.tipo==="video") return [cell(m,"t",1,c,2,2)];
     /* anúncio é sempre quadradinho: entra como o par pequeno de uma imagem */
-    const ad2 = take(it=>it.anuncio && adFmt(it)==="s", 3);
-    if (!ad2){ const av = take(it=>it.anuncio && adFmt(it)==="t", 3); if (av){ Q.unshift(av); } }   /* vertical não vira par pequeno: volta para a fila e ganha a coluna dele */
+    const ad2 = take(it=>it.anuncio && !it.ad.casa && adFmt(it)==="s", 3);
+    if (!ad2){ const av = take(it=>it.anuncio && !it.ad.casa && adFmt(it)==="t", 3); if (av){ Q.unshift(av); } }   /* vertical não vira par pequeno: volta para a fila e ganha a coluna dele */
     const m2 = ad2 || take(it=>it.tipo==="imagem", 2);
     return m2 ? [cell(m,"s",1,c,1,2), cell(m2,"s",2,c,1,2)] : [cell(m,"t",1,c,2,2)]; };
   if (Q[0] && Q[0].anuncio && adFmt(Q[0])==="w"){   /* Destaque: dois terços da largura, altura inteira, ao lado de uma coluna de mídia */
@@ -5598,7 +5608,7 @@ function planBlock(Q, final, g){
 }
 function tileHTML(it, cl, mode="none"){
   if (it.anuncio){ const a = it.ad, [r,c,rs,cs] = cl.area;
-    return `<div class="tile adtile ${cl.size}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
+    return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
       <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
@@ -5739,7 +5749,7 @@ class TileGrid {
   constructor(id, box, mode){ this.id = id; this.mode = mode; this.items = []; this.obj = {}; this.Q = []; this.blocks = []; this.side = false; this.sel = null; this.rendered = false; this.attach(box); }
   attach(box){ this.box = box; if (box){ box.dataset.grid = this.id; box.className = "rgrid"; } GRIDS[this.id] = this; }
   add(it){ this.items.push(it.uid); this.obj[it.uid] = it; this.Q.push(it); }
-  blockHTML(b){ return `<div class="blk${this.arte?" arte":""}${b.row1||b.rows===1?" row1":""}${b.rows===3?" r3":""}">${b.cells.map(c=>tileHTML(this.obj[c.uid], c, this.mode)).join("")}</div>`; }
+  blockHTML(b){ return `<div class="blk${this.arte?" arte":""}${b.casa?" casa":""}${b.row1||b.rows===1?" row1":""}${b.rows===3?" r3":""}">${b.cells.map(c=>tileHTML(this.obj[c.uid], c, this.mode)).join("")}</div>`; }
   /* monta os blocos completos; com final=true (pausa ou fim), monta também o que sobrou */
   flush(final){ const out = []; let b; while ((b = (this.arte ? planArte : planBlock)(this.Q, final, this))){ if (!b.cells.length) break; this.blocks.push(b); out.push(b); }
     if (this.rendered && this.box && out.length){ this.box.insertAdjacentHTML("beforeend", out.map(x=>this.blockHTML(x)).join("")); fitTiles(this.box); } }
@@ -9817,7 +9827,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:30";
+const VERSAO = "v1 registrada · 15/11 10:36";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
