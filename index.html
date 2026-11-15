@@ -186,6 +186,7 @@ img,svg{max-width:100%}
 .testechip{position:fixed;left:12px;bottom:calc(84px + var(--safe-b,0px));z-index:55;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border-radius:999px;border:1px dashed #B8430F;background:#FFF4EC;color:#8A3208;font:600 12px/1 var(--font,system-ui);box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer}
 .testechip .tdot{width:7px;height:7px;border-radius:50%;background:#E0592A}
 @media (min-width:768px){ .testechip{bottom:16px;left:auto;right:16px} }
+@media (max-width:767px){ body.rota-anunciar .testechip{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 14px);left:auto;right:12px;font-size:0;gap:0} body.rota-anunciar .testechip::after{content:"Teste";font-size:12px;margin-left:6px} }
 .cmnseg{display:flex;gap:6px;margin:4px 0 14px}.cmnseg .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .pglist{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));margin:8px 0 20px}
 .pgcomo{display:flex;flex-direction:column;gap:12px}.pgcomo p{margin:0;font-size:14.5px;line-height:1.5}
@@ -1565,6 +1566,13 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adbar::after{content:"";position:absolute;left:0;right:0;top:100%;height:calc(var(--nav-space) + var(--safe-b));background:var(--bg)}
 .adbarin{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;padding-top:10px;padding-bottom:10px}
 .adbar .tt{display:flex;flex-direction:column;line-height:1.2}.adbar .tt small{color:var(--muted);font-size:12px}.adbar .tt b{font-size:20px}
+/* 15/11 (Amanda): o valor fica sempre na barra de baixo; a setinha abre o detalhe da cobrança */
+.adtotbtn{align-items:flex-start;text-align:left;border:0;background:none;color:inherit;font:inherit;padding:2px 4px 2px 0;cursor:pointer;min-width:0}
+.adtotl{display:inline-flex;align-items:center;gap:6px}
+.adtotl .icon{width:18px;height:18px;color:var(--muted);transform:rotate(180deg);transition:transform .2s}
+.adtotbtn[aria-expanded="true"] .adtotl .icon{transform:none}
+.adbarconta{max-width:640px;padding-top:12px}
+.adbarconta .adsum{box-shadow:none;background:var(--surface-2)}
 .adrev{margin-bottom:10px}.adpv.pq{max-width:330px}
 .adregras{margin:12px 0;padding-left:18px;font-size:var(--fs-sm);color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .admot{display:block;color:var(--muted);font-size:12px;font-weight:400}
@@ -5227,15 +5235,15 @@ function adModulo(d){ const P = AD_PRECO, v = adPreco(d), [c1, c2] = AD_CORES[d.
 /* onde o anúncio entra na rolagem: cada número é um espaço de anúncio (um a cada 8 cartões) */
 function adMapa(d){ const on = k => d.pos==="topo" ? k===1 : d.pos==="meio" ? (k===2 || k===3) : k>=4;
   return `<div class="admapa" aria-hidden="true"><span class="admt">Topo do feed</span>${[1,2,3,4,5].map(k=>`<span class="adcards"><i></i><i></i><i></i></span><b class="${on(k) ? "on" : ""}">${k===5 ? "…" : k + "º"}</b>`).join("")}</div>`; }
-function adConta(v){ return `<div class="kv"><span>${v.f[1]} · ${v.p[1].toLowerCase()}</span><b>${adBRL(v.diaria)} por dia</b></div>
+function adConta(v, semTotal){ return `<div class="kv"><span>${v.f[1]} · ${v.p[1].toLowerCase()}</span><b>${adBRL(v.diaria)} por dia</b></div>
     <div class="kv"><span>${adDias(v.dias)}</span><b>${adBRL(v.bruto)}</b></div>
     ${v.desc ? `<div class="kv"><span>Desconto de ${Math.round(v.desc * 100)}% pelo tempo</span><b>− ${adBRL(v.abat)}</b></div>` : ""}
-    <div class="kv tot"><span>Total</span><b>${adBRL(v.total)}</b></div>`; }
+    ${semTotal ? "" : `<div class="kv tot"><span>Total</span><b>${adBRL(v.total)}</b></div>`}`; }
 function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), val = k => esc(d[k] || ""), passo = [0,1,2].includes(S.adPasso) ? S.adPasso : 0;
-  /* 15/11 (Amanda): três passos em abas, com ida e volta — 1 Mensagem · 2 Posição · 3 Tempo e valor (o formato se escolhe no quadro).
+  /* 15/11 (Amanda): três passos em abas, com ida e volta — 1 Mensagem · 2 Posição · 3 Tempo (o formato se escolhe no quadro; o valor fica sempre na barra de baixo, com o detalhe na setinha).
      O quadro dos formatos fica sempre no alto (é a prévia); a régua de posição só aparece no passo 2. */
   const opt = (k, x, sel, preco) => `<button class="adopt" type="button" role="radio" aria-checked="${sel}" data-act="adset" data-k="${k}" data-v="${x[0]}"><span class="t"><b>${x[1]}</b><small>${x[2]}</small></span><span class="pr">${adBRL(preco)}<small>por dia</small></span></button>`;
-  const fAtual = v.f[3], PASSOS = ["Mensagem","Posição","Tempo e valor"];
+  const fAtual = v.f[3], PASSOS = ["Mensagem","Posição","Tempo"];
   const painel = [
 `<div class="adpainel" role="tabpanel" aria-label="Mensagem">
     <p class="adpdica">O que as pessoas vão ler no anúncio. A prévia no alto muda enquanto você escreve.</p>
@@ -5251,13 +5259,11 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
     <p class="adpdica">Quanto mais perto do início, mais gente vê, e mais custa.</p>
     <div class="adopts" role="radiogroup" aria-label="Posição no feed">${P.posicoes.slice().reverse().map(x=>opt("pos", x, d.pos===x[0], P.dia * fAtual * x[3])).join("")}</div>
     </div>`,
-`<div class="adpainel" role="tabpanel" aria-label="Tempo e valor">
+`<div class="adpainel" role="tabpanel" aria-label="Tempo">
     <h2 class="adh">Quantos dias no ar</h2>
     <p class="adpdica">Escolha um período ou ajuste dia a dia, de ${P.minDias} a ${P.maxDias} dias. Períodos maiores têm desconto.</p>
     <div class="chips" role="radiogroup" aria-label="Tempo no ar">${P.tempos.filter(t=>t >= P.minDias && t <= P.maxDias).map(t=>{ const ds = (P.descontos.find(x=>t >= x[0]) || [0,0])[1]; return `<button class="chip" type="button" role="radio" aria-checked="${v.dias===t}" data-act="adset" data-k="dias" data-v="${t}">${adDias(t)}${ds ? ` · −${Math.round(ds * 100)}%` : ""}</button>`; }).join("")}</div>
     <div class="adstep"><button class="iconbtn" type="button" data-act="addia" data-v="-1" aria-label="Um dia a menos">−</button><b id="addias" aria-live="polite">${adDias(v.dias)}</b><button class="iconbtn" type="button" data-act="addia" data-v="1" aria-label="Um dia a mais">+</button></div>
-    <h2 class="adh">Valor</h2>
-    <div class="adsum" id="adconta">${adConta(v)}</div>
     <ul class="adregras curta"><li>Antes de ir ao ar, o anúncio é conferido pela equipe.</li><li>Se for recusado, você recebe o valor de volta, menos a tarifa do Mercado Pago.</li><li>Não aceitamos propaganda eleitoral, de candidatos ou de partidos.</li></ul>
     </div>`][passo];
   const botao = passo < 2 ? `<button class="btn primary" type="button" data-act="adpasso" data-v="${passo + 1}" data-checa="1">Próximo</button>` : `<button class="btn primary" type="button" data-act="adrevisar">Revisar e pagar</button>`;
@@ -5268,7 +5274,7 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
     <div class="tabs adpassos" role="tablist" aria-label="Passos do anúncio">${PASSOS.map((n,i)=>`<button class="tab" type="button" role="tab" data-act="adpasso" data-v="${i}" aria-selected="${passo===i}"><span class="adpn">${i + 1}</span>${n}</button>`).join("")}</div>
     ${painel}
   </div>
-  <div class="adbar"><div class="container adbarin"><span class="tt"><small>Total · ${adDias(v.dias)}</small><b id="adtotal">${adBRL(v.total)}</b></span>${botao}</div></div>`; }
+  <div class="adbar">${S.adConta ? `<div class="container adbarconta" id="adcontabox"><div class="adsum" id="adconta">${adConta(v, true)}</div></div>` : ""}<div class="container adbarin"><button class="tt adtotbtn" type="button" data-act="adconta" aria-expanded="${!!S.adConta}" aria-controls="adcontabox" aria-label="Total ${adBRL(v.total)} por ${adDias(v.dias)}. ${S.adConta ? "Esconder" : "Ver"} o detalhe da cobrança"><small>Total · ${v.f[1]} · ${adDias(v.dias)}</small><span class="adtotl"><b id="adtotal">${adBRL(v.total)}</b>${ic("chev")}</span></button>${botao}</div></div>`; }
 /* o que falta na mensagem (passo 1): avisa, volta ao passo 1 e põe o cursor no campo */
 function adFalta(){ const d = adDraft(); return !d.nome.trim() ? ["adnome","Diga a marca ou organização."] : !d.frase.trim() ? ["adfrase","Escreva a mensagem do anúncio."] : !/^https:\/\/[^\s.]+\.[^\s]+$/i.test(d.link.trim()) ? ["adlink","Informe o endereço de destino, começando com https://"] : null; }
 function adMostraFalta(){ const f = adFalta(); if (!f) return; toast(f[1]); if (S.adPasso){ S.adPasso = 0; adRefaz(); } const el = $("#" + f[0]); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"center", behavior:"smooth"}); } }
@@ -7354,6 +7360,7 @@ function envExit(){ let h; do { h = NAV.pop(); } while (h && /^(manifesto|funcio
 function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.dataset.segnum, el)), 0);
   const r = route(), main = $("#main"), logoVelho = main.querySelector(".logo");
   if (r!=="inicio"){ document.documentElement.classList.remove("snapvid"); LV_ON = null; }
+  document.body.classList.toggle("rota-anunciar", r==="anunciar");   /* o selo de teste sobe para não cobrir o total do anúncio */
   const pr = r.split("/")[0];
   if (pr==="painel" && !LOCAL){ location.replace("#inicio"); return; }
   if (!["ate-depois","conta","nova-senha"].includes(r)) store.set("ultima", r);   /* reabre onde parou */
@@ -9435,6 +9442,7 @@ const A = {
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
   anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
+  adconta: () => { S.adConta = !S.adConta; adRefaz(); },
   adpasso: b => { if (b.dataset.checa && !S.adPasso && adFalta()) return adMostraFalta(); S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
   adset: b => { const d = adDraft(), k = b.dataset.k, v = b.dataset.v; d[k] = (k==="cor" || k==="dias") ? +v : v; adGuarda(); adRefaz(); },
   addia: b => { const d = adDraft(); d.dias = Math.max(AD_PRECO.minDias, Math.min(AD_PRECO.maxDias, (d.dias|0) + (+b.dataset.v))); adGuarda(); adRefaz(); },
@@ -10034,7 +10042,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:30";
+const VERSAO = "v1 registrada · 15/11 11:33";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
