@@ -1536,6 +1536,12 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adpn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:600;background:var(--line);color:var(--fg)}
 .adpassos .tab[aria-selected="true"] .adpn{background:var(--accent);color:var(--on-accent)}
 .adpainel{display:flex;flex-direction:column;gap:12px}
+.adpdica{margin:-4px 0 0;color:var(--muted);font-size:var(--fs-sm);line-height:1.45}
+.adpainel > .adpdica:first-child{margin-top:2px}
+.adregras.curta{margin:2px 0 0;padding-left:18px;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
+.adpassos{overflow:visible}
+.adpassos .tab{flex:1 1 0;justify-content:center;white-space:nowrap}
+@media (max-width:480px){ .adplong{display:none} .adpassos .tab{font-size:14px;gap:6px;padding-left:4px;padding-right:4px} }
 .adpainel > .adh:first-child{margin-top:2px}
 .adflow .flabel{font-size:var(--fs-sm);font-weight:500}
 .adrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -5224,36 +5230,50 @@ function adConta(v){ return `<div class="kv"><span>${v.f[1]} · ${v.p[1].toLower
     <div class="kv"><span>${adDias(v.dias)}</span><b>${adBRL(v.bruto)}</b></div>
     ${v.desc ? `<div class="kv"><span>Desconto de ${Math.round(v.desc * 100)}% pelo tempo</span><b>− ${adBRL(v.abat)}</b></div>` : ""}
     <div class="kv tot"><span>Total</span><b>${adBRL(v.total)}</b></div>`; }
-function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), val = k => esc(d[k] || ""), passo = S.adPasso===1 ? 1 : 0;   /* 15/11 (Amanda): dois passos em abas, com ida e volta */
+function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), val = k => esc(d[k] || ""), passo = [0,1,2].includes(S.adPasso) ? S.adPasso : 0;
+  /* 15/11 (Amanda): três passos em abas, com ida e volta — 1 Mensagem · 2 Formato e posição · 3 Tempo e valor.
+     O quadro dos formatos fica sempre no alto (é a prévia); a régua de posição só aparece no passo 2. */
   const opt = (k, x, sel, preco) => `<button class="adopt" type="button" role="radio" aria-checked="${sel}" data-act="adset" data-k="${k}" data-v="${x[0]}"><span class="t"><b>${x[1]}</b><small>${x[2]}</small></span><span class="pr">${adBRL(preco)}<small>por dia</small></span></button>`;
-  const fAtual = v.f[3], pAtual = v.p[3];
-  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Anuncie aqui</h1></div>`)
-  + `<div class="container adflow">
-    <p class="adlead">Monte o anúncio e veja o valor na hora. Ele aparece para todo mundo, no mesmo lugar: a rede.online não usa o perfil de quem lê.</p>
-    <div class="adsticky"><div id="adpvbox">${adModulo(d)}</div><div id="admapbox">${adMapa(d)}</div></div>
-    <div class="tabs adpassos" role="tablist" aria-label="Passos do anúncio">${["Sua mensagem","Formato e posição"].map((n,i)=>`<button class="tab" type="button" role="tab" data-act="adpasso" data-v="${i}" aria-selected="${passo===i}"><span class="adpn">${i + 1}</span>${n}</button>`).join("")}</div>
-    ${passo===0 ? `<div class="adpainel" role="tabpanel" aria-label="Sua mensagem">
+  const fAtual = v.f[3], PASSOS = ["Mensagem",`<span>Formato<span class="adplong"> e posição</span></span>`,"Tempo e valor"];
+  const painel = [
+`<div class="adpainel" role="tabpanel" aria-label="Mensagem">
+    <p class="adpdica">O que as pessoas vão ler no anúncio. A prévia no alto muda enquanto você escreve.</p>
     <div class="field"><label for="adnome">Marca ou organização</label><input id="adnome" data-ad="nome" maxlength="24" autocomplete="organization" placeholder="Ex.: Padaria Aurora" value="${val("nome")}"></div>
     <div class="field"><label for="adfrase">Mensagem</label><input id="adfrase" data-ad="frase" maxlength="60" placeholder="Ex.: Pão quente toda manhã, na sua rua." value="${val("frase")}"></div>
     <div class="adrow2"><div class="field"><label for="adcta">Chamada (opcional)</label><input id="adcta" data-ad="cta" maxlength="14" placeholder="Ex.: Só hoje" value="${val("cta")}"></div>
       <div class="field"><label for="adseg">Ramo e cidade (opcional)</label><input id="adseg" data-ad="seg" maxlength="28" placeholder="Ex.: Padaria · Recife" value="${val("seg")}"></div></div>
     <div class="field"><label for="adlink">Para onde o anúncio leva</label><input id="adlink" data-ad="link" type="url" inputmode="url" maxlength="200" placeholder="https://" value="${val("link")}"></div>
     <div class="field"><span class="flabel" id="adcorl">Cor</span><div class="adcores" role="radiogroup" aria-labelledby="adcorl">${AD_CORES.map(([c],i)=>`<button type="button" class="adcor" role="radio" aria-checked="${d.cor===i}" aria-label="Cor ${i + 1}" data-act="adset" data-k="cor" data-v="${i}" style="--c:${c}"></button>`).join("")}</div></div>
-    </div>` : `<div class="adpainel" role="tabpanel" aria-label="Formato e posição">
+    </div>`,
+`<div class="adpainel" role="tabpanel" aria-label="Formato e posição">
     <h2 class="adh">Formato</h2>
-    <p class="srcnote" style="margin-top:0">Toque no formato no quadro do alto: ele acende com o seu anúncio e o valor muda. Agora: <b>${v.f[1]}</b>, ${adBRL(v.diaria)} por dia.</p>
+    <p class="adpdica">Toque num formato no quadro do alto para escolher. Escolhido: <b>${v.f[1]}</b>.</p>
     <h2 class="adh">Posição no feed</h2>
+    <p class="adpdica">Quanto mais perto do início, mais gente vê, e mais custa.</p>
     <div class="adopts" role="radiogroup" aria-label="Posição no feed">${P.posicoes.slice().reverse().map(x=>opt("pos", x, d.pos===x[0], P.dia * fAtual * x[3])).join("")}</div>
-    <h2 class="adh">Tempo</h2>
+    </div>`,
+`<div class="adpainel" role="tabpanel" aria-label="Tempo e valor">
+    <h2 class="adh">Quantos dias no ar</h2>
+    <p class="adpdica">Escolha um período ou ajuste dia a dia, de ${P.minDias} a ${P.maxDias} dias. Períodos maiores têm desconto.</p>
     <div class="chips" role="radiogroup" aria-label="Tempo no ar">${P.tempos.filter(t=>t >= P.minDias && t <= P.maxDias).map(t=>{ const ds = (P.descontos.find(x=>t >= x[0]) || [0,0])[1]; return `<button class="chip" type="button" role="radio" aria-checked="${v.dias===t}" data-act="adset" data-k="dias" data-v="${t}">${adDias(t)}${ds ? ` · −${Math.round(ds * 100)}%` : ""}</button>`; }).join("")}</div>
     <div class="adstep"><button class="iconbtn" type="button" data-act="addia" data-v="-1" aria-label="Um dia a menos">−</button><b id="addias" aria-live="polite">${adDias(v.dias)}</b><button class="iconbtn" type="button" data-act="addia" data-v="1" aria-label="Um dia a mais">+</button></div>
     <h2 class="adh">Valor</h2>
     <div class="adsum" id="adconta">${adConta(v)}</div>
-    <p class="srcnote">De ${AD_PRECO.minDias} a ${AD_PRECO.maxDias} dias. A peça é conferida antes de ir ao ar e pode ser recusada. Se for, devolvemos o valor pago menos a tarifa do Mercado Pago. Não aceitamos propaganda eleitoral, de candidatos ou de partidos.</p>
-    </div>`}
-    <div id="adpedidos">${adPedidosHTML()}</div>
+    <ul class="adregras curta"><li>Antes de ir ao ar, o anúncio é conferido pela equipe.</li><li>Se for recusado, você recebe o valor de volta, menos a tarifa do Mercado Pago.</li><li>Não aceitamos propaganda eleitoral, de candidatos ou de partidos.</li></ul>
+    </div>`][passo];
+  const botao = passo < 2 ? `<button class="btn primary" type="button" data-act="adpasso" data-v="${passo + 1}" data-checa="1">Próximo</button>` : `<button class="btn primary" type="button" data-act="adrevisar">Revisar e pagar</button>`;
+  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Anuncie aqui</h1></div>`)
+  + `<div class="container adflow">
+    <p class="adlead">Monte o anúncio em três passos e veja o valor na hora. Ele aparece igual para todo mundo: a rede.online não usa o perfil de quem lê.</p>
+    <div class="adsticky"><div id="adpvbox">${adModulo(d)}</div>${passo===1 ? `<div id="admapbox">${adMapa(d)}</div>` : ""}</div>
+    <div class="tabs adpassos" role="tablist" aria-label="Passos do anúncio">${PASSOS.map((n,i)=>`<button class="tab" type="button" role="tab" data-act="adpasso" data-v="${i}" aria-selected="${passo===i}"><span class="adpn">${i + 1}</span>${n}</button>`).join("")}</div>
+    ${painel}
+    ${passo===0 ? `<div id="adpedidos">${adPedidosHTML()}</div>` : ""}
   </div>
-  <div class="adbar"><div class="container adbarin"><span class="tt"><small>Total · ${adDias(v.dias)}</small><b id="adtotal">${adBRL(v.total)}</b></span>${passo===0 ? `<button class="btn primary" type="button" data-act="adpasso" data-v="1">Próximo</button>` : `<button class="btn primary" type="button" data-act="adrevisar">Continuar</button>`}</div></div>`; }
+  <div class="adbar"><div class="container adbarin"><span class="tt"><small>Total · ${adDias(v.dias)}</small><b id="adtotal">${adBRL(v.total)}</b></span>${botao}</div></div>`; }
+/* o que falta na mensagem (passo 1): avisa, volta ao passo 1 e põe o cursor no campo */
+function adFalta(){ const d = adDraft(); return !d.nome.trim() ? ["adnome","Diga a marca ou organização."] : !d.frase.trim() ? ["adfrase","Escreva a mensagem do anúncio."] : !/^https:\/\/[^\s.]+\.[^\s]+$/i.test(d.link.trim()) ? ["adlink","Informe o endereço de destino, começando com https://"] : null; }
+function adMostraFalta(){ const f = adFalta(); if (!f) return; toast(f[1]); if (S.adPasso){ S.adPasso = 0; adRefaz(); } const el = $("#" + f[0]); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"center", behavior:"smooth"}); } }
 function adGuarda(){ store.set("anuncio", adDraft()); }
 function adRefaz(){ if (route()!=="anunciar") return; const y = window.scrollY; $("#main").innerHTML = screenAnunciar(); window.scrollTo(0, y); }
 function sheetAdRevisar(){ const d = adDraft(), v = adPreco(d);
@@ -9417,13 +9437,11 @@ const A = {
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
   anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
-  adpasso: b => { S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
+  adpasso: b => { if (b.dataset.checa && !S.adPasso && adFalta()) return adMostraFalta(); S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
   adset: b => { const d = adDraft(), k = b.dataset.k, v = b.dataset.v; d[k] = (k==="cor" || k==="dias") ? +v : v; adGuarda(); adRefaz(); },
   addia: b => { const d = adDraft(); d.dias = Math.max(AD_PRECO.minDias, Math.min(AD_PRECO.maxDias, (d.dias|0) + (+b.dataset.v))); adGuarda(); adRefaz(); },
   admeio: b => { adDraft().meio = b.dataset.v; adGuarda(); sheetAdRevisar(); },
-  adrevisar: () => { const d = adDraft(), falta = !d.nome.trim() ? ["adnome","Diga a marca ou organização."] : !d.frase.trim() ? ["adfrase","Escreva a mensagem do anúncio."] : !/^https:\/\/[^\s.]+\.[^\s]+$/i.test(d.link.trim()) ? ["adlink","Informe o endereço de destino, começando com https://"] : null;
-    if (falta){ toast(falta[1]); if (S.adPasso){ S.adPasso = 0; adRefaz(); } const el = $("#" + falta[0]); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"center", behavior:"smooth"}); } return; }
-    sheetAdRevisar(); },
+  adrevisar: () => { if (adFalta()) return adMostraFalta(); sheetAdRevisar(); },
   adpagar: async b => { const ok = $("#adaceite"); if (!ok || !ok.checked) return toast("Marque que leu e aceita as regras de anúncio.");
     if (!adPodePagar()) return sheetAdSemPagamento();
     if (!ME.user || !SB){ closeSheet(); toast("Entre ou crie sua conta para pagar. O anúncio fica guardado."); A.acessar(); return; }
@@ -10018,7 +10036,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:22";
+const VERSAO = "v1 registrada · 15/11 11:26";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
