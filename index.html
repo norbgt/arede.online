@@ -5039,7 +5039,7 @@ function fvOrdena(l){ const novos = [], vistos = []; l.forEach(it=>(it.anuncio |
 function exemplosPorTipo(fl){ const por = {}, dia = Math.floor(Date.now() / 864e5);
   POOL.filter(it=>ehExemplo(it) && !generica(it) && passa(it, fl)).sort((a,b)=>a.min - b.min).forEach(it=>{ (por[it.tipo] = por[it.tipo] || []).push(it); });
   return Object.keys(por).map(k=>por[k][dia % por[k].length]); }
-function comExemplos(l, ex){ if (!ex.length) return l; const passo = Math.max(3, Math.min(6, Math.floor(l.length / (ex.length + 1)) || 3)), out = []; let k = 0;
+function comExemplos(l, ex){ if (!ex.length) return l; const passo = Math.max(3, Math.min(4, Math.floor(l.length / (ex.length + 1)) || 3)), out = []; let k = 0;
   l.forEach((it,i)=>{ out.push(it); if ((i + 1) % passo === 0 && k < ex.length) out.push(ex[k++]); }); while (k < ex.length) out.push(ex[k++]); return out; }
 /* ANÚNCIOS (10 nov 2026): espaço de tela vendido a anunciantes. Preço por tamanho (maior = mais caro) e por posição
    (o que aparece antes = mais caro): tabela em Painel › Análise › Receita. Aqui só o formato quadradinho, 1 a cada 8 cartões,
@@ -5930,7 +5930,9 @@ const EX_AVISO = {follow:"Esta página é um exemplo. Numa página real, seguir 
   tatreferenda:"Esta página é um exemplo. Numa página real, outros profissionais referendam o trabalho aqui."};
 document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest("[data-act]"); if (!b || !EX_AVISO[b.dataset.act]) return;
   const alvo = b.dataset.p || (String(b.dataset.org || "").startsWith("pg-") ? b.dataset.org.slice(3) : "") || (/^pg-/.test(route()) ? route().slice(3) : "");
-  if (!exPagId(alvo) || TESTE_HTML) return; e.preventDefault(); e.stopPropagation(); toast(EX_AVISO[b.dataset.act]); }, true);
+  if (!exPagId(alvo) || TESTE_HTML) return; e.preventDefault(); e.stopPropagation();
+  openSheet(shead("Página de exemplo") + `<p style="margin:4px 2px 12px">${EX_AVISO[b.dataset.act]}</p><p class="lnote" style="margin:0 2px 14px">No modo demonstração, você faz o caminho inteiro com uma conta de exemplo. Nada vai para o servidor.</p>
+    <a class="btn primary block" href="/?demo=1#${esc(route())}">Experimentar no modo demonstração</a><button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Agora não</button>`, "Página de exemplo"); }, true);
 const exLimpa = x => { if (typeof x === "string") return x.replace(/\s*\(teste\)/gi, "").replace(/(^|[.!?]\s+)(página|publicação)( pessoal| comercial)? simulad[ao]:\s*(\S)/gi, (m, a, b, c, d)=>a + d.toUpperCase()).replace(/[^.!?]*\b(simulad[ao]s?|de teste|modo de teste|para o teste)\b[^.!?]*[.!?]?\s*/gi, "").trim(); if (Array.isArray(x)) return x.map(exLimpa);
   if (x && typeof x === "object"){ const o = {}; for (const k in x) o[k] = exLimpa(x[k]); return o; } return x; };
 const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e por tudo o que ela publica, assim como pelo que publico em qualquer espaço da rede.online. As informações, ofertas e conteúdos publicados são verdadeiros e de minha responsabilidade, sigo os Termos de uso da rede.online e a lei, e respondo pessoalmente, com a minha conta verificada, pelo que for publicado em nome da página. (Declaração v2 · 14/11/2026)";
@@ -7353,7 +7355,11 @@ function refresh(uid, light){
    no servidor de verdade. Em arede.online nada disto liga. Para usar o servidor de verdade fora dele: ?real=1.
    ===================================================================== */
 const TESTE_PIN = /*PIN_TESTE*/""/*FIM_PIN_TESTE*/;
-const TESTE_HTML = !/(^|\.)arede\.online$/.test(location.hostname) && !/[?&]real=1/.test(location.search);
+/* MODO DEMONSTRAÇÃO (15/11, Amanda): em arede.online/?demo=1 qualquer pessoa experimenta os fluxos (pedir orçamento, conversar, check-in,
+   avaliar, criar página, publicar, votar…) com uma conta de demonstração. É o mesmo modo de teste do HTML: tudo fica só no navegador
+   da pessoa, nada vai para o servidor e nada aparece no site de verdade. Sem o nível de administração. */
+const DEMO = /(^|\.)arede\.online$/.test(location.hostname) && /[?&]demo=1/.test(location.search);
+const TESTE_HTML = DEMO || (!/(^|\.)arede\.online$/.test(location.hostname) && !/[?&]real=1/.test(location.search));
 /* modo de teste (14/11): 3 seções com pastas cheias, para ver o perfil organizado como no Pinterest */
 if (TESTE_HTML){
   [["d-mob","Mobilidade",[29,1003,1004,1001,7,3]],["d-mor","Moradia",[1009,1012,5,22,30]],["d-san","Saneamento e enchentes",[1049,1050,1039,17,24]],["d-hor","Hortas",[1,1015,1014,19,10]],
@@ -7367,6 +7373,9 @@ if (TESTE_HTML){
     store.set("secoes", S.secoes); }
 }
 const TESTE_EU = "00000000-0000-4000-8000-000000000001", TESTE_M = "00000000-0000-4000-8000-000000000002", TESTE_C = "00000000-0000-4000-8000-000000000003", TESTE_PG = "00000000-0000-4000-8000-0000000000a1";
+/* demonstração: a conta é "Você", sem nome de ninguém, e começa como conta verificada (pode criar página e votar) */
+function demoAjusta(db){ let j = JSON.stringify(db).replace(/Traço Fino da Amanda/g, "Seu Traço Fino").replace(/Amanda \(teste\)|Amanda/g, "Você").replace(/amanda_teste/g, "voce");
+  const d = JSON.parse(j); d.t = exLimpa(d.t); d.nivel = "verificado"; return d; }
 const TESTE_NIVEIS = {admin:["Administração","Tudo liberado, como a sua conta"], verificado:["Conta verificada","Pode criar página, votar e assinar"], cadastrado:["Conta nova","Só e-mail confirmado, sem verificação"], visitante:["Visitante","Sem conta, como quem chega pela primeira vez"]};
 function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(Date.now() - n*3600e3).toISOString();
   return {v:1, nivel:"admin", logada:true, t:{
@@ -7393,7 +7402,7 @@ function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(D
 }
 function mockSB(o = {}){
   /* o.mem (15/11): cópia só de leitura, na memória, sem ninguém logado. No site real, serve as páginas de exemplo. */
-  const K = o.mem ? null : "arede-teste-db", MID = {}; let db = null;
+  const K = o.mem ? null : DEMO ? "arede-demo-db" : "arede-teste-db", MID = {}; let db = null;
   if (K) try{ db = JSON.parse(localStorage.getItem(K)); }catch(e){} if (!db || db.v !== 1) db = testeSemente(); if (o.mem) db.logada = false;
   const salva = () => { if (!K) return; try{ localStorage.setItem(K, JSON.stringify(db)); }catch(e){} };
   const novoId = () => crypto.randomUUID ? crypto.randomUUID() : "t" + Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -7731,20 +7740,22 @@ function mockSB(o = {}){
         tab("verificacao_pedidos").forEach(v=>{ if (v.status === "pendente"){ v.status = "aprovada"; const p = perfil(v.user_id); if (p){ p.verificado = "documento"; } n++; notifica(v.user_id, "verificacao", "Sua conta foi verificada", "Aprovada pelo atalho do modo de teste.", "#conta"); } });
         salva(); return n; },
       zera:()=>{ try{ localStorage.removeItem(K); }catch(e){} }}};
+  if (DEMO && !o.mem && !db.demoOk){ db = demoAjusta(db); db.demoOk = 1; aplicaNivel(); salva(); }   /* depois das sementes: nenhum nome de verdade na demonstração */
   return sb;
 }
 /* botão "Teste" (só no modo de teste): mostra como a pessoa está testando e troca o nível */
 function testeChip(){ if (!TESTE_HTML || document.getElementById("testechip")) return; const b = document.createElement("button");
   b.id = "testechip"; b.type = "button"; b.className = "testechip"; b.setAttribute("data-act", "testemenu"); document.body.appendChild(b); testeChipAtualiza(); }
 function testeChipAtualiza(){ const b = document.getElementById("testechip"); if (!b || !SB || !SB._teste) return; const n = SB._teste.db().nivel;
-  b.innerHTML = `<span class="tdot"></span>Teste · ${TESTE_NIVEIS[n][0]}`; b.setAttribute("aria-label", "Modo de teste: " + TESTE_NIVEIS[n][0] + ". Tocar para trocar"); }
+  b.innerHTML = `<span class="tdot"></span>${DEMO ? "Demonstração" : "Teste"} · ${TESTE_NIVEIS[n][0]}`; b.setAttribute("aria-label", (DEMO ? "Modo demonstração: " : "Modo de teste: ") + TESTE_NIVEIS[n][0] + ". Tocar para trocar ou sair"); }
 function sheetTeste(){ if (!SB || !SB._teste) return; const n = SB._teste.db().nivel;
-  openSheet(shead("Modo de teste") + `<p class="lnote osub">Fora de arede.online, você testa com uma conta simulada. Tudo fica só neste navegador: nada vai para o servidor e nada aparece no site de verdade.</p>
-    <h3 class="sectitle" style="margin:6px 0">Testar como</h3><div class="list">${Object.entries(TESTE_NIVEIS).map(([k,[t,d]])=>`<button class="setting l1" type="button" data-act="testenivel" data-n="${k}"><span class="t"><b>${t}${k === n ? " · agora" : ""}</b><small>${d}</small></span>${k === n ? ic("check","sm") : ic("back","sm flip")}</button>`).join("")}</div>
+  openSheet(shead(DEMO ? "Modo demonstração" : "Modo de teste") + `<p class="lnote osub">${DEMO ? "Você está experimentando a rede.online com uma conta de demonstração e conteúdo de exemplo. Pode pedir orçamento, conversar, fazer check-in, avaliar, criar página, publicar e votar. Tudo fica só neste navegador: nada vai para o servidor e ninguém vê." : "Fora de arede.online, você testa com uma conta simulada. Tudo fica só neste navegador: nada vai para o servidor e nada aparece no site de verdade."}</p>
+    ${DEMO ? `<a class="btn primary block" href="/" style="margin:0 0 12px">Sair da demonstração</a>` : ""}
+    <h3 class="sectitle" style="margin:6px 0">${DEMO ? "Experimentar como" : "Testar como"}</h3><div class="list">${Object.entries(TESTE_NIVEIS).filter(([k])=>!DEMO || k !== "admin").map(([k,[t,d]])=>`<button class="setting l1" type="button" data-act="testenivel" data-n="${k}"><span class="t"><b>${t}${k === n ? " · agora" : ""}</b><small>${d}</small></span>${k === n ? ic("check","sm") : ic("back","sm flip")}</button>`).join("")}</div>
     <h3 class="sectitle" style="margin:14px 0 6px">Atalhos</h3><div class="list">
-      <button class="setting l1" type="button" data-act="testeaprova"><span class="t"><b>Aprovar o que espera a curadoria</b><small>Páginas e pedidos de verificação feitos neste teste</small></span>${ic("check","sm")}</button>
-      <button class="setting l1" type="button" data-act="testezera"><span class="t"><b>Recomeçar o teste</b><small>Apaga as publicações, páginas e notificações simuladas</small></span>${ic("trash","sm")}</button></div>
-    <p class="lnote" style="margin-top:10px">Para usar o servidor de verdade fora de arede.online, abra o endereço com <b>?real=1</b>.</p>`, "Modo de teste"); }
+      <button class="setting l1" type="button" data-act="testeaprova"><span class="t"><b>${DEMO ? "Aprovar como a curadoria faria" : "Aprovar o que espera a curadoria"}</b><small>${DEMO ? "Páginas e pedidos de verificação feitos nesta demonstração" : "Páginas e pedidos de verificação feitos neste teste"}</small></span>${ic("check","sm")}</button>
+      <button class="setting l1" type="button" data-act="testezera"><span class="t"><b>${DEMO ? "Recomeçar a demonstração" : "Recomeçar o teste"}</b><small>Apaga as publicações, páginas e notificações ${DEMO ? "da demonstração" : "simuladas"}</small></span>${ic("trash","sm")}</button></div>
+    ${DEMO ? "" : `<p class="lnote" style="margin-top:10px">Para usar o servidor de verdade fora de arede.online, abra o endereço com <b>?real=1</b>.</p>`}`, DEMO ? "Modo demonstração" : "Modo de teste"); }
 
 const SB_URL = "https://zbmzabgdejylpmabujad.supabase.co", SB_KEY = "sb_publishable_GZXwglA_bRngXUSD-BWfLQ_hawYSnLD";
 const SITE = "https://arede.online/";   /* endereço principal (domínio próprio desde 10 nov 2026) */
@@ -9374,6 +9385,7 @@ const A = {
   toid: (b, e) => { e.preventDefault(); const el = document.getElementById(b.dataset.id); el && scrollToEl(el); },
   sobre: () => { const M = MARCA, L = M.links, seta = ic("back","sm flip");
     openSheet(shead(M.titulo) + `<div class="list">
+      ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>`}
       <a class="setting" href="mailto:${M.email}"><span class="t"><b>${L.contato}</b></span>${seta}</a>
       <button class="setting" type="button" data-nav-to="termos"><span class="t"><b>${L.termos}</b></span>${seta}</button>
       <button class="setting" type="button" data-nav-to="privacidade"><span class="t"><b>${L.privacidade}</b></span>${seta}</button>
@@ -9873,7 +9885,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:52";
+const VERSAO = "v1 registrada · 15/11 10:55";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
