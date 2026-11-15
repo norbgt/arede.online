@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-s1+oj5J/NBBAEwLyEn9+YjKrLQlC3FL7SK3je/GJhIE=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-hgfoSfRXei9CLG5JMnehHAxXLoRyf+R608/qWoyZQms=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -8070,8 +8070,9 @@ async function publicacoesCarrega(){ if (!SB) return;
 const COR_TIPO = {"Imprensa · grande":"#1F2937","Imprensa · alternativa e independente":"#9A3412","Imprensa pública":"#0E7490","Checagem de fatos":"#1F7A4D","Governo e diário oficial":"#2A3FD4","Justiça e eleições":"#4B5563","Dados públicos":"#5B6B00","Pesquisa e ciência":"#7A3E9D","Organização verificada":"#C2185B"};
 /* 15/11 (Amanda): certificações independentes da fonte (JTI e Trust Project), vindas do servidor com link de prova */
 const CERT_INFO = {jti:["JTI", "certificada por auditoria independente na Journalism Trust Initiative, da Repórteres Sem Fronteiras."],
-  trust:["Trust Project", "parceira que mostra os 8 Indicadores de Confiança e passou na revisão do projeto."]};
-const certOk = c => c && CERT_INFO[c.k] && /^https:\/\/(www\.|network\.)?(journalismtrustinitiative\.org|jti-app\.com|thetrustproject\.org)\//.test(c.prova || "");
+  trust:["Trust Project", "parceira que mostra os 8 Indicadores de Confiança e passou na revisão do projeto."],
+  ifcn:["IFCN", "checadora verificada da rede internacional de checagem de fatos (Poynter), com avaliação externa renovada todo ano."]};
+const certOk = c => c && CERT_INFO[c.k] && /^https:\/\/(www\.|network\.)?(journalismtrustinitiative\.org|jti-app\.com|thetrustproject\.org)\//.test(c.prova || "") || (c && c.k === "ifcn" && /^https:\/\/ifcncodeofprinciples\.poynter\.org\//.test(c.prova || ""));
 function certDe(o){ return (o && Array.isArray(o.cert) ? o.cert : []).filter(certOk); }
 function certLinhas(o){ return certDe(o).map(c=>`<b>${CERT_INFO[c.k][0]}</b>${c.grupo ? ` (pelo grupo ${esc(c.grupo)})` : ""}: ${CERT_INFO[c.k][1]} <a href="${esc(c.prova)}" target="_blank" rel="noopener">Conferir na lista oficial ↗</a>`); }
 function orgDaFonte(f){ const id = orgDaFonte0(f); if (ORG[id] && Array.isArray(f.cert)) ORG[id].cert = f.cert; return id; }
@@ -10055,7 +10056,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 12:00";
+const VERSAO = "v1 registrada · 15/11 12:14";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
