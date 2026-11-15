@@ -1259,6 +1259,15 @@ a.setting{color:var(--ink);text-decoration:none}
 .ctlrow .algogroup .iconbtn{width:34px;height:40px;border-radius:10px}
 .ctlrow .algogroup .adj{width:38px;border-radius:0;margin-right:1px}
 .ctlrow .algosw{min-height:40px;padding:4px 6px 4px 12px}
+/* 15/11 (Amanda): a forma de ver (blocos/soltos) abre o grupo; o divisor fica depois de Algoritmo + ajustes, antes de filtrar e ordenar.
+   #status vira "display:contents" para os ícones entrarem na ordem do grupo sem mudar quem atualiza o quê. */
+.ctlrow .algogroup .status.tools{display:contents}
+.ctlrow .algogroup .status.tools > [data-act="vista"]{order:0;margin-left:3px}
+.ctlrow .algogroup > .algosw{order:1}
+.ctlrow .algogroup > .adj{order:2;border-left:0}
+.ctlrow .algogroup .status.tools > [data-act="filter"]{order:3;border-left:1px solid var(--line);border-radius:0;margin-left:1px}
+.ctlrow .algogroup .status.tools > [data-act="sort"]{order:4;margin-right:3px}
+.ctlrow .algogroup:has([data-act="vista"]) > .algosw{padding-left:4px}
 .ctlrow .qf{order:2;flex:1 1 auto;min-width:0;padding:4px 16px 4px 0;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
 @container (max-width:509px){ .ctlrow{flex-wrap:nowrap} .qf{order:2;flex-basis:auto;padding:4px 16px 4px 0} }
 @container (max-width:509px){ .ctlrow .algogroup .iconbtn{width:31px} .ctlrow .algogroup .adj{width:35px} .ctlrow .algogroup .iconbtn .icon{width:19px;height:19px}
@@ -10009,7 +10018,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:21";
+const VERSAO = "v1 registrada · 15/11 11:22";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
