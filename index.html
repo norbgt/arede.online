@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-s1+oj5J/NBBAEwLyEn9+YjKrLQlC3FL7SK3je/GJhIE=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1537,6 +1538,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adpn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:600;background:var(--line);color:var(--fg)}
 .adpassos .tab[aria-selected="true"] .adpn{background:var(--accent);color:var(--on-accent)}
 .adpainel{display:flex;flex-direction:column;gap:12px}
+.certl{display:block;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .adpdica{margin:-4px 0 0;color:var(--muted);font-size:var(--fs-sm);line-height:1.45}
 .adpainel > .adpdica:first-child{margin-top:2px}
 .adregras.curta{margin:2px 0 0;padding-left:18px;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
@@ -4495,6 +4497,7 @@ function sealChecksBase(it){
   if (it.arte) return sealChecksArte(it, L);
   if (it.daRede) return sealChecksRede(it, L);
   if (it.ext){ let q = o.fonte ? L("ok","Fonte verificada", `${o.nome} está na base de fontes da rede (selo ${o.nota}).`) : L("ok","Organização real", `${o.nome} existe e publicou este conteúdo nos canais públicos dela.`);
+    if (o.fonte && certDe(o).length) q += L("ok", "Certificação independente", certLinhas(o).join("<br>"));
     q += s.lv==="na" ? L("na","Afirmações checadas","Convocação ou opinião: o selo avalia fatos, não opiniões.") : L(s.lv, "Afirmações checadas", (note && note[1]) || "Confere com fontes públicas.");
     /* linha editorial: a fonte é confiável nos fatos, mas tem posição declarada; vale ler junto com outras */
     if (reforco(it)) q += L("ok", "Reforço internacional", "Publicada por fontes de " + it.paises.length + " países: " + listaPaises(it.paises.map(p=>bandeira(p) + " " + p)) + ". O mesmo texto republicado conta uma vez só.");
@@ -6624,7 +6627,7 @@ function screenOrg(id){
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp", selo:ficTag(o) + ofTag(o), linhas:[`<span class="phtipo">${!o.real && !o.fonte && !o.pessoa && !o.pagina && !o.rede ? "Comunidade" : orgMeta(o)}</span>${o.tema ? " · " + esc(o.tema) : ""}`, o.cidade ? esc(o.cidade) : ""],
         seg:ehPessoaReal(id) ? `<p class="phseg segnum" data-segnum="${id.slice(2)}" hidden></p>` : "", acoes, bio:o.sobre,
         extra:`<div class="phnovo">${mandatoNote(o, false)}
-      ${o.fonte ? `<div class="note" style="margin:10px 0 12px">${ic("check")}<span>Fonte verificada da rede${o.nota ? `, com selo ${o.nota} de 100` : ""}. As notícias abaixo são resumos da curadoria, sempre com link para a matéria original.${o.site?` <a href="${o.site}" target="_blank" rel="noopener">Site ↗</a>`:""}</span></div>`
+      ${o.fonte ? `<div class="note" style="margin:10px 0 12px">${ic("check")}<span>Fonte verificada da rede${o.nota ? `, com selo ${o.nota} de 100` : ""}. As notícias abaixo são resumos da curadoria, sempre com link para a matéria original.${o.site?` <a href="${o.site}" target="_blank" rel="noopener">Site ↗</a>`:""}${certDe(o).length ? `<span class="certl">${certLinhas(o).join("<br>")}</span>` : ""}</span></div>`
       : o.pessoa ? `<div class="note" style="margin:10px 0 12px">${ic("check")}<span>Conta real da rede. Tudo abaixo foi publicado por ${esc(o.nome)}.</span></div>`
       : o.real ? `<div class="note" style="margin:10px 0 12px">${ic("info")}<span>${esc(o.nome)} ainda não está na rede. Os conteúdos abaixo vêm dos canais públicos dela, resumidos pela curadoria, sempre com link para a fonte original.${o.site?` <a href="${o.site}" target="_blank" rel="noopener">Site oficial ↗</a>`:""}</span></div>`
         : `<div class="note" style="margin:10px 0 12px">${ic("info")}<span>Organização fictícia, de exemplo. Os conteúdos dela mostram como a rede funciona e ainda vão ser trocados por conteúdo real.</span></div>`}</div>`})}
@@ -8065,7 +8068,14 @@ async function publicacoesCarrega(){ if (!SB) return;
 /* NOTÍCIAS DO COLETOR (servidor, atualizado a cada 15 minutos): entram no feed como as notícias da curadoria.
    Uma entrada por notícia; as outras fontes que deram a mesma notícia aparecem em "A mesma notícia em outras fontes". */
 const COR_TIPO = {"Imprensa · grande":"#1F2937","Imprensa · alternativa e independente":"#9A3412","Imprensa pública":"#0E7490","Checagem de fatos":"#1F7A4D","Governo e diário oficial":"#2A3FD4","Justiça e eleições":"#4B5563","Dados públicos":"#5B6B00","Pesquisa e ciência":"#7A3E9D","Organização verificada":"#C2185B"};
-function orgDaFonte(f){ f = Object.assign({}, f, {nome:limpo(f.nome) || ""}); const dom = String(f.dominio||"").split("/")[0].replace(/^www\./,""), canal = f.feed_tipo==="youtube" || dom==="youtube.com";
+/* 15/11 (Amanda): certificações independentes da fonte (JTI e Trust Project), vindas do servidor com link de prova */
+const CERT_INFO = {jti:["JTI", "certificada por auditoria independente na Journalism Trust Initiative, da Repórteres Sem Fronteiras."],
+  trust:["Trust Project", "parceira que mostra os 8 Indicadores de Confiança e passou na revisão do projeto."]};
+const certOk = c => c && CERT_INFO[c.k] && /^https:\/\/(www\.|network\.)?(journalismtrustinitiative\.org|jti-app\.com|thetrustproject\.org)\//.test(c.prova || "");
+function certDe(o){ return (o && Array.isArray(o.cert) ? o.cert : []).filter(certOk); }
+function certLinhas(o){ return certDe(o).map(c=>`<b>${CERT_INFO[c.k][0]}</b>${c.grupo ? ` (pelo grupo ${esc(c.grupo)})` : ""}: ${CERT_INFO[c.k][1]} <a href="${esc(c.prova)}" target="_blank" rel="noopener">Conferir na lista oficial ↗</a>`); }
+function orgDaFonte(f){ const id = orgDaFonte0(f); if (ORG[id] && Array.isArray(f.cert)) ORG[id].cert = f.cert; return id; }
+function orgDaFonte0(f){ f = Object.assign({}, f, {nome:limpo(f.nome) || ""}); const dom = String(f.dominio||"").split("/")[0].replace(/^www\./,""), canal = f.feed_tipo==="youtube" || dom==="youtube.com";
   const ex = !canal && Object.values(ORG).find(o=>o.fonte && o.site && hostOf(o.site)===dom); if (ex) return ex.id;
   const id = "fx-" + f.id;
   if (canal && !ORG[id]){ ORG[id] = {id, nome:f.nome.replace(/\s*\(YouTube\)$/,""), sigla:siglaDe(f.nome.replace(/\s*\(YouTube\)$/,"")), cidade:f.ambito==="int" ? "Internacional" : "Nacional", natureza:"canal no YouTube · " + (f.tipo||"").toLowerCase(), site:"https://www." + f.dominio,
@@ -10045,7 +10055,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:42";
+const VERSAO = "v1 registrada · 15/11 12:00";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

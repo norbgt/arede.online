@@ -1,0 +1,7 @@
+# arede.online — como avisar sobre uma falha de segurança
+# Escreva para o contato abaixo, em português, inglês ou espanhol, com o que encontrou e como reproduzir.
+# Não acesse dados de outras pessoas nem tire o site do ar para testar. Respondemos o quanto antes.
+Contact: mailto:contato@arede.online
+Expires: 2027-11-15T03:00:00.000Z
+Preferred-Languages: pt, en, es
+Canonical: https://arede.online/.well-known/security.txt
