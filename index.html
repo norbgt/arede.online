@@ -224,6 +224,13 @@ span.selo{cursor:default}.selolin{align-items:flex-start;flex-direction:column;g
 .aval .tstar{font-size:13px}.aval small .icon{width:12px;height:12px;vertical-align:-1px}
 .tatselos{position:absolute;top:8px;right:8px;display:flex;gap:4px}.tatselos i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(15,17,16,.62);color:#fff;font-style:normal}.tatselos i .icon{width:13px;height:13px}
 .kt .ktipo{color:var(--ok)}
+.kpapel{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px 1px 5px;border-radius:99px;font-size:10px;letter-spacing:.05em;color:var(--ink);background:var(--surface-2)}
+.kpapel.est{box-shadow:inset 0 0 0 1px var(--line)}
+.kpapel .icon{width:12px;height:12px}
+.kvinc{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;color:var(--muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kavs{display:inline-flex;flex:none}
+.kavs .kav + .kav{margin-left:-6px}
+.kav{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;font-size:8px;letter-spacing:-.02em;overflow:hidden;font-weight:700;color:#fff;box-shadow:0 0 0 2px var(--surface)}
 .phn .lugar{margin:0 0 2px}.pwho .lugar{margin:0 0 1px}.lugar.perfil{color:var(--muted)}.lugar.pagina{color:var(--ok)}.lugar.comunidade{color:var(--accent)}
 .tatficha .chips{flex-wrap:wrap}
 .pgselo{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#1F6B3F}
@@ -6253,8 +6260,16 @@ async function tatFichaSalva(pid){ const m = $("#pgmod"); if (!m) return null;
 function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.papel === "tatuador" ? tatEstudio(p) : null, sl = tatSelos(p);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
   return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span>${o.ficticia ? `<span class="cmntag">${EXTAG}</span>` : ""}${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
-    <span class="ktipo">${ic("doc","sm")}Página</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([tipoNome(p), est ? limpo(est.nome) : "", o.cidade].filter(Boolean).join(" · "))}</span>${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
-    <span class="cmnpe2"><span>${mod(p, "equipe") && t.papel === "estudio" && tatEquipe(p).length ? `${tatEquipe(p).length} na equipe` : !mod(p, "reputacao") ? (mod(p, "loja") ? "Loja" : "") : r.n ? `★ ${nota(r.media)} (${r.n})` : "Sem avaliações"}${t.preco ? " · " + "$".repeat(t.preco) : ""}${mod(p, "agenda") && !agAberta(p) ? " · agenda fechada" : ""}</span>${pe}</span></a>`; }
+    <span class="ktipo">${ic("doc","sm")}Página${papelTag(p)}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([(MODELOS[modeloDe(p)] || {}).nome, o.cidade].filter(Boolean).join(" · "))}</span>${vincHTML(p, est)}${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
+    <span class="cmnpe2"><span>${!mod(p, "reputacao") ? (mod(p, "loja") ? "Loja" : "") : r.n ? `★ ${nota(r.media)} (${r.n})` : "Sem avaliações"}${t.preco ? " · " + "$".repeat(t.preco) : ""}${mod(p, "agenda") && !agAberta(p) ? " · agenda fechada" : ""}</span>${pe}</span></a>`; }
+/* 15/11 (Amanda): profissional e estúdio convivem no mesmo feed e se diferenciam no cartão:
+   o papel fica ao lado de "Página" (ícone de pessoa ou de prédio) e o vínculo aparece numa linha própria:
+   o profissional mostra onde atende; o estúdio mostra a equipe. */
+function papelTag(p){ const t = tatDe(p), M = MODELOS[modeloDe(p)] || {}; if (!t || !M.papeis) return "";
+  const est = t.papel === "estudio"; return `<span class="kpapel ${est ? "est" : "ind"}">${ic(est ? "predio" : "pessoa","sm")}${esc(est ? M.papeis[1] : M.papeis[0])}</span>`; }
+function vincHTML(p, est){ const t = tatDe(p); if (!t) return "";
+  if (t.papel === "estudio"){ const eq = tatEquipe(p); return eq.length ? `<span class="kvinc"><span class="kavs">${eq.slice(0, 4).map(x=>avatar(ORG["pg-" + x.id] || {nome:x.nome, cor:"#666", sigla:siglaDe(x.nome)}, "kav")).join("")}</span>${eq.length} na equipe</span>` : ""; }
+  return est ? `<span class="kvinc">${avatar(ORG["pg-" + est.id] || {nome:est.nome, cor:"#666", sigla:siglaDe(est.nome)}, "kav")}Atende no ${esc(limpo(est.nome))}</span>` : `<span class="kvinc">Atende por conta própria</span>`; }
 function paginasCorpo(){ const f = S.pgFiltro || "todas", ok = PAGS.lista.filter(p=>p.status === "aprovada" && (f === "todas" || modeloDe(p) === f) && !(ME.user && p.dono === ME.user.id)), minhas = minhasPaginas();
   const chip = (k, n, c) => `<button class="chip" type="button" data-act="pgfiltro" data-f="${k}" aria-pressed="${f===k}">${n} <span class="n">${c}</span></button>`, ap = PAGS.lista.filter(p=>p.status === "aprovada");
   return `<p class="pgintro">Espaços para publicar separado do perfil, sempre com uma pessoa verificada responsável. <button class="linkbtn" type="button" data-act="pgcomo">Como funciona</button></p>
@@ -9889,7 +9904,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:05";
+const VERSAO = "v1 registrada · 15/11 11:07";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
