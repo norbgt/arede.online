@@ -1430,6 +1430,12 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adseg{margin-top:3px;font-size:10.5px;opacity:.78}
 .adshort{display:none}
 .adtile:hover .adface{filter:brightness(1.06)}
+.adface.casa{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.adface.casa .adtag{background:var(--surface);color:var(--muted)}
+.adface.casa .admk{color:var(--brand)}
+.adface.casa .adnome{font-size:16px}
+.adface.casa .adtxt{color:var(--muted);font-size:12px}
+.adtile:has(.casa) .tbtn{color:var(--ink)}
 .adcard .adtile{position:relative;aspect-ratio:1 / 1;border-radius:var(--r);overflow:hidden}
 .adcard .tbtn{cursor:pointer}
 .csnotas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px}
@@ -4884,10 +4890,10 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   const uf = Object.entries(UF_NOME).find(([sg,nm])=>c===sg || semAcento(c)===semAcento(nm));
   if (uf) return {k:"est", nivel:"Estadual", lugar:uf[1]};
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
-const adFaceFeed = a => `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
+const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt">Seu negócio neste espaço, igual para todo mundo.</span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
 const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile" style="--adc:${a.cor};--adc2:${a.cor2}">
-  <button class="tbtn" type="button" data-act="adopen" data-uid="${it.uid}" aria-label="Anúncio de ${esc(a.nome)}: ${esc(a.frase)}">${adFaceFeed(a)}</button>${a.real ? "" : AD_CALL}</div></article>`; };
+  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
 const cardFor = (it, mode, v) => it.anuncio ? adCard(it, mode) : v && v!=="masonry" && v!=="video" ? tabCard(it, mode, v) : card(it, mode);
 const EST = {anuncio:()=>200, video:it=>it.ar*170+70, imagem:it=>(it.ph || 1.25)*170+80, texto:()=>270, evento:()=>320, enquete:()=>330, votacao:()=>330, chamado:()=>330, documento:()=>290};
 const EST_V = {cedula:330, arquivo:150};
@@ -4987,6 +4993,23 @@ function mixFormats(l){
 }
 /* imagem genérica (ilustração gerada, sem foto nem vídeo de verdade) não entra no feed principal */
 const generica = it => (it.tipo==="imagem" && !it.foto) || (it.tipo==="video" && !it.src && !it.yt);
+/* FEED VIVO (15/11, Amanda): em Tudo entra só conteúdo verdadeiro (o que importamos da internet e o que as contas publicam);
+   os exemplos ficam em Publicações (um de cada tipo, no meio do verdadeiro), em Organizações e na Busca.
+   Nada de abrir sempre com as mesmas notícias: o que já apareceu em visitas anteriores vai para o fim da fila, do mais antigo ao mais novo.
+   A memória fica no aparelho, por 14 dias. Dentro da mesma visita, a ordem não muda. */
+const ehExemplo = it => !!it && !it.conta && !it.coletada && !it.daArte && !it.daRede && !it.copia && !!(ORG[it.org] || {}).ficticia;
+let FV = store.get("feedVistos", null) || {}, FV_T = null;
+function fvMarca(id){ id = String(id); if (FV[id]) return; FV[id] = Date.now(); clearTimeout(FV_T);
+  FV_T = setTimeout(()=>{ const lim = Date.now() - 14*864e5; FV = Object.fromEntries(Object.entries(FV).filter(([, t])=>t > lim).sort((a,b)=>b[1]-a[1]).slice(0, 3000)); store.set("feedVistos", FV); }, 800); }
+const fvAntes = it => { const t = FV[String(it.id)]; return !!t && t < sessionStart; };
+function fvOrdena(l){ const novos = [], vistos = []; l.forEach(it=>(it.anuncio || !fvAntes(it) ? novos : vistos).push(it));
+  return novos.concat(vistos.sort((a,b)=>FV[String(a.id)] - FV[String(b.id)])); }
+/* Publicações: um exemplo de cada tipo de conteúdo, trocando de exemplo a cada dia, espalhado no meio do que é verdadeiro */
+function exemplosPorTipo(fl){ const por = {}, dia = Math.floor(Date.now() / 864e5);
+  POOL.filter(it=>ehExemplo(it) && !generica(it) && passa(it, fl)).sort((a,b)=>a.min - b.min).forEach(it=>{ (por[it.tipo] = por[it.tipo] || []).push(it); });
+  return Object.keys(por).map(k=>por[k][dia % por[k].length]); }
+function comExemplos(l, ex){ if (!ex.length) return l; const passo = Math.max(3, Math.min(6, Math.floor(l.length / (ex.length + 1)) || 3)), out = []; let k = 0;
+  l.forEach((it,i)=>{ out.push(it); if ((i + 1) % passo === 0 && k < ex.length) out.push(ex[k++]); }); while (k < ex.length) out.push(ex[k++]); return out; }
 /* ANÚNCIOS (10 nov 2026): espaço de tela vendido a anunciantes. Preço por tamanho (maior = mais caro) e por posição
    (o que aparece antes = mais caro): tabela em Painel › Análise › Receita. Aqui só o formato quadradinho, 1 a cada 8 cartões,
    nunca no primeiro bloco nem dois juntos, só em Tudo e Publicações. Por contexto, igual para todo mundo: nunca pelo perfil,
@@ -5026,7 +5049,15 @@ function adDoEspaco(n, antes){ const ok = a=>!S.adOculta.has(a.id), R = AD_REAIS
   const pago = n===1 ? pega("topo", 0) : n<=3 ? pega("meio", n - 2) : pega("rot", n - 4);
   if (pago && pago.id !== antes) return pago;   /* o mesmo anúncio pago nunca em dois espaços seguidos */
   const ex = ANUNCIANTES.filter(ok); return ex.length ? ex[(n - 1) % ex.length] : null; }
+/* 15/11: o espaço sem anúncio pago vira um convite discreto, sem marca inventada */
+const AD_CASA = {id:"ad-casa", casa:true, nome:"Anuncie aqui", frase:"Seu negócio neste espaço.", curta:"Seu negócio aqui.", seg:"", cor:"var(--surface-2)", cor2:"var(--surface-2)", logo:'<path d="M13 3 5 14h6l-1 7 8-11h-6z" fill="currentColor"/>'};
+ORG["ad-casa"] = {id:"ad-casa", nome:"a rede.online", sigla:"AR", cor:"#8D9BFF", cidade:"", anunciante:true, membros:0, natureza:"Anunciante"};
 function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anúncio na aba Vídeos, onde ficam as transmissões oficiais */
+  if (S.tab==="tudo" || S.tab==="publicacoes"){   /* 15/11 (Amanda): enquanto a rede cresce, um espaço só, pequeno, no primeiro scroll; o resto é conteúdo */
+    if (l.length < 4) return l; const pagos = AD_REAIS.filter(x=>!S.adOculta.has(x.id)), a = pagos.length ? pagos[AD_ROD % pagos.length] : AD_CASA, out = l.slice();
+    let at = out.findIndex((x, i)=>i >= 2 && x.tipo==="imagem" && !x.anuncio);   /* ao lado de uma imagem, o espaço fica pequeno: se a primeira imagem está longe, ela sobe */
+    if (at > 8){ out.splice(3, 0, out.splice(at, 1)[0]); at = 3; } at = at < 0 ? 3 : at + 1;
+    out.splice(at, 0, {id:"anuncio-1" + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:1, titulo:a.nome + " · " + a.frase, tema:"", min:l[Math.min(at, l.length) - 1].min}); return out; }
   const out = []; let n = 0, antes = "";
   l.forEach((it,i)=>{ out.push(it); if ((i + 1) % ANUNCIO_CADA === 0){ n++; const a = adDoEspaco(n, antes); if (!a) return; antes = a.id;
     out.push({id:"anuncio-" + n + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:n, titulo:a.nome + " · " + a.frase, tema:"", min:it.min}); } });
@@ -5252,36 +5283,40 @@ function sheetAnuncio(uid){ const it = findItem(uid); if (!it) return; const a =
     <button class="btn ghost block" type="button" data-act="anunciar">Anuncie aqui</button></div>
     <p class="srcnote" style="margin-top:8px">Anunciante fictício, de exemplo: o link fica desativado.</p>`, "Anúncio"); }
 function source(fl=S.filt, types=tabTypes()){
-  let l = source0(fl, types).filter(it=>!it.base);
+  const vivo = (S.tab==="tudo" || S.tab==="publicacoes") && types===tabTypes();   /* 15/11: Tudo e Publicações partem só do que é verdadeiro */
+  let l = source0(fl, types, vivo).filter(it=>!it.base);
   if (S.tab==="documentos" && DOCTIPO && types===tabTypes()) l = l.filter(it=>docTipoDe(it)===DOCTIPO);
   /* filtro rápido olha tudo o que a aba e os filtros permitem, não só os temas do algoritmo */
-  if (S.rapido && types===tabTypes()){ const t = ofTab(types); return rapidoAplica(POOL.filter(it=>t(it) && passa(it, fl) && redePronta(it))); }
+  if (S.rapido && types===tabTypes()){ const t = ofTab(types); return rapidoAplica(POOL.filter(it=>t(it) && passa(it, fl) && redePronta(it) && !(vivo && ehExemplo(it)))); }
   if ((S.tab==="tudo" || S.tab==="publicacoes") && types===tabTypes()){
     l = l.filter(it=>!generica(it));
     if (S.ord==="padrao" && S.algo && (S.perto || (S.aprendeLugares && lugaresInteresse().length))) l = pertoPrimeiro(l);
     if (S.ord==="padrao") l = mixFormats(l);
   }
   /* publicações das contas reais vêm primeiro, das mais novas às mais antigas */
-  const reais = l.filter(it=>it.conta); if (reais.length) l = reais.sort((a,b)=>(a.min - prioDe(a) * PRIO_HORAS * 60) - (b.min - prioDe(b) * PRIO_HORAS * 60)).concat(l.filter(it=>!it.conta));
+  const reais = S.tab!=="tudo" ? l.filter(it=>it.conta) : [];   /* 15/11: em Tudo, as publicações das contas entram pela data, junto com o resto */
+  if (reais.length) l = reais.sort((a,b)=>(a.min - prioDe(a) * PRIO_HORAS * 60) - (b.min - prioDe(b) * PRIO_HORAS * 60)).concat(l.filter(it=>!it.conta));
   /* variedade: a mesma fonte não aparece em sequência (olha até 8 itens à frente para trocar a ordem) */
   if (S.ord==="padrao" && S.tab!=="agenda"){ const fila = l.slice(), out = [];
     while (fila.length){ const ult = out.slice(-2).map(x=>x.org); let i = fila.findIndex((x,k)=>k < 8 && (x.conta || !ult.includes(x.org))); if (i < 0) i = 0; out.push(fila.splice(i,1)[0]); }
     l = out; }
+  if (vivo && S.ord==="padrao") l = fvOrdena(l);   /* 15/11: o que você já viu em outra visita vai para o fim */
+  if (vivo && S.tab==="publicacoes") l = comExemplos(l, exemplosPorTipo(fl));
   /* arte no feed geral (decisão de 9 nov 2026): 1 peça do acervo para cada 5 de outros tipos, para todo mundo,
      com ou sem algoritmo; as mais novas primeiro. Na aba Arte, só arte. */
   if ((S.tab==="tudo" || S.tab==="publicacoes") && types===tabTypes()){
     const vistas = new Set(l.filter(it=>it.daArte).map(it=>it.id)), resto = l.filter(it=>!it.daArte);
-    const artes = l.filter(it=>it.daArte).concat(POOL.filter(it=>it.daArte && !vistas.has(it.id) && passa(it, fl)).sort((a,b)=>a.min-b.min));
+    const artes = fvOrdena(l.filter(it=>it.daArte).concat(POOL.filter(it=>it.daArte && !vistas.has(it.id) && passa(it, fl)).sort((a,b)=>a.min-b.min)));
     if (artes.length){ const out = []; let k = 0; resto.forEach((it,i)=>{ out.push(it); if ((i + 1) % ARTE_CADA === 0 && k < artes.length) out.push(artes[k++]); }); l = out; }
     l = comAnuncios(l); }
   /* Movimentos (eventos e chamados) é uma agenda: no padrão, o que acontece ou vence primeiro */
   return S.tab==="agenda" && S.ord==="padrao" && types===tabTypes() ? l.slice().sort((a,b)=>(+a.dia || a.ate || 99) - (+b.dia || b.ate || 99)) : l;
 }
-function source0(fl, types){
-  const t = ofTab(types), f = it => t(it) && passa(it, fl) && redePronta(it);
-  if (!S.algo) return ordena(amplo(POOL.filter(f)));
+function source0(fl, types, soReal){
+  const t = ofTab(types), f = it => t(it) && passa(it, fl) && redePronta(it) && !(soReal && ehExemplo(it));
+  if (!S.algo) return ordena(soReal ? amplo(POOL.filter(f)).sort((a,b)=>a.min - b.min) : amplo(POOL.filter(f)));   /* 15/11: no feed verdadeiro, o mais novo primeiro */
   const l = POOL.filter(it=>f(it) && (inProfile(it) || it.conta || it.daRede)).sort((a,b)=>scoreAlgo(b)-scoreAlgo(a));   /* o que as contas reais publicam entra sempre */
-  return ordena(l.length >= 4 ? l : l.concat(POOL.filter(it=>f(it) && !inProfile(it) && !it.conta && !it.daRede)));
+  return ordena(l.length >= 4 && !soReal ? l : l.concat(POOL.filter(it=>f(it) && !inProfile(it) && !it.conta && !it.daRede).sort((a,b)=>a.min - b.min)));   /* 15/11: depois do que é do seu interesse, todo o resto, do mais novo ao mais antigo */
 }
 const tabLayout = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[3];
 /* Duas formas de ver o feed principal (11 nov 2026): "blocos" (mosaico, cartões juntos) e "soltos" (cartões separados).
@@ -5362,11 +5397,11 @@ function more(n=10){
   if (F.paused || F.ended) return;
   const src = source(); if (!src.length){ F.ended = true; renderStop(); return; }
   for (let k=0;k<n;k++){
-    if ((S.tab!=="tudo" || nFiltros() || S.rapido) && F.cursor>=src.length){ F.ended = true; break; }
+    if (F.cursor>=src.length){ F.ended = true; break; }   /* 15/11: o feed não volta ao começo para repetir */
     const base = src[F.cursor % src.length], round = Math.floor(F.cursor/src.length);
     const g = acessoFeed(base); if (g){ F.gate = g; F.ended = true; break; }
     const it = Object.assign(withUid(base, round), {min: base.min + round*2880});
-    F.items.push(it); F.grid.add(it); F.cursor++; if (!base.anuncio) F.vistos++;
+    F.items.push(it); F.grid.add(it); F.cursor++; if (!base.anuncio){ F.vistos++; fvMarca(base.id); }
     if (S.pausas && F.cursor % PAUSE_EVERY===0){ F.paused = true; break; }
   }
   if (F.grid.flush) F.grid.flush(F.paused || F.ended);
@@ -5409,7 +5444,7 @@ function renderStop(){
       : (F.cursor ? `<b>Isso é o que acontece perto de você${tab}.</b> ${esc(R.txt || "")}` : `<b>Nada perto de você${tab} agora.</b> ${esc(R.txt || "")}`);
     const extra = S.rapido==="perto" ? `${R.cidade || R.uf ? "" : `<button class="linkbtn" type="button" data-act="localpede">Usar minha localização</button>`}<button class="linkbtn" type="button" data-act="origens">${R.cidade || R.uf ? "Mudar a cidade" : "Definir a cidade"}</button>` : S.rapido==="desmentidos" ? `<button class="linkbtn" type="button" data-act="origens">Origens</button>` : "";
     box.innerHTML = note(msg, extra + sair); return; }
-  if (F.ended && F.cursor>0) box.innerHTML = note(`<b>Você viu tudo${S.tab!=="tudo"?" em "+nome:""}.</b> ${nf?"Com os filtros atuais, não há mais conteúdo.":"Quando suas comunidades publicarem mais, aparece aqui."}`, all + clear);
+  if (F.ended && F.cursor>0) box.innerHTML = note(`<b>${S.tab==="tudo" && !nf ? "Você está em dia." : "Você viu tudo" + (S.tab!=="tudo" ? " em " + nome : "") + "."}</b> ${nf ? "Com os filtros atuais, não há mais conteúdo." : S.tab==="tudo" ? "Notícias novas chegam ao longo do dia. O que você já viu não volta para o começo." : "Quando suas comunidades publicarem mais, aparece aqui."}`, all + clear);
   else if (F.ended) box.innerHTML = note(`<b>Nada por aqui ainda.</b> ${nf?"Nenhum conteúdo combina com os filtros.":S.tab==="arte" ? (SB && !ME.offline ? "As artes do acervo do Design Ativista aparecem aqui depois de aprovadas pela curadoria." : "As artes vêm do servidor. Sem conexão agora.") : "Ainda não há publicações deste tipo."}`, all + clear);
   else if (F.paused) box.innerHTML = note(`<b>Pausa.</b> Você viu ${F.cursor} publicações em ${mins} min.`, `<button class="linkbtn" type="button" data-act="continue">Continuar</button><button class="linkbtn muted" type="button" data-act="endsession">Encerrar por hoje</button>`);
   else box.innerHTML = `<div class="loading">Carregando mais…</div>`;
@@ -5536,7 +5571,7 @@ function planBlock(Q, final, g){
   const adFmt = it => it.anuncio ? (it.ad.fmt || "s") : "", adPeq = it => it.anuncio && adFmt(it)!=="w";
   const mediaCol = (c, w=LOOK+1) => { let m = take(it=>!isTextual(it) && !it.anuncio, w);
     if (!m){ const a = take(adPeq, w); if (!a) return null; if (adFmt(a)==="t") return [cell(a,"t",1,c,2,2)];
-      const p = take(it=>it.tipo==="imagem", LOOK+6);
+      const p = take(it=>it.tipo==="imagem", a.ad && a.ad.casa ? LOOK+30 : LOOK+6);   /* 15/11: o convite fica sempre pequeno */
       return p ? [cell(p,"s",1,c,1,2), cell(a,"s",2,c,1,2)] : [cell(a,"t",1,c,2,2)]; }   /* anúncio sozinho ocupa a coluna toda: sem buraco embaixo dele */
     if (m.tipo==="video") return [cell(m,"t",1,c,2,2)];
     /* anúncio é sempre quadradinho: entra como o par pequeno de uma imagem */
@@ -5564,7 +5599,7 @@ function planBlock(Q, final, g){
 function tileHTML(it, cl, mode="none"){
   if (it.anuncio){ const a = it.ad, [r,c,rs,cs] = cl.area;
     return `<div class="tile adtile ${cl.size}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
-      <button class="tbtn" type="button" data-act="adopen" data-uid="${it.uid}" aria-label="Anúncio de ${esc(a.nome)}: ${esc(a.frase)}">${adFaceFeed(a)}</button>${a.real ? "" : AD_CALL}</div>`; }
+      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
   const seal = sealTag(it, s);
@@ -5720,7 +5755,9 @@ function exploreSubs(){ const l = S.exploreTema && SUBTEMAS[S.exploreTema]; if (
   return `<div class="chips umalinha exsub" role="group" aria-label="Subtemas de ${esc(S.exploreTema)}">${l.map(n=>`<button class="chip" type="button" data-act="esub" data-t="${esc(n)}" aria-pressed="${S.exploreSub===n}">${esc(n)}</button>`).join("")}</div>`; }
 function exploreItems(){
   const q = S.exploreQ.trim().toLowerCase();
-  return amplo(POOL).filter(it=>(!S.exploreTema || it.tema===S.exploreTema) && (!S.exploreSub || it.temaSub===S.exploreSub) &&
+  const real = amplo(POOL.filter(it=>!ehExemplo(it))), ex = amplo(POOL.filter(ehExemplo)), mist = [];   /* 15/11: Busca mistura o verdadeiro (3) e os exemplos (1), com todos os tipos */
+  for (let i = 0, j = 0; i < real.length || j < ex.length;){ for (let k = 0; k < 3 && i < real.length; k++) mist.push(real[i++]); if (j < ex.length) mist.push(ex[j++]); }
+  return mist.filter(it=>(!S.exploreTema || it.tema===S.exploreTema) && (!S.exploreSub || it.temaSub===S.exploreSub) &&
     (!q || (it.titulo+" "+resumoOf(it)+" "+it.tema+" "+(it.temaSub||"")+" "+(it.autoral ? AUTORAL[it.autoral][0] + " " + (it.autoralSub||"") : "")+" "+ORG[it.org].nome+" "+ORG[it.org].cidade).toLowerCase().includes(q))).map(i=>withUid(i,"s"));
 }
 function exploreOrgs(){
@@ -9780,7 +9817,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:06";
+const VERSAO = "v1 registrada · 15/11 10:30";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
