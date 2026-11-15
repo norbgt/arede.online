@@ -5931,7 +5931,7 @@ const EX_AVISO = {follow:"Esta página é um exemplo. Numa página real, seguir 
 document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest("[data-act]"); if (!b || !EX_AVISO[b.dataset.act]) return;
   const alvo = b.dataset.p || (String(b.dataset.org || "").startsWith("pg-") ? b.dataset.org.slice(3) : "") || (/^pg-/.test(route()) ? route().slice(3) : "");
   if (!exPagId(alvo) || TESTE_HTML) return; e.preventDefault(); e.stopPropagation(); toast(EX_AVISO[b.dataset.act]); }, true);
-const exLimpa = x => { if (typeof x === "string") return x.replace(/\s*\(teste\)/gi, ""); if (Array.isArray(x)) return x.map(exLimpa);
+const exLimpa = x => { if (typeof x === "string") return x.replace(/\s*\(teste\)/gi, "").replace(/(^|[.!?]\s+)(página|publicação)( pessoal| comercial)? simulad[ao]:\s*(\S)/gi, (m, a, b, c, d)=>a + d.toUpperCase()).replace(/[^.!?]*\b(simulad[ao]s?|de teste|modo de teste|para o teste)\b[^.!?]*[.!?]?\s*/gi, "").trim(); if (Array.isArray(x)) return x.map(exLimpa);
   if (x && typeof x === "object"){ const o = {}; for (const k in x) o[k] = exLimpa(x[k]); return o; } return x; };
 const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e por tudo o que ela publica, assim como pelo que publico em qualquer espaço da rede.online. As informações, ofertas e conteúdos publicados são verdadeiros e de minha responsabilidade, sigo os Termos de uso da rede.online e a lei, e respondo pessoalmente, com a minha conta verificada, pelo que for publicado em nome da página. (Declaração v2 · 14/11/2026)";
 function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa(p);
@@ -6304,7 +6304,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const tipo = tipoNome(p);
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
   return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina"), acoes)
-    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
+    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:ficTag(o) + pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
         linhas:[tt ? `<span class="phcusto">${tatResumo(p)}</span>` : "", [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
         extra:`<div class="phnovo">${aviso}${tt ? tatConvitesHTML(p) : ""}</div>`})}
@@ -9873,7 +9873,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:49";
+const VERSAO = "v1 registrada · 15/11 10:52";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
