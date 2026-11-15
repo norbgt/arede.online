@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-L75NTf+CuVEdlGvGz/1oHB6eeHOj7HpHHAi0aCnlOuo=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-XKgap5ZJeEL90CPRq89aClUH9NY/aou0OogSMwhCRV8=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1541,6 +1541,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .certl{display:block;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 /* 15/11 (Amanda): Termos e privacidade num acesso só; resumo no alto; selo de segurança (menu da marca e fim da Privacidade) */
 .doctabs{margin-top:2px}
+.docleg h2, #doc-resumo, #doc-intro{scroll-margin-top:140px}
 .doctabs .tab{text-decoration:none;color:inherit}
 .docres{margin:14px 0 6px;padding:14px 16px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
 .docres b{display:block;margin-bottom:6px;font-size:15px}
@@ -10059,7 +10060,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 12:30";
+const VERSAO = "v1 registrada · 15/11 12:33";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
