@@ -5199,7 +5199,7 @@ function adModulo(d){ const P = AD_PRECO, v = adPreco(d), [c1, c2] = AD_CORES[d.
     return `<button class="admslot${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-act="adset" data-k="fmt" data-v="${k}" style="grid-area:${area}" aria-label="${x[1]}: ${pr} por dia">${on
       ? `<span class="tile adtile ${k}${k === "f" ? " faixa" : ""}" style="--adc:${c1};--adc2:${c2}">${adFace(d)}</span>` : `<span class="admlab"><b>${x[1]}</b><small>${pr}/dia</small></span>`}</button>`; };
   const sk = a => `<div class="adsk img" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
-  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 6")}${slot("t", "1 / 7 / span 2 / span 2")}${slot("s", "1 / 9 / span 1 / span 4")}${sk("2 / 9 / span 1 / span 4")}</div>
+  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 5")}${slot("t", "1 / 6 / span 2 / span 4")}${slot("s", "1 / 10 / span 1 / span 3")}${sk("2 / 10 / span 1 / span 3")}</div>
     <div class="blk admodf">${slot("f", "1 / 1 / span 1 / span 1")}</div></div>
     <p class="admodinfo"><b>${v.f[1]}</b> · ${esc(v.f[2])} · <b>${adBRL(v.diaria)}</b> por dia</p>`; }
 /* onde o anúncio entra na rolagem: cada número é um espaço de anúncio (um a cada 8 cartões) */
@@ -9999,7 +9999,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:13";
+const VERSAO = "v1 registrada · 15/11 11:18";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
