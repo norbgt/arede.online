@@ -1468,6 +1468,21 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adcard .adtile.faixa{aspect-ratio:auto;height:88px}
 .adcard .adtile.faixa .adtxt{font-size:12px;line-height:1.3}
 .adpv.fx{grid-template-rows:minmax(0,3fr) minmax(0,1fr)}
+.admod{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:2px;border-radius:10px;overflow:hidden}
+.admod .blk{gap:2px}
+.admodb{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));aspect-ratio:3/1.25}
+.admodf{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);aspect-ratio:7/1}
+.admslot{position:relative;display:block;margin:0;padding:0;border:0;min-width:0;min-height:0;overflow:hidden;background:var(--surface-2);color:var(--ink);font:inherit;text-align:left;cursor:pointer;outline:1px dashed color-mix(in srgb,var(--ink) 28%,transparent);outline-offset:-5px}
+.admslot:hover{background:color-mix(in srgb,var(--brand) 14%,var(--surface-2))}
+.admslot:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.admslot.on{outline:0;cursor:default}
+.admslot.on > .adtile{position:absolute;inset:0;color:#fff}
+.admlab{position:absolute;left:9px;right:9px;bottom:8px;display:flex;flex-direction:column;gap:1px;line-height:1.2}
+.admlab b{font-size:12.5px;font-weight:700}
+.admlab small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.admodf .admlab{top:0;bottom:0;flex-direction:row;align-items:center;gap:8px}
+.admodinfo{max-width:440px;margin:8px auto 0;font-size:12.5px;color:var(--muted);text-align:center}
+.admodinfo b{color:var(--ink)}
 .adpv.fx > .tile{height:auto}
 .adtile.faixa .adbot{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:1px}
 .adtile.faixa .adnome,.adtile.faixa .adtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
@@ -5177,6 +5192,16 @@ function adPrevia(d, mini){ const [c1, c2] = AD_CORES[d.cor] || AD_CORES[0], are
   const sk = (a, img) => `<div class="adsk${img ? " img" : ""}" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
   const resto = d.fmt==="s" ? sk("2 / 1 / span 1 / span 2", 1) + sk("1 / 3 / span 2 / span 4") : d.fmt==="t" ? sk("1 / 3 / span 2 / span 4") : sk("1 / 5 / span 1 / span 2", 1) + sk("2 / 5 / span 1 / span 2", 1);
   return `<div class="blk adpv${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio no feed"><div class="tile adtile ${d.fmt}" style="grid-area:${area};--adc:${c1};--adc2:${c2}">${adFace(d)}</div>${resto}</div>`; }
+/* 15/11 (Amanda): os 4 formatos convivem num módulo só. Tocar num deles é a própria escolha: ele acende com o seu anúncio
+   e o valor muda. Os outros ficam em silhueta, com o nome e o preço por dia. */
+function adModulo(d){ const P = AD_PRECO, v = adPreco(d), [c1, c2] = AD_CORES[d.cor] || AD_CORES[0];
+  const slot = (k, area) => { const x = P.formatos.find(y=>y[0]===k), on = d.fmt === k, pr = adBRL(P.dia * x[3] * v.p[3]);
+    return `<button class="admslot${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-act="adset" data-k="fmt" data-v="${k}" style="grid-area:${area}" aria-label="${x[1]}: ${pr} por dia">${on
+      ? `<span class="tile adtile ${k}${k === "f" ? " faixa" : ""}" style="--adc:${c1};--adc2:${c2}">${adFace(d)}</span>` : `<span class="admlab"><b>${x[1]}</b><small>${pr}/dia</small></span>`}</button>`; };
+  const sk = a => `<div class="adsk img" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
+  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 6")}${slot("t", "1 / 7 / span 2 / span 2")}${slot("s", "1 / 9 / span 1 / span 4")}${sk("2 / 9 / span 1 / span 4")}</div>
+    <div class="blk admodf">${slot("f", "1 / 1 / span 1 / span 1")}</div></div>
+    <p class="admodinfo"><b>${v.f[1]}</b> · ${esc(v.f[2])} · <b>${adBRL(v.diaria)}</b> por dia</p>`; }
 /* onde o anúncio entra na rolagem: cada número é um espaço de anúncio (um a cada 8 cartões) */
 function adMapa(d){ const on = k => d.pos==="topo" ? k===1 : d.pos==="meio" ? (k===2 || k===3) : k>=4;
   return `<div class="admapa" aria-hidden="true"><span class="admt">Topo do feed</span>${[1,2,3,4,5].map(k=>`<span class="adcards"><i></i><i></i><i></i></span><b class="${on(k) ? "on" : ""}">${k===5 ? "…" : k + "º"}</b>`).join("")}</div>`; }
@@ -5190,7 +5215,7 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Anuncie aqui</h1></div>`)
   + `<div class="container adflow">
     <p class="adlead">Monte o anúncio e veja o valor na hora. Ele aparece para todo mundo, no mesmo lugar: a rede.online não usa o perfil de quem lê.</p>
-    <div class="adsticky"><div id="adpvbox">${adPrevia(d)}</div><div id="admapbox">${adMapa(d)}</div></div>
+    <div class="adsticky"><div id="adpvbox">${adModulo(d)}</div><div id="admapbox">${adMapa(d)}</div></div>
     <h2 class="adh">1. Sua mensagem</h2>
     <div class="field"><label for="adnome">Marca ou organização</label><input id="adnome" data-ad="nome" maxlength="24" autocomplete="organization" placeholder="Ex.: Padaria Aurora" value="${val("nome")}"></div>
     <div class="field"><label for="adfrase">Mensagem</label><input id="adfrase" data-ad="frase" maxlength="60" placeholder="Ex.: Pão quente toda manhã, na sua rua." value="${val("frase")}"></div>
@@ -5198,8 +5223,8 @@ function screenAnunciar(){ const d = adDraft(), P = AD_PRECO, v = adPreco(d), va
       <div class="field"><label for="adseg">Ramo e cidade (opcional)</label><input id="adseg" data-ad="seg" maxlength="28" placeholder="Ex.: Padaria · Recife" value="${val("seg")}"></div></div>
     <div class="field"><label for="adlink">Para onde o anúncio leva</label><input id="adlink" data-ad="link" type="url" inputmode="url" maxlength="200" placeholder="https://" value="${val("link")}"></div>
     <div class="field"><span class="flabel" id="adcorl">Cor</span><div class="adcores" role="radiogroup" aria-labelledby="adcorl">${AD_CORES.map(([c],i)=>`<button type="button" class="adcor" role="radio" aria-checked="${d.cor===i}" aria-label="Cor ${i + 1}" data-act="adset" data-k="cor" data-v="${i}" style="--c:${c}"></button>`).join("")}</div></div>
-    <h2 class="adh">2. Espaço</h2>
-    <div class="adopts" role="radiogroup" aria-label="Tamanho do anúncio">${P.formatos.map(x=>opt("fmt", x, d.fmt===x[0], P.dia * x[3] * pAtual)).join("")}</div>
+    <h2 class="adh">2. Formato</h2>
+    <p class="srcnote" style="margin-top:0">Toque no formato no quadro do alto: ele acende com o seu anúncio e o valor muda. Agora: <b>${v.f[1]}</b>, ${adBRL(v.diaria)} por dia.</p>
     <h2 class="adh">3. Posição no feed</h2>
     <div class="adopts" role="radiogroup" aria-label="Posição no feed">${P.posicoes.slice().reverse().map(x=>opt("pos", x, d.pos===x[0], P.dia * fAtual * x[3])).join("")}</div>
     <h2 class="adh">4. Tempo</h2>
@@ -5934,7 +5959,7 @@ const PAGS = {lista:[], itens:{}, num:{}, secoes:{}, carregou:false};
    As páginas de exemplo (tatuagem, beleza, artesanato, escrita) e o que elas publicam vêm de uma cópia na memória (SBX), só de leitura.
    Nada delas vai para o servidor: seguir, pedir orçamento, conversar e fazer check-in mostram um aviso. */
 let SBX = null;
-const exPagId = id => /^00000000-0000-4000-8000-0000000000a[0-9a-f]$/.test(String(id || ""));
+const exPagId = id => /^00000000-0000-4000-8000-0000000000a[0-9a-f]$|^00000000-0000-4000-8000-0000000002[0-9a-f]{2}$/.test(String(id || ""));
 const sbP = pid => SBX && exPagId(pid) ? SBX : SB;
 const EX_AVISO = {follow:"Esta página é um exemplo. Numa página real, seguir faz o que ela publica chegar ao seu feed.", tatorcamento:"Esta página é um exemplo. Numa página real, aqui você pede orçamento direto para quem atende.",
   tatconversa:"Esta página é um exemplo. Numa página real, a conversa do seu pedido fica aqui.", tatqr:"Esta página é um exemplo. Numa página real, o QR faz o check-in do atendimento.",
@@ -6265,8 +6290,11 @@ function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.pa
 /* 15/11 (Amanda): profissional e estúdio convivem no mesmo feed e se diferenciam no cartão:
    o papel fica ao lado de "Página" (ícone de pessoa ou de prédio) e o vínculo aparece numa linha própria:
    o profissional mostra onde atende; o estúdio mostra a equipe. */
-function papelTag(p){ const t = tatDe(p), M = MODELOS[modeloDe(p)] || {}; if (!t || !M.papeis) return "";
-  const est = t.papel === "estudio"; return `<span class="kpapel ${est ? "est" : "ind"}">${ic(est ? "predio" : "pessoa","sm")}${esc(est ? M.papeis[1] : M.papeis[0])}</span>`; }
+/* 15/11 (Amanda): o tipo diz o papel: "Página · Tatuador(a)" ou "Página · Estúdio de tatuagem", no cartão e no alto da página */
+const PAPEL_NEGOCIO = {tatuagem:"Estúdio de tatuagem", beleza:"Salão de beleza"};
+function papelNome(p){ const t = tatDe(p), m = modeloDe(p), M = MODELOS[m] || {}; if (!t || !M.papeis) return "";
+  return t.papel === "estudio" ? (PAPEL_NEGOCIO[m] || M.papeis[1]) : M.papeis[0]; }
+const papelTag = p => { const n = papelNome(p); return n ? ` · ${esc(n)}` : ""; };
 function vincHTML(p, est){ const t = tatDe(p); if (!t) return "";
   if (t.papel === "estudio"){ const eq = tatEquipe(p); return eq.length ? `<span class="kvinc"><span class="kavs">${eq.slice(0, 4).map(x=>avatar(ORG["pg-" + x.id] || {nome:x.nome, cor:"#666", sigla:siglaDe(x.nome)}, "kav")).join("")}</span>${eq.length} na equipe</span>` : ""; }
   return est ? `<span class="kvinc">${avatar(ORG["pg-" + est.id] || {nome:est.nome, cor:"#666", sigla:siglaDe(est.nome)}, "kav")}Atende no ${esc(limpo(est.nome))}</span>` : `<span class="kvinc">Atende por conta própria</span>`; }
@@ -6324,7 +6352,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const est = tt && tt.papel === "tatuador" ? tatEstudio(p) : null;
   const tipo = tipoNome(p);
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
-  return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina"), acoes)
+  return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina").replace("Página</span>", "Página" + papelTag(p) + "</span>"), acoes)
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:ficTag(o) + pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
         linhas:[tt ? `<span class="phcusto">${tatResumo(p)}</span>` : "", [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
@@ -7502,77 +7530,78 @@ function mockSB(o = {}){
   if (!db.t.pagina_secoes){ db.t.pagina_secoes = [{id:"00000000-0000-4000-8000-0000000000d1", pagina_id:TESTE_PG, nome:"Cestas e assinaturas", ordem:0, publicada:true, criado_em:agora(), atualizada_em:agora(),
     pastas:[{id:"fcestas", nome:"Para começar", itens:["v:00000000-0000-4000-8000-0000000000c1","v:00000000-0000-4000-8000-0000000000c2","p:u000000000000400080000000000000b2"]}]}]; salva(); }
   /* CONTEÚDO DAS PÁGINAS DE TESTE (15/11): publicações com imagem desenhada aqui mesmo (SVG, nada de fora), fotos na vitrine, seções com pastas e seguidores, para avaliar as páginas cheias */
+  /* desenhos das publicações de exemplo (SVG feito aqui, nada de fora): servem às páginas de exemplo antigas e novas */
+  const rnd = s => () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const uri = (w, h, corpo) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${corpo}</svg>`);
+  const PELE = [["#EFD3B8","#CFA07E"],["#DDAA82","#AE7650"],["#F4DDCB","#D9B396"],["#B9825C","#875536"]];
+  const pele = (w, h, i) => `<defs><radialGradient id="p" cx=".42" cy=".38" r=".85"><stop offset="0" stop-color="${PELE[i%4][0]}"/><stop offset="1" stop-color="${PELE[i%4][1]}"/></radialGradient><radialGradient id="g" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#9a9a9a"/><stop offset=".6" stop-color="#3a3a3a"/><stop offset="1" stop-color="#111"/></radialGradient></defs><rect width="${w}" height="${h}" fill="url(#p)"/>`;
+  const tinta = 'fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round"';
+  const ARTE = {
+    floral:(s)=>{ const r = rnd(s), w = 400, h = 500; let o = pele(w, h, s), x0 = 200 + (r()-.5)*40, x1 = 200 + (r()-.5)*90, cx = 200 + (r()-.5)*160;
+      o += `<path d="M${x0} 470 Q${cx} 280 ${x1} 110" ${tinta} stroke-width="1.6"/>`;
+      for (let t = .18; t < .85; t += .12){ const a = 1-t, px = a*a*x0 + 2*a*t*cx + t*t*x1, py = a*a*470 + 2*a*t*280 + t*t*110, ld = (Math.round(t*10) % 2 ? 1 : -1);
+        o += `<ellipse cx="${px + ld*14}" cy="${py}" rx="15" ry="5.5" transform="rotate(${ld*-35} ${px + ld*14} ${py})" ${tinta} stroke-width="1.3"/><path d="M${px} ${py} L${px + ld*26} ${py - ld*ld*10}" ${tinta} stroke-width=".9"/>`; }
+      const np = 5 + Math.floor(r()*3); for (let k = 0; k < np; k++) o += `<ellipse cx="${x1}" cy="${110 - 18}" rx="7.5" ry="18" transform="rotate(${k*360/np} ${x1} 110)" ${tinta} stroke-width="1.4"/>`;
+      o += `<circle cx="${x1}" cy="110" r="3.5" fill="#161616"/>`;
+      if (r() > .4){ const bx = x0 + 30, by = 300; for (let k = 0; k < 5; k++) o += `<ellipse cx="${bx}" cy="${by - 10}" rx="4" ry="10" transform="rotate(${k*72} ${bx} ${by})" ${tinta} stroke-width="1.1"/>`; o += `<path d="M${bx} ${by} Q${bx-10} ${by+40} ${x0+4} 380" ${tinta} stroke-width="1"/>`; }
+      return uri(w, h, o); },
+    mandala:(s)=>{ const r = rnd(s), w = 400, h = 400, c = 200; let o = pele(w, h, s+1), n1 = 10 + Math.floor(r()*6);
+      o += `<circle cx="${c}" cy="${c}" r="150" ${tinta} stroke-width="3"/><circle cx="${c}" cy="${c}" r="140" ${tinta} stroke-width="1.2" stroke-dasharray="2 6"/>`;
+      for (let k = 0; k < n1*2; k++) o += `<path d="M${c} ${c-62} Q${c+16} ${c-100} ${c} ${c-132} Q${c-16} ${c-100} ${c} ${c-62}Z" ${tinta} stroke-width="2" transform="rotate(${k*180/n1} ${c} ${c})"/>`;
+      for (let k = 0; k < n1; k++) o += `<path d="M${c} ${c-30} Q${c+14} ${c-50} ${c} ${c-70} Q${c-14} ${c-50} ${c} ${c-30}Z" fill="#161616" transform="rotate(${k*360/n1} ${c} ${c})"/>`;
+      for (let k = 0; k < n1*2; k++){ const a = k*Math.PI/n1; o += `<circle cx="${(c + Math.sin(a)*142).toFixed(1)}" cy="${(c - Math.cos(a)*142).toFixed(1)}" r="3" fill="#161616"/>`; }
+      o += `<circle cx="${c}" cy="${c}" r="22" fill="#161616"/><circle cx="${c}" cy="${c}" r="9" fill="${PELE[(s+1)%4][0]}"/>`; return uri(w, h, o); },
+    geo:(s)=>{ const r = rnd(s), w = 400, h = 500; let o = pele(w, h, s+2);
+      o += `<path d="M200 70 L330 330 L70 330Z" ${tinta} stroke-width="3"/><path d="M200 150 L270 290 L130 290Z" fill="#161616"/><circle cx="200" cy="250" r="${110 + r()*20}" ${tinta} stroke-width="1.4"/>`;
+      for (let y = 360; y < 450; y += 12) for (let x = 120; x < 290; x += 12) if (r() < (450 - y)/110) o += `<circle cx="${x + (y/12 % 2)*6}" cy="${y}" r="${1.2 + r()}" fill="#161616"/>`;
+      o += `<path d="M200 20 L200 60 M200 340 L200 470" ${tinta} stroke-width="1.4"/>`; return uri(w, h, o); },
+    letra:(s, txt)=>{ const w = 400, h = 300; let o = pele(w, h, s);
+      o += `<text x="200" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="${txt.length > 7 ? 58 : 72}" fill="#161616">${txt}</text><path d="M90 192 Q200 220 310 192" ${tinta} stroke-width="1.6"/><path d="M300 190 q16 -12 6 -26 q-12 6 -6 26" ${tinta} stroke-width="1.3"/>`; return uri(w, h, o); },
+    olho:(s)=>{ const w = 400, h = 320; let o = pele(w, h, s+2) + `<defs><radialGradient id="i" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".3" stop-color="#222"/><stop offset=".55" stop-color="#777"/><stop offset=".85" stop-color="#2a2a2a"/><stop offset="1" stop-color="#111"/></radialGradient><linearGradient id="sb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#222" stop-opacity=".55"/><stop offset="1" stop-color="#222" stop-opacity="0"/></linearGradient></defs>`;
+      o += `<path d="M60 170 Q200 40 340 170 Q200 120 60 170Z" fill="url(#sb)"/><path d="M70 175 Q200 70 330 175 Q200 260 70 175Z" fill="#f2efe9" stroke="#161616" stroke-width="3"/><circle cx="200" cy="170" r="58" fill="url(#i)"/><circle cx="200" cy="170" r="22" fill="#0b0b0b"/><circle cx="182" cy="152" r="9" fill="#fff" opacity=".9"/>`;
+      for (let k = 0; k < 14; k++) o += `<path d="M${90 + k*16} ${150 - Math.sin(k/13*Math.PI)*62} l${-4 + k*.6} -18" ${tinta} stroke-width="2"/>`;
+      o += `<path d="M70 175 Q200 260 330 175" ${tinta} stroke-width="1.2" opacity=".5" transform="translate(0 14)"/>`; return uri(w, h, o); },
+    rosa:(s)=>{ const w = 400, h = 460; let o = pele(w, h, s+2) + `<defs><radialGradient id="r" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#202020"/><stop offset=".7" stop-color="#6b6b6b"/><stop offset="1" stop-color="#2b2b2b"/></radialGradient></defs>`;
+      for (let k = 5; k >= 0; k--){ const R = 30 + k*22; o += `<path d="M${200 - R} 200 Q${200 - R*.8} ${200 - R} 200 ${200 - R*.9} Q${200 + R*.8} ${200 - R} ${200 + R} 200 Q${200 + R*.6} ${200 + R*.8} 200 ${200 + R*.7} Q${200 - R*.6} ${200 + R*.8} ${200 - R} 200Z" fill="url(#r)" stroke="#111" stroke-width="1.5" opacity="${.55 + k*.07}" transform="rotate(${k*23} 200 200)"/>`; }
+      o += `<path d="M200 330 Q190 390 205 450" ${tinta} stroke-width="5"/><path d="M200 380 q-50 -20 -70 10 q40 10 70 -10" fill="#2a2a2a"/>`; return uri(w, h, o); },
+    lua:(s)=>{ const r = rnd(s), w = 400, h = 400; let o = pele(w, h, s) + `<defs><radialGradient id="m" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#cfcfcf"/><stop offset=".7" stop-color="#555"/><stop offset="1" stop-color="#151515"/></radialGradient><mask id="k"><rect width="400" height="400" fill="#fff"/><circle cx="245" cy="170" r="105" fill="#000"/></mask></defs>`;
+      o += `<circle cx="190" cy="200" r="120" fill="url(#m)" mask="url(#k)"/>`; for (let k = 0; k < 18; k++) o += `<circle cx="${(260 + r()*120).toFixed(0)}" cy="${(60 + r()*290).toFixed(0)}" r="${(1 + r()*2.2).toFixed(1)}" fill="#161616"/>`; return uri(w, h, o); },
+    andorinha:(s)=>{ const w = 400, h = 400; let o = pele(w, h, s+2);
+      o += `<path d="M200 330 C80 250 60 150 130 120 C170 105 195 130 200 160 C205 130 230 105 270 120 C340 150 320 250 200 330Z" fill="#C8281E" stroke="#111" stroke-width="6"/><path d="M150 150 q20 -10 30 5" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".8"/>`;
+      o += `<path d="M70 215 L330 215 L345 255 L55 255Z" fill="#F2E3B3" stroke="#111" stroke-width="5"/><path d="M70 215 L40 230 L55 255 M330 215 L360 230 L345 255" fill="#E2C77A" stroke="#111" stroke-width="5"/><text x="200" y="247" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="28" fill="#111">AMOR</text>`;
+      o += `<path d="M260 70 q30 -10 50 10 q-25 0 -35 20 q-5 -15 -15 -30Z" fill="#1F4E9C" stroke="#111" stroke-width="4"/>`; return uri(w, h, o); },
+    tranca:(s)=>{ const r = rnd(s), w = 400, h = 500, cs = ["#2B1A12","#3A2318","#1E120C"]; let o = `<rect width="${w}" height="${h}" fill="#E9D3BF"/><ellipse cx="200" cy="40" rx="170" ry="90" fill="#24150F"/>`;
+      const n = 6 + Math.floor(r()*3); for (let c = 0; c < n; c++){ const x = 40 + c*(320/(n-1)); for (let y = 70; y < 480; y += 22) o += `<ellipse cx="${x + (y/22 % 2 ? 5 : -5)}" cy="${y}" rx="11" ry="14" transform="rotate(${y/22 % 2 ? 25 : -25} ${x} ${y})" fill="${cs[(c + y) % 3]}" stroke="#110a06" stroke-width="1.5"/>`; }
+      for (let k = 0; k < 30; k++) o += `<path d="M${40 + r()*320} ${70 + r()*400} l3 9" stroke="#8a5a3c" stroke-width="1.2" opacity=".6"/>`; return uri(w, h, o); },
+    cachos:(s)=>{ const r = rnd(s), w = 400, h = 450; let o = `<rect width="${w}" height="${h}" fill="#F1E2D3"/><circle cx="200" cy="200" r="165" fill="#2A1810"/>`;
+      for (let k = 0; k < 120; k++){ const a = r()*6.283, d = r()*160, x = 200 + Math.cos(a)*d, y = 200 + Math.sin(a)*d; o += `<path d="M${x.toFixed(0)} ${y.toFixed(0)} q6 -8 11 0 q-4 9 -11 2" fill="none" stroke="${r() > .5 ? "#6B3E24" : "#3d2416"}" stroke-width="2.6"/>`; }
+      o += `<ellipse cx="200" cy="300" rx="70" ry="88" fill="#7A4A2E"/><path d="M130 420 Q200 360 270 420 L290 450 L110 450Z" fill="#C7613B"/>`; return uri(w, h, o); },
+    nago:(s)=>{ const w = 400, h = 400; let o = `<rect width="${w}" height="${h}" fill="#E7CFB8"/><circle cx="200" cy="210" r="160" fill="#7B4A2D"/>`;
+      for (let c = 0; c < 7; c++){ const off = (c - 3) * 40; for (let t = 0; t < 14; t++){ const y = 80 + t*20, x = 200 + off + Math.sin(t/3 + c) * 18; o += `<ellipse cx="${x.toFixed(0)}" cy="${y}" rx="9" ry="11" transform="rotate(${t % 2 ? 30 : -30} ${x.toFixed(0)} ${y})" fill="#1c110b" stroke="#000" stroke-width="1"/>`; } }
+      return uri(w, h, o); },
+    ceramica:(s, k)=>{ const GL = ["#2F5D8A","#7B8F6A","#C9703F","#E8E1D3","#3E6F6B"], g = GL[s % 5], w = 400, h = k === "pratos" ? 360 : 460;
+      let o = `<defs><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3EEE7"/><stop offset="1" stop-color="#E4DAD0"/></linearGradient><linearGradient id="gl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${g}"/><stop offset=".35" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="${g}"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#w)"/><rect y="${h*.72}" width="${w}" height="${h*.28}" fill="#C8B6A2"/>`;
+      if (k === "caneca") o += `<path d="M285 230 q55 0 55 50 q0 50 -55 50" fill="none" stroke="${g}" stroke-width="18"/><rect x="120" y="180" width="170" height="190" rx="20" fill="${g}"/><rect x="120" y="180" width="170" height="190" rx="20" fill="url(#gl)" opacity=".7"/><ellipse cx="205" cy="182" rx="85" ry="10" fill="#D9CDBF"/><path d="M120 300 Q205 330 290 300 L290 350 Q205 380 120 350Z" fill="#B9A58F"/>`;
+      else if (k === "vaso") o += `<path d="M170 120 L230 120 Q230 170 270 220 Q320 290 260 370 L140 370 Q80 290 130 220 Q170 170 170 120Z" fill="${g}"/><path d="M170 120 L230 120 Q230 170 270 220 Q320 290 260 370 L140 370 Q80 290 130 220 Q170 170 170 120Z" fill="url(#gl)" opacity=".7"/><ellipse cx="200" cy="120" rx="30" ry="6" fill="#4a3a2c"/><path d="M200 120 q-30 -60 -60 -70 M200 120 q20 -70 55 -80" stroke="#5E7A44" stroke-width="4" fill="none"/>`;
+      else if (k === "pratos") for (let i = 0; i < 4; i++) o += `<ellipse cx="200" cy="${250 - i*16}" rx="150" ry="34" fill="${g}" stroke="#00000022" stroke-width="2"/><ellipse cx="200" cy="${246 - i*16}" rx="105" ry="22" fill="#F3EEE7" opacity=".55"/>`;
+      else o += `<path d="M110 250 Q110 120 200 120 Q290 120 290 250Z" fill="${g}"/><path d="M110 250 Q110 120 200 120 Q290 120 290 250Z" fill="url(#gl)" opacity=".6"/><rect x="190" y="250" width="20" height="90" fill="#8b7a69"/><ellipse cx="200" cy="345" rx="60" ry="12" fill="#8b7a69"/><ellipse cx="200" cy="250" rx="90" ry="10" fill="#FFE9A8" opacity=".9"/>`;
+      return uri(w, h, o); },
+    horta:(s)=>{ const r = rnd(s), w = 400, h = 380; let o = `<rect width="${w}" height="${h}" fill="#E9E2CF"/><path d="M50 200 L350 200 L320 340 L80 340Z" fill="#9C6B3C"/>`;
+      for (let i = 0; i < 26; i++){ const x = 80 + r()*240, y = 150 + r()*60, t = Math.floor(r()*4); o += t === 0 ? `<circle cx="${x}" cy="${y}" r="20" fill="#D23A2A"/><path d="M${x-6} ${y-18} l6 4 l6 -4" stroke="#2f6b2a" stroke-width="3" fill="none"/>` : t === 1 ? `<ellipse cx="${x}" cy="${y}" rx="30" ry="18" fill="#5E9B3A"/>` : t === 2 ? `<path d="M${x} ${y-24} l9 46 l-18 0Z" fill="#E7822B" transform="rotate(${r()*60-30} ${x} ${y})"/>` : `<circle cx="${x}" cy="${y}" r="14" fill="#7A3E9D"/>`; }
+      for (let y = 215; y < 340; y += 18) o += `<path d="M${60 + (y-200)*.2} ${y} L${340 - (y-200)*.2} ${y}" stroke="#7a5230" stroke-width="3"/>`; return uri(w, h, o); },
+    bike:(s)=>{ const w = 400, h = 300; let o = `<rect width="${w}" height="${h}" fill="#CFE3EE"/><rect y="200" width="${w}" height="100" fill="#8F9A8C"/><path d="M0 230 L400 230" stroke="#fff" stroke-width="4" stroke-dasharray="26 18"/>`;
+      o += `<g fill="none" stroke="#1d2b33" stroke-width="7"><circle cx="110" cy="200" r="55"/><circle cx="290" cy="200" r="55"/><path d="M110 200 L170 120 L260 120 L290 200 M170 120 L200 200 L110 200 M200 200 L260 120 M250 100 L275 100 M170 120 L160 100 L185 100"/></g>`; return uri(w, h, o); },
+    jeans:(s)=>{ const r = rnd(s), w = 400, h = 400; let o = `<defs><pattern id="j" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#36557E"/><path d="M0 6 L6 0" stroke="#4E6E99" stroke-width="1.5"/></pattern></defs><rect width="${w}" height="${h}" fill="url(#j)"/>`;
+      o += `<path d="M40 120 Q200 ${90 + r()*40} 360 120" stroke="#E0A13A" stroke-width="3" stroke-dasharray="10 7" fill="none"/><path d="M40 300 Q200 ${270 + r()*40} 360 300" stroke="#E0A13A" stroke-width="3" stroke-dasharray="10 7" fill="none"/><rect x="230" y="150" width="110" height="110" rx="8" fill="#2C4870" stroke="#E0A13A" stroke-width="3" stroke-dasharray="8 6"/><path d="M60 330 L180 210" stroke="#C0C6CC" stroke-width="5"/><circle cx="60" cy="330" r="10" fill="none" stroke="#C0C6CC" stroke-width="4"/>`; return uri(w, h, o); },
+    bairro:(s)=>{ const r = rnd(s), w = 400, h = 300; let o = `<defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6B06B"/><stop offset=".6" stop-color="#E7745C"/><stop offset="1" stop-color="#7A3E5D"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#c)"/><circle cx="${120 + r()*160}" cy="160" r="38" fill="#FFE0A0" opacity=".9"/>`;
+      let x = 0; while (x < 400){ const bw = 30 + r()*50, bh = 50 + r()*120; o += `<rect x="${x}" y="${300 - bh}" width="${bw}" height="${bh}" fill="#3A2238"/>`; for (let yy = 310 - bh; yy < 290; yy += 16) if (r() > .5) o += `<rect x="${x + 8}" y="${yy}" width="6" height="8" fill="#FFD27A"/>`; x += bw + 2; }
+      return uri(w, h, o); },
+    mercado:(s)=>{ const r = rnd(s), w = 400, h = 320; let o = `<rect width="${w}" height="${h}" fill="#EFE6D6"/>`;
+      [[20,150],[140,150],[260,150]].forEach(([x, y], i)=>{ o += `<rect x="${x}" y="${y}" width="120" height="110" fill="#B9874F" stroke="#7a5530" stroke-width="3"/><path d="M${x} ${y+40} L${x+120} ${y+40} M${x} ${y+80} L${x+120} ${y+80}" stroke="#7a5530" stroke-width="3"/>`;
+        for (let k = 0; k < 7; k++) o += `<circle cx="${x + 18 + (k % 4)*28}" cy="${y - 8 - Math.floor(k/4)*22}" r="15" fill="${["#E3A21A","#D23A2A","#5E9B3A"][i]}"/>`; });
+      return uri(w, h, o); } };
   if (!tab("publicacoes").some(x=>x.extra && x.extra.mock === "pg1")){
     const pid = n => "00000000-0000-4000-8000-0000000000a" + n, dias = d => new Date(Date.now() - d*864e5 - 3*36e5).toISOString();
-    const rnd = s => () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
-    const uri = (w, h, corpo) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${corpo}</svg>`);
-    const PELE = [["#EFD3B8","#CFA07E"],["#DDAA82","#AE7650"],["#F4DDCB","#D9B396"],["#B9825C","#875536"]];
-    const pele = (w, h, i) => `<defs><radialGradient id="p" cx=".42" cy=".38" r=".85"><stop offset="0" stop-color="${PELE[i%4][0]}"/><stop offset="1" stop-color="${PELE[i%4][1]}"/></radialGradient><radialGradient id="g" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#9a9a9a"/><stop offset=".6" stop-color="#3a3a3a"/><stop offset="1" stop-color="#111"/></radialGradient></defs><rect width="${w}" height="${h}" fill="url(#p)"/>`;
-    const tinta = 'fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round"';
-    const ARTE = {
-      floral:(s)=>{ const r = rnd(s), w = 400, h = 500; let o = pele(w, h, s), x0 = 200 + (r()-.5)*40, x1 = 200 + (r()-.5)*90, cx = 200 + (r()-.5)*160;
-        o += `<path d="M${x0} 470 Q${cx} 280 ${x1} 110" ${tinta} stroke-width="1.6"/>`;
-        for (let t = .18; t < .85; t += .12){ const a = 1-t, px = a*a*x0 + 2*a*t*cx + t*t*x1, py = a*a*470 + 2*a*t*280 + t*t*110, ld = (Math.round(t*10) % 2 ? 1 : -1);
-          o += `<ellipse cx="${px + ld*14}" cy="${py}" rx="15" ry="5.5" transform="rotate(${ld*-35} ${px + ld*14} ${py})" ${tinta} stroke-width="1.3"/><path d="M${px} ${py} L${px + ld*26} ${py - ld*ld*10}" ${tinta} stroke-width=".9"/>`; }
-        const np = 5 + Math.floor(r()*3); for (let k = 0; k < np; k++) o += `<ellipse cx="${x1}" cy="${110 - 18}" rx="7.5" ry="18" transform="rotate(${k*360/np} ${x1} 110)" ${tinta} stroke-width="1.4"/>`;
-        o += `<circle cx="${x1}" cy="110" r="3.5" fill="#161616"/>`;
-        if (r() > .4){ const bx = x0 + 30, by = 300; for (let k = 0; k < 5; k++) o += `<ellipse cx="${bx}" cy="${by - 10}" rx="4" ry="10" transform="rotate(${k*72} ${bx} ${by})" ${tinta} stroke-width="1.1"/>`; o += `<path d="M${bx} ${by} Q${bx-10} ${by+40} ${x0+4} 380" ${tinta} stroke-width="1"/>`; }
-        return uri(w, h, o); },
-      mandala:(s)=>{ const r = rnd(s), w = 400, h = 400, c = 200; let o = pele(w, h, s+1), n1 = 10 + Math.floor(r()*6);
-        o += `<circle cx="${c}" cy="${c}" r="150" ${tinta} stroke-width="3"/><circle cx="${c}" cy="${c}" r="140" ${tinta} stroke-width="1.2" stroke-dasharray="2 6"/>`;
-        for (let k = 0; k < n1*2; k++) o += `<path d="M${c} ${c-62} Q${c+16} ${c-100} ${c} ${c-132} Q${c-16} ${c-100} ${c} ${c-62}Z" ${tinta} stroke-width="2" transform="rotate(${k*180/n1} ${c} ${c})"/>`;
-        for (let k = 0; k < n1; k++) o += `<path d="M${c} ${c-30} Q${c+14} ${c-50} ${c} ${c-70} Q${c-14} ${c-50} ${c} ${c-30}Z" fill="#161616" transform="rotate(${k*360/n1} ${c} ${c})"/>`;
-        for (let k = 0; k < n1*2; k++){ const a = k*Math.PI/n1; o += `<circle cx="${(c + Math.sin(a)*142).toFixed(1)}" cy="${(c - Math.cos(a)*142).toFixed(1)}" r="3" fill="#161616"/>`; }
-        o += `<circle cx="${c}" cy="${c}" r="22" fill="#161616"/><circle cx="${c}" cy="${c}" r="9" fill="${PELE[(s+1)%4][0]}"/>`; return uri(w, h, o); },
-      geo:(s)=>{ const r = rnd(s), w = 400, h = 500; let o = pele(w, h, s+2);
-        o += `<path d="M200 70 L330 330 L70 330Z" ${tinta} stroke-width="3"/><path d="M200 150 L270 290 L130 290Z" fill="#161616"/><circle cx="200" cy="250" r="${110 + r()*20}" ${tinta} stroke-width="1.4"/>`;
-        for (let y = 360; y < 450; y += 12) for (let x = 120; x < 290; x += 12) if (r() < (450 - y)/110) o += `<circle cx="${x + (y/12 % 2)*6}" cy="${y}" r="${1.2 + r()}" fill="#161616"/>`;
-        o += `<path d="M200 20 L200 60 M200 340 L200 470" ${tinta} stroke-width="1.4"/>`; return uri(w, h, o); },
-      letra:(s, txt)=>{ const w = 400, h = 300; let o = pele(w, h, s);
-        o += `<text x="200" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="${txt.length > 7 ? 58 : 72}" fill="#161616">${txt}</text><path d="M90 192 Q200 220 310 192" ${tinta} stroke-width="1.6"/><path d="M300 190 q16 -12 6 -26 q-12 6 -6 26" ${tinta} stroke-width="1.3"/>`; return uri(w, h, o); },
-      olho:(s)=>{ const w = 400, h = 320; let o = pele(w, h, s+2) + `<defs><radialGradient id="i" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".3" stop-color="#222"/><stop offset=".55" stop-color="#777"/><stop offset=".85" stop-color="#2a2a2a"/><stop offset="1" stop-color="#111"/></radialGradient><linearGradient id="sb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#222" stop-opacity=".55"/><stop offset="1" stop-color="#222" stop-opacity="0"/></linearGradient></defs>`;
-        o += `<path d="M60 170 Q200 40 340 170 Q200 120 60 170Z" fill="url(#sb)"/><path d="M70 175 Q200 70 330 175 Q200 260 70 175Z" fill="#f2efe9" stroke="#161616" stroke-width="3"/><circle cx="200" cy="170" r="58" fill="url(#i)"/><circle cx="200" cy="170" r="22" fill="#0b0b0b"/><circle cx="182" cy="152" r="9" fill="#fff" opacity=".9"/>`;
-        for (let k = 0; k < 14; k++) o += `<path d="M${90 + k*16} ${150 - Math.sin(k/13*Math.PI)*62} l${-4 + k*.6} -18" ${tinta} stroke-width="2"/>`;
-        o += `<path d="M70 175 Q200 260 330 175" ${tinta} stroke-width="1.2" opacity=".5" transform="translate(0 14)"/>`; return uri(w, h, o); },
-      rosa:(s)=>{ const w = 400, h = 460; let o = pele(w, h, s+2) + `<defs><radialGradient id="r" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#202020"/><stop offset=".7" stop-color="#6b6b6b"/><stop offset="1" stop-color="#2b2b2b"/></radialGradient></defs>`;
-        for (let k = 5; k >= 0; k--){ const R = 30 + k*22; o += `<path d="M${200 - R} 200 Q${200 - R*.8} ${200 - R} 200 ${200 - R*.9} Q${200 + R*.8} ${200 - R} ${200 + R} 200 Q${200 + R*.6} ${200 + R*.8} 200 ${200 + R*.7} Q${200 - R*.6} ${200 + R*.8} ${200 - R} 200Z" fill="url(#r)" stroke="#111" stroke-width="1.5" opacity="${.55 + k*.07}" transform="rotate(${k*23} 200 200)"/>`; }
-        o += `<path d="M200 330 Q190 390 205 450" ${tinta} stroke-width="5"/><path d="M200 380 q-50 -20 -70 10 q40 10 70 -10" fill="#2a2a2a"/>`; return uri(w, h, o); },
-      lua:(s)=>{ const r = rnd(s), w = 400, h = 400; let o = pele(w, h, s) + `<defs><radialGradient id="m" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#cfcfcf"/><stop offset=".7" stop-color="#555"/><stop offset="1" stop-color="#151515"/></radialGradient><mask id="k"><rect width="400" height="400" fill="#fff"/><circle cx="245" cy="170" r="105" fill="#000"/></mask></defs>`;
-        o += `<circle cx="190" cy="200" r="120" fill="url(#m)" mask="url(#k)"/>`; for (let k = 0; k < 18; k++) o += `<circle cx="${(260 + r()*120).toFixed(0)}" cy="${(60 + r()*290).toFixed(0)}" r="${(1 + r()*2.2).toFixed(1)}" fill="#161616"/>`; return uri(w, h, o); },
-      andorinha:(s)=>{ const w = 400, h = 400; let o = pele(w, h, s+2);
-        o += `<path d="M200 330 C80 250 60 150 130 120 C170 105 195 130 200 160 C205 130 230 105 270 120 C340 150 320 250 200 330Z" fill="#C8281E" stroke="#111" stroke-width="6"/><path d="M150 150 q20 -10 30 5" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".8"/>`;
-        o += `<path d="M70 215 L330 215 L345 255 L55 255Z" fill="#F2E3B3" stroke="#111" stroke-width="5"/><path d="M70 215 L40 230 L55 255 M330 215 L360 230 L345 255" fill="#E2C77A" stroke="#111" stroke-width="5"/><text x="200" y="247" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="28" fill="#111">AMOR</text>`;
-        o += `<path d="M260 70 q30 -10 50 10 q-25 0 -35 20 q-5 -15 -15 -30Z" fill="#1F4E9C" stroke="#111" stroke-width="4"/>`; return uri(w, h, o); },
-      tranca:(s)=>{ const r = rnd(s), w = 400, h = 500, cs = ["#2B1A12","#3A2318","#1E120C"]; let o = `<rect width="${w}" height="${h}" fill="#E9D3BF"/><ellipse cx="200" cy="40" rx="170" ry="90" fill="#24150F"/>`;
-        const n = 6 + Math.floor(r()*3); for (let c = 0; c < n; c++){ const x = 40 + c*(320/(n-1)); for (let y = 70; y < 480; y += 22) o += `<ellipse cx="${x + (y/22 % 2 ? 5 : -5)}" cy="${y}" rx="11" ry="14" transform="rotate(${y/22 % 2 ? 25 : -25} ${x} ${y})" fill="${cs[(c + y) % 3]}" stroke="#110a06" stroke-width="1.5"/>`; }
-        for (let k = 0; k < 30; k++) o += `<path d="M${40 + r()*320} ${70 + r()*400} l3 9" stroke="#8a5a3c" stroke-width="1.2" opacity=".6"/>`; return uri(w, h, o); },
-      cachos:(s)=>{ const r = rnd(s), w = 400, h = 450; let o = `<rect width="${w}" height="${h}" fill="#F1E2D3"/><circle cx="200" cy="200" r="165" fill="#2A1810"/>`;
-        for (let k = 0; k < 120; k++){ const a = r()*6.283, d = r()*160, x = 200 + Math.cos(a)*d, y = 200 + Math.sin(a)*d; o += `<path d="M${x.toFixed(0)} ${y.toFixed(0)} q6 -8 11 0 q-4 9 -11 2" fill="none" stroke="${r() > .5 ? "#6B3E24" : "#3d2416"}" stroke-width="2.6"/>`; }
-        o += `<ellipse cx="200" cy="300" rx="70" ry="88" fill="#7A4A2E"/><path d="M130 420 Q200 360 270 420 L290 450 L110 450Z" fill="#C7613B"/>`; return uri(w, h, o); },
-      nago:(s)=>{ const w = 400, h = 400; let o = `<rect width="${w}" height="${h}" fill="#E7CFB8"/><circle cx="200" cy="210" r="160" fill="#7B4A2D"/>`;
-        for (let c = 0; c < 7; c++){ const off = (c - 3) * 40; for (let t = 0; t < 14; t++){ const y = 80 + t*20, x = 200 + off + Math.sin(t/3 + c) * 18; o += `<ellipse cx="${x.toFixed(0)}" cy="${y}" rx="9" ry="11" transform="rotate(${t % 2 ? 30 : -30} ${x.toFixed(0)} ${y})" fill="#1c110b" stroke="#000" stroke-width="1"/>`; } }
-        return uri(w, h, o); },
-      ceramica:(s, k)=>{ const GL = ["#2F5D8A","#7B8F6A","#C9703F","#E8E1D3","#3E6F6B"], g = GL[s % 5], w = 400, h = k === "pratos" ? 360 : 460;
-        let o = `<defs><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3EEE7"/><stop offset="1" stop-color="#E4DAD0"/></linearGradient><linearGradient id="gl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${g}"/><stop offset=".35" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="${g}"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#w)"/><rect y="${h*.72}" width="${w}" height="${h*.28}" fill="#C8B6A2"/>`;
-        if (k === "caneca") o += `<path d="M285 230 q55 0 55 50 q0 50 -55 50" fill="none" stroke="${g}" stroke-width="18"/><rect x="120" y="180" width="170" height="190" rx="20" fill="${g}"/><rect x="120" y="180" width="170" height="190" rx="20" fill="url(#gl)" opacity=".7"/><ellipse cx="205" cy="182" rx="85" ry="10" fill="#D9CDBF"/><path d="M120 300 Q205 330 290 300 L290 350 Q205 380 120 350Z" fill="#B9A58F"/>`;
-        else if (k === "vaso") o += `<path d="M170 120 L230 120 Q230 170 270 220 Q320 290 260 370 L140 370 Q80 290 130 220 Q170 170 170 120Z" fill="${g}"/><path d="M170 120 L230 120 Q230 170 270 220 Q320 290 260 370 L140 370 Q80 290 130 220 Q170 170 170 120Z" fill="url(#gl)" opacity=".7"/><ellipse cx="200" cy="120" rx="30" ry="6" fill="#4a3a2c"/><path d="M200 120 q-30 -60 -60 -70 M200 120 q20 -70 55 -80" stroke="#5E7A44" stroke-width="4" fill="none"/>`;
-        else if (k === "pratos") for (let i = 0; i < 4; i++) o += `<ellipse cx="200" cy="${250 - i*16}" rx="150" ry="34" fill="${g}" stroke="#00000022" stroke-width="2"/><ellipse cx="200" cy="${246 - i*16}" rx="105" ry="22" fill="#F3EEE7" opacity=".55"/>`;
-        else o += `<path d="M110 250 Q110 120 200 120 Q290 120 290 250Z" fill="${g}"/><path d="M110 250 Q110 120 200 120 Q290 120 290 250Z" fill="url(#gl)" opacity=".6"/><rect x="190" y="250" width="20" height="90" fill="#8b7a69"/><ellipse cx="200" cy="345" rx="60" ry="12" fill="#8b7a69"/><ellipse cx="200" cy="250" rx="90" ry="10" fill="#FFE9A8" opacity=".9"/>`;
-        return uri(w, h, o); },
-      horta:(s)=>{ const r = rnd(s), w = 400, h = 380; let o = `<rect width="${w}" height="${h}" fill="#E9E2CF"/><path d="M50 200 L350 200 L320 340 L80 340Z" fill="#9C6B3C"/>`;
-        for (let i = 0; i < 26; i++){ const x = 80 + r()*240, y = 150 + r()*60, t = Math.floor(r()*4); o += t === 0 ? `<circle cx="${x}" cy="${y}" r="20" fill="#D23A2A"/><path d="M${x-6} ${y-18} l6 4 l6 -4" stroke="#2f6b2a" stroke-width="3" fill="none"/>` : t === 1 ? `<ellipse cx="${x}" cy="${y}" rx="30" ry="18" fill="#5E9B3A"/>` : t === 2 ? `<path d="M${x} ${y-24} l9 46 l-18 0Z" fill="#E7822B" transform="rotate(${r()*60-30} ${x} ${y})"/>` : `<circle cx="${x}" cy="${y}" r="14" fill="#7A3E9D"/>`; }
-        for (let y = 215; y < 340; y += 18) o += `<path d="M${60 + (y-200)*.2} ${y} L${340 - (y-200)*.2} ${y}" stroke="#7a5230" stroke-width="3"/>`; return uri(w, h, o); },
-      bike:(s)=>{ const w = 400, h = 300; let o = `<rect width="${w}" height="${h}" fill="#CFE3EE"/><rect y="200" width="${w}" height="100" fill="#8F9A8C"/><path d="M0 230 L400 230" stroke="#fff" stroke-width="4" stroke-dasharray="26 18"/>`;
-        o += `<g fill="none" stroke="#1d2b33" stroke-width="7"><circle cx="110" cy="200" r="55"/><circle cx="290" cy="200" r="55"/><path d="M110 200 L170 120 L260 120 L290 200 M170 120 L200 200 L110 200 M200 200 L260 120 M250 100 L275 100 M170 120 L160 100 L185 100"/></g>`; return uri(w, h, o); },
-      jeans:(s)=>{ const r = rnd(s), w = 400, h = 400; let o = `<defs><pattern id="j" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#36557E"/><path d="M0 6 L6 0" stroke="#4E6E99" stroke-width="1.5"/></pattern></defs><rect width="${w}" height="${h}" fill="url(#j)"/>`;
-        o += `<path d="M40 120 Q200 ${90 + r()*40} 360 120" stroke="#E0A13A" stroke-width="3" stroke-dasharray="10 7" fill="none"/><path d="M40 300 Q200 ${270 + r()*40} 360 300" stroke="#E0A13A" stroke-width="3" stroke-dasharray="10 7" fill="none"/><rect x="230" y="150" width="110" height="110" rx="8" fill="#2C4870" stroke="#E0A13A" stroke-width="3" stroke-dasharray="8 6"/><path d="M60 330 L180 210" stroke="#C0C6CC" stroke-width="5"/><circle cx="60" cy="330" r="10" fill="none" stroke="#C0C6CC" stroke-width="4"/>`; return uri(w, h, o); },
-      bairro:(s)=>{ const r = rnd(s), w = 400, h = 300; let o = `<defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6B06B"/><stop offset=".6" stop-color="#E7745C"/><stop offset="1" stop-color="#7A3E5D"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#c)"/><circle cx="${120 + r()*160}" cy="160" r="38" fill="#FFE0A0" opacity=".9"/>`;
-        let x = 0; while (x < 400){ const bw = 30 + r()*50, bh = 50 + r()*120; o += `<rect x="${x}" y="${300 - bh}" width="${bw}" height="${bh}" fill="#3A2238"/>`; for (let yy = 310 - bh; yy < 290; yy += 16) if (r() > .5) o += `<rect x="${x + 8}" y="${yy}" width="6" height="8" fill="#FFD27A"/>`; x += bw + 2; }
-        return uri(w, h, o); },
-      mercado:(s)=>{ const r = rnd(s), w = 400, h = 320; let o = `<rect width="${w}" height="${h}" fill="#EFE6D6"/>`;
-        [[20,150],[140,150],[260,150]].forEach(([x, y], i)=>{ o += `<rect x="${x}" y="${y}" width="120" height="110" fill="#B9874F" stroke="#7a5530" stroke-width="3"/><path d="M${x} ${y+40} L${x+120} ${y+40} M${x} ${y+80} L${x+120} ${y+80}" stroke="#7a5530" stroke-width="3"/>`;
-          for (let k = 0; k < 7; k++) o += `<circle cx="${x + 18 + (k % 4)*28}" cy="${y - 8 - Math.floor(k/4)*22}" r="15" fill="${["#E3A21A","#D23A2A","#5E9B3A"][i]}"/>`; });
-        return uri(w, h, o); } };
     const P = [];
     const pub = (n, dono, d, titulo, texto, img, tema, cidade) => P.push({id:novoId(), autor:dono, tipo:"texto", titulo, texto, tema:tema || "Cultura", cidade, imagem_url:img || null, extra:{mock:"pg1"}, publicada:true, criada_em:dias(d), editada_em:null, pagina_id:pid(n)});
     const RJ = "Rio de Janeiro, RJ", SP = "São Paulo, SP";
@@ -7666,7 +7695,73 @@ function mockSB(o = {}){
       if (!x.extra.tema_sub && (SUBTEMAS[x.tema] || []).includes(m[2])) x.extra.tema_sub = m[2]; });
     db.arvMig = 1; salva(); }
   /* 15/11: trabalho próprio é autoral (como no Publicar: "De onde vem" > Autoral), e não "sem fonte" */
-  { let mud = false; tab("publicacoes").forEach(x=>{ const m = x.extra && x.extra.mock; if (!x.extra || x.extra.autoral || !(m === "pg2" || (m === "pg1" && x.imagem_url))) return; x.extra.autoral = m === "pg2" ? "ficcao" : "arte"; mud = true; }); if (mud) salva(); }
+  /* 15/11 (Amanda): mais páginas de exemplo, para o feed de Organizações parecer cheio como vai ficar: tatuadores e estúdios
+     que convivem (um estúdio com a equipe), beleza, artesanato com loja e escrita. Tudo com a etiqueta "exemplo". */
+  if (!tab("paginas").some(p=>p.id === "00000000-0000-4000-8000-000000000201")){
+    const pid = n => "00000000-0000-4000-8000-0000000002" + n, dias = d => new Date(Date.now() - d*864e5 - 5*36e5).toISOString(), ano = n => new Date(Date.now() - n*365.25*864e5 - 864e5).toISOString();
+    const pg = (n, dono, tipo, nome, descricao, cidade, tema, cor, desde, cnpj) => ({id:pid(n), dono, tipo, nome, descricao, cidade, tema, site:null, contato:null, cor, status:"aprovada", motivo:null, declaracao:"Declaração de exemplo", declarada_em:agora(), nao_eleitoral:true, criada_em:ano(desde), revisada_em:agora(), cnpj:cnpj ? "00.000.000/0001-00" : null, cnpj_conferido:!!cnpj, no_perfil:false});
+    const fi = (n, modelo, papel, mods, estilos, preco, un, tabela, extra) => Object.assign({pagina_id:pid(n), modelo, papel, modulos:mods, estilos, preco, preco_un:un, orc_ref:true, orc_tabela:!!(tabela && tabela.length), tabela:tabela || []}, extra || {});
+    const TAT = ["orcamento","agenda","reputacao"];
+    tab("paginas").push(
+      pg("01", TESTE_M, "criador", "Bia Rocha", "Fineline botânico e delicado. Atendo com hora marcada.", "Porto Alegre, RS", "Cultura", 1, 3),
+      pg("02", TESTE_C, "criador", "Tomás Aguiar", "Old school e blackwork de traço grosso.", "Belo Horizonte, MG", "Cultura", 6, 7),
+      pg("03", TESTE_M, "criador", "Nanda Ito", "Aquarela e realismo colorido. Agenda abre uma vez por mês.", "Curitiba, PR", "Cultura", 3, 2),
+      pg("04", TESTE_C, "empresa", "Casa Tinta Norte", "Estúdio de tatuagem com três artistas e biossegurança conferida.", "Belém, PA", "Cultura", 2, 8, true),
+      pg("05", TESTE_C, "criador", "Rafa Moura", "Old school colorido e flash do dia.", "Belém, PA", "Cultura", 5, 4),
+      pg("06", TESTE_M, "criador", "Lia Santos", "Lettering e fineline. Letras feitas à mão para cada pessoa.", "Belém, PA", "Cultura", 7, 2),
+      pg("07", TESTE_M, "criador", "Dandara Tranças", "Box braids, nagô e tranças com cachos. Atendo em casa e no salão.", "Salvador, BA", "Cultura", 4, 5),
+      pg("08", TESTE_C, "empresa", "Barbearia do Zé", "Corte, barba e pigmentação. Sem pressa, com café.", "Recife, PE", "Cultura", 0, 10, true),
+      pg("09", TESTE_M, "criador", "Unhas da Kel", "Unhas em gel, nail art e cuidado com cutícula.", "São Paulo, SP", "Cultura", 6, 3),
+      pg("0a", TESTE_C, "empresa", "Bordados da Vó Cida", "Bordado livre por encomenda: nomes, bichos e flores.", "Juiz de Fora, MG", "Cultura", 1, 12),
+      pg("0b", TESTE_M, "empresa", "Velas Lume", "Velas de cera de soja, aromas brasileiros.", "Florianópolis, SC", "Economia solidária", 3, 2),
+      pg("0c", TESTE_C, "empresa", "Prata Fina", "Joias de prata feitas à mão, peças únicas.", "Ouro Preto, MG", "Cultura", 2, 6, true),
+      pg("0d", TESTE_M, "criador", "Poemas de Ônibus", "Poesia curta escrita no trajeto de casa ao trabalho.", "Fortaleza, CE", "Cultura", 5, 1),
+      pg("0e", TESTE_C, "criador", "Coluna da Quebrada", "Crônicas da periferia, toda sexta.", "São Paulo, SP", "Cultura", 4, 2));
+    tab("pagina_tatuagem").push(
+      fi("01", "tatuagem", "tatuador", TAT, ["Fineline","Floral"], 2, "sessao", [{nome:"Raminho até 6 cm", preco:"R$ 220"}, {nome:"Floral até 12 cm", preco:"R$ 450"}]),
+      fi("02", "tatuagem", "tatuador", TAT, ["Old school","Blackwork"], 3, "hora", [{nome:"Flash old school", preco:"R$ 380"}]),
+      fi("03", "tatuagem", "tatuador", TAT, ["Aquarela","Realismo"], 4, "hora", [], {agenda_aberta:false}),
+      fi("04", "tatuagem", "estudio", TAT.concat(["equipe"]), ["Old school","Lettering","Fineline"], 3, "hora", [{nome:"Flash do estúdio", preco:"R$ 300"}, {nome:"Hora de sessão", preco:"R$ 420"}]),
+      fi("05", "tatuagem", "tatuador", TAT, ["Old school"], 2, "sessao", [{nome:"Flash do dia", preco:"R$ 280"}]),
+      fi("06", "tatuagem", "tatuador", TAT, ["Lettering","Fineline"], 2, "sessao", [{nome:"Lettering até 10 cm", preco:"R$ 300"}]),
+      fi("07", "beleza", "tatuador", TAT, ["Tranças","Box braids","Nagô"], 2, "sessao", [{nome:"Box braids (média)", preco:"R$ 320"}, {nome:"Nagô simples", preco:"R$ 120"}]),
+      fi("08", "beleza", "estudio", TAT, ["Corte","Barba"], 1, "atendimento", [{nome:"Corte", preco:"R$ 45"}, {nome:"Corte e barba", preco:"R$ 70"}]),
+      fi("09", "beleza", "tatuador", TAT, ["Unhas em gel","Manicure"], 2, "atendimento", [{nome:"Unhas em gel", preco:"R$ 140"}]),
+      fi("0a", "artesanato", "tatuador", ["loja","orcamento"], ["Bordado"], 2, "peca", []),
+      fi("0b", "artesanato", "tatuador", ["loja","orcamento"], ["Velas"], 1, "peca", []),
+      fi("0c", "artesanato", "tatuador", ["loja","orcamento"], ["Joias"], 3, "peca", []),
+      fi("0d", "escrita", null, [], ["Poesia"], null, null, [], {orc_ref:false}),
+      fi("0e", "escrita", null, [], ["Crônica"], null, null, [], {orc_ref:false}));
+    tab("pagina_equipe").push({estudio_id:pid("04"), tatuador_id:pid("05"), aceito_estudio:true, aceito_tatuador:true}, {estudio_id:pid("04"), tatuador_id:pid("06"), aceito_estudio:true, aceito_tatuador:true});
+    const TX = ["Atendimento cuidadoso do começo ao fim.", "Explicou tudo antes de começar.", "Ambiente limpo e organizado.", "Ficou exatamente como combinamos.", "Pontual e atenciosa.", "Voltaria com certeza."], NOMES = ["Ana","Caio","Duda","Enzo","Flor","Gui","Helô","Ivo"];
+    [["01", 15, 4.8], ["02", 11, 4.7], ["03", 6, 4.6], ["04", 19, 4.8], ["05", 9, 4.9], ["06", 7, 4.7], ["07", 21, 4.9], ["08", 30, 4.6], ["09", 12, 4.8]].forEach(([n, q, med])=>{
+      for (let i = 0; i < q + 2; i++) tab("tat_sessoes").push({id:novoId(), pagina_id:pid(n), status:"verificada", quando:dias((i+1)*4)});
+      for (let i = 0; i < q; i++) tab("pagina_avaliacoes").push({id:novoId(), pagina_id:pid(n), nota:(i % 10) < Math.round((med - 4) * 10) ? 5 : 4, pos:i % 9 !== 0, dor:"igual", texto:TX[i % TX.length], autor_nome:NOMES[i % NOMES.length], criado_em:dias(i*3 + 2)}); });
+    [["0a", [["Bastidor com nome", "R$ 90"], ["Toalhinha bordada", "R$ 60"], ["Bordado de pet", "R$ 150"]]], ["0b", [["Vela de pitanga", "R$ 45"], ["Kit 3 velas", "R$ 120"]]], ["0c", [["Anel de prata lisa", "R$ 180"], ["Brinco folha", "R$ 140"], ["Colar gota", "R$ 220"]]]]
+      .forEach(([n, l])=>l.forEach(([nome, preco], i)=>tab("pagina_itens").push({id:novoId(), pagina_id:pid(n), nome, preco, descricao:"Feito à mão.", link:null, foto:null, ordem:i, criado_em:agora()})));
+    const pub = (n, dono, d, titulo, texto, img, tema, cidade) => tab("publicacoes").push({id:novoId(), autor:dono, tipo:"texto", titulo, texto, tema:tema || "Cultura", cidade, imagem_url:img || null, extra:{mock:"pg3"}, publicada:true, criada_em:dias(d), editada_em:null, pagina_id:pid(n)});
+    pub("01", TESTE_M, 1, "Ramo de oliveira no antebraço", "Fineline, 9 cm, uma sessão.", ARTE.floral(41), "", "Porto Alegre, RS");
+    pub("01", TESTE_M, 6, "Floral nas costelas", "Três flores pequenas, traço fino.", ARTE.floral(42), "", "Porto Alegre, RS");
+    pub("02", TESTE_C, 2, "Andorinha clássica", "Old school colorido, cicatrizada.", ARTE.andorinha(43), "", "Belo Horizonte, MG");
+    pub("02", TESTE_C, 9, "Mandala no ombro", "Blackwork, quatro horas.", ARTE.mandala(44), "", "Belo Horizonte, MG");
+    pub("03", TESTE_M, 3, "Rosa em preto e cinza", "Realismo, duas sessões.", ARTE.rosa(45), "", "Curitiba, PR");
+    pub("03", TESTE_M, 11, "Lua e estrelas", "Aquarela suave no braço.", ARTE.lua(46), "", "Curitiba, PR");
+    pub("04", TESTE_C, 4, "Flash da semana no estúdio", "Desenhos prontos da equipe, com valor fechado.", ARTE.geo(47), "", "Belém, PA");
+    pub("05", TESTE_C, 5, "Coração com faixa", "Old school, flash do dia.", ARTE.andorinha(48), "", "Belém, PA");
+    pub("06", TESTE_M, 2, "Lettering “Calma”", "Letra cursiva no pulso.", ARTE.letra(49, "calma"), "", "Belém, PA");
+    pub("07", TESTE_M, 1, "Box braids na altura da cintura", "Seis horas de trabalho, com cachos nas pontas.", ARTE.tranca(50), "", "Salvador, BA");
+    pub("07", TESTE_M, 8, "Nagô desenhada", "Tranças rentes com desenho em zigue-zague.", ARTE.nago(51), "", "Salvador, BA");
+    pub("08", TESTE_C, 3, "Corte e barba da semana", "Degradê baixo e barba alinhada.", ARTE.cachos(52), "", "Recife, PE");
+    pub("09", TESTE_M, 4, "Cachos definidos", "Finalização com fitagem.", ARTE.cachos(53), "", "São Paulo, SP");
+    pub("0a", TESTE_C, 2, "Bastidor com o nome do neto", "Bordado livre em linha de algodão.", ARTE.jeans(54), "", "Juiz de Fora, MG");
+    pub("0b", TESTE_M, 5, "Fornada de velas de pitanga", "Cera de soja e pavio de algodão.", ARTE.ceramica(55, "vaso"), "", "Florianópolis, SC");
+    pub("0c", TESTE_C, 3, "Anel de prata martelada", "Peça única, aro 16.", ARTE.ceramica(56, "caneca"), "", "Ouro Preto, MG");
+    pub("0d", TESTE_M, 1, "Linha 42", "O ônibus para no sinal / e a cidade inteira cabe / no vidro embaçado.", null, "", "Fortaleza, CE");
+    pub("0d", TESTE_M, 6, "Cobrador", "Ele sabe o nome de todo mundo / menos o dele, que ninguém pergunta.", null, "", "Fortaleza, CE");
+    pub("0e", TESTE_C, 2, "A fila do posto", "Toda segunda a fila começa antes do sol. Lá dentro, a conversa é sobre tudo, menos sobre a dor.", null, "", "São Paulo, SP");
+    pub("0e", TESTE_C, 9, "O campinho", "O campinho virou estacionamento, mas a molecada ainda marca o gol no muro.", null, "", "São Paulo, SP");
+    salva(); }
+  { let mud = false; tab("publicacoes").forEach(x=>{ const m = x.extra && x.extra.mock; if (!x.extra || x.extra.autoral || !(m === "pg2" || ((m === "pg1" || m === "pg3") && x.imagem_url))) return; x.extra.autoral = m === "pg2" ? "ficcao" : "arte"; mud = true; }); if (mud) salva(); }
   const depois = (t, r) => {   /* os mesmos avisos que o servidor de verdade dá */
     if (t === "seguidores") notifica(r.seguido, "novo_seguidor", nomeDe(r.seguidor) + " começou a seguir você", null, "#org-u-" + r.seguidor);
     if (t === "pagina_seguidores"){ const p = tab("paginas").find(x=>x.id === r.pagina_id); if (p) notifica(p.dono, "pagina", nomeDe(r.seguidor) + " começou a seguir a página “" + p.nome + "”", null, "#pg-" + p.id); }
@@ -9823,7 +9918,7 @@ document.addEventListener("click", e=>{
   const fn = A[b.dataset.act]; if (fn) fn(b, e);
 });
 document.addEventListener("input", e=>{
-  if (e.target.dataset && e.target.dataset.ad){ const d = adDraft(); d[e.target.dataset.ad] = e.target.value; adGuarda(); const pb = $("#adpvbox"); if (pb) pb.innerHTML = adPrevia(d); }
+  if (e.target.dataset && e.target.dataset.ad){ const d = adDraft(); d[e.target.dataset.ad] = e.target.value; adGuarda(); const pb = $("#adpvbox"); if (pb) pb.innerHTML = adModulo(d); }
   if (e.target.id==="q"){ S.exploreQ = e.target.value; fillExplore(); if (!USO.buscou && e.target.value.length >= 3){ USO.buscou = true; uso("busca", "explorar"); } }
   if (e.target.id==="mix"){ S.mix = +e.target.value; $("#mixv").textContent = `${S.mix}% organizações · ${100-S.mix}% temas`; }
 });
@@ -9904,7 +9999,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 11:07";
+const VERSAO = "v1 registrada · 15/11 11:13";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
