@@ -719,6 +719,16 @@ article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 @container (max-width:190px){ .lcard.ch .lacts .btn .icon{display:none} .lcard.ag .lfoot .capname{font-size:12.5px} }
 .lfoot .btn.sm .icon{width:16px;height:16px}
 /* conteúdo real: fonte original, checagem e participação externa */
+.extag{display:inline-flex;align-items:center;flex:none;height:18px;padding:0 7px;border:1px dashed currentColor;border-radius:99px;background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;white-space:nowrap;vertical-align:middle}
+.thead .extag,.toptipo + .extag{margin-left:2px}
+.pctop .extag{margin:0 auto 0 -2px;align-self:center}
+h1 .extag{margin-left:8px;vertical-align:5px}
+.tbadges{position:absolute;top:6px;left:6px;z-index:2;display:flex;align-items:center;gap:4px;pointer-events:none}
+.tbadges .tseal{position:static}
+.tbadges .extag,.exov .extag{background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.85)}
+.exov{position:absolute;top:8px;left:8px;z-index:2;pointer-events:none}
+.mini + .exov{top:40px}
+.cmntag .extag{background:color-mix(in srgb,var(--surface) 90%,transparent)}
 .fic{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;background:var(--surface-2);color:var(--muted);font-family:var(--font-body);font-size:10.5px;font-weight:600;letter-spacing:.02em;vertical-align:middle;text-transform:uppercase}
 h1 .fic{font-size:11px;vertical-align:4px}
 .srcbtn{min-height:50px;text-decoration:none}
@@ -1373,7 +1383,7 @@ a.cmncard{text-decoration:none}
 .cmncard > .av{width:44px;height:44px;border-radius:14px;margin-top:-22px;font-size:14px;box-shadow:0 0 0 3px var(--surface);position:relative}
 .cmncard > b{margin-top:8px;font-size:15px;font-weight:600;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cmnmeta{max-width:100%;margin-top:3px;font-size:12.5px;line-height:1.35;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmntag{position:absolute;top:8px;right:8px}
+.cmntag{position:absolute;top:8px;left:8px;z-index:1}   /* 15/11: etiqueta no alto, à esquerda, como nos outros cartões */
 .cmntag .fic{margin-left:0;background:color-mix(in srgb,var(--surface) 88%,transparent);color:var(--ink)}
 .cmnsobre{margin-top:6px;font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cmnpe2{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;align-self:stretch;gap:2px 8px;margin-top:auto;padding-top:10px;font-size:12px;color:var(--muted)}
@@ -1439,13 +1449,19 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .blk.casa{grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}
 .blk.casa > .tile{height:auto;min-height:0;align-self:stretch;aspect-ratio:auto}
 @container (min-width:560px){ .blk.casa{aspect-ratio:12/1} }
-.adtile.casa .adface{display:flex;align-items:center;gap:10px;padding:0 14px}
+/* Faixa (15/11): formato de anúncio em uma linha fina; o "Anuncie aqui" usa o mesmo formato */
+.adtile.faixa .adface{display:flex;align-items:center;gap:10px;padding:0 14px}
+.adtile.faixa .adtop{order:3;margin-left:auto;flex:none}
 .adtile.casa .adtop{display:none}
-.adtile.casa .admk{order:-1;flex:none}
-.adtile.casa .adbot{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;align-self:center}
-.adtile.casa .adnome{font-size:15px}
-.adcard .adtile.casa{aspect-ratio:auto;height:88px}
-.adcard .adtile.casa .adtxt{font-size:12px;line-height:1.3}
+.adtile.faixa .admk{order:-1;flex:none}
+.adtile.faixa .admk svg{width:24px;height:24px}
+.adtile.faixa .adbot{flex:1;min-width:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0;align-self:center}
+.adtile.faixa .adnome{font-size:15px}
+.adtile.faixa .adseg{display:none}
+.adcard .adtile.faixa{aspect-ratio:auto;height:88px}
+.adcard .adtile.faixa .adtxt{font-size:12px;line-height:1.3}
+.adpv.faixa{grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}
+.adpv.faixa > .tile{height:auto}
 .adcard .adtile{position:relative;aspect-ratio:1 / 1;border-radius:var(--r);overflow:hidden}
 .adcard .tbtn{cursor:pointer}
 .csnotas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px}
@@ -1607,6 +1623,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .sesrow{align-items:center;gap:8px}.sesrow .t{min-width:0}
 .modelos .modelo{align-items:flex-start;text-align:left}.modelos .t small{white-space:normal!important;overflow:visible!important}.modelos .modelo > .icon{margin-top:2px;flex:none}
 .modchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.modchips i{font-style:normal;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink)}
+.mcard .mfoto{position:relative}
 .mcard{display:flex;flex-direction:column;border-radius:var(--r-sm);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);color:var(--ink);text-decoration:none}
 .mfoto{display:block;aspect-ratio:1/1;background:var(--surface-2)}.mfoto img,.mfoto svg{display:block;width:100%;height:100%;object-fit:cover}
 .orgcol .mcard:nth-child(3n+2) .mfoto{aspect-ratio:4/5}.orgcol .mcard:nth-child(3n) .mfoto{aspect-ratio:5/4}
@@ -4124,7 +4141,11 @@ function sheetVerif(v, pid){ const [t, d] = VERIF[v] || VERIF.oficial;
     <div class="note">${ic("info")}<span>O selo do perfil diz quem publica. Ele não garante que cada conteúdo é verdadeiro: isso continua com o selo de confiabilidade de cada publicação. Só a curadoria concede o selo de perfil.</span></div>`, "Perfil verificado"); }
 const orgMeta = o => o.pagina ? (o.paginaTipo === "empresa" ? "Página · comercial" : "Página · conteúdo") : o.rede ? "Fonte individual · " + REDES[o.rede].nome : o.pessoa ? (o.verificado ? VERIF[o.verificado][0] : "Conta na rede") : o.fonte ? `Fonte verificada · ${o.natureza}` : o.real ? `${capFirst(o.natureza || "organização")} · canais públicos` : `${o.membros.toLocaleString("pt-BR")} membros`;
 const isOrg = o => !o.fonte && !o.pessoa;   /* fontes de notícia publicam, mas não aparecem como organizações */
-const ficTag = o => o && o.ficticia ? `<span class="fic" title="Organização fictícia, de exemplo">exemplo</span>` : "";
+/* EXEMPLO (15/11, Amanda): tudo o que é fictício leva a mesma etiqueta, no mesmo lugar: no alto, à esquerda do cartão,
+   logo depois do tipo (ou sobre a imagem, quando o cartão é foto ou vídeo). Nos cartões de organização e página, sobre a capa. */
+const EXTAG = `<span class="extag" title="Conteúdo de exemplo, para mostrar como a rede funciona">exemplo</span>`;
+const ficTag = o => o && o.ficticia ? EXTAG : "";
+const exTag = it => ehExemplo(it) ? EXTAG : "";
 const NUCLEOS = [["Núcleo Centro",48,"toda segunda"],["Núcleo Jardim",36,"quinzenal"],["Comissão de comunicação",12,"às quintas"],["Comissão de finanças",7,"mensal"]];
 /* BANDEIRAS: país (como está na base de fontes) para o código de duas letras e a bandeira em emoji */
 const ISO = {"Brasil":"BR","EUA":"US","Reino Unido":"GB","Irlanda do Norte":"GB","Canadá":"CA","Austrália":"AU","Irlanda":"IE","Nova Zelândia":"NZ","África do Sul":"ZA",
@@ -4792,7 +4813,7 @@ function textParts(it){
   const seal = sealTag(it, s);
   const kind = it.tipo==="documento" && it.doc ? it.doc : kindOf(it);
   /* o tema saiu do topo (10 nov 2026): virou etiqueta no pé do cartão, junto dos interesses de quem lê */
-  const head = `<span class="thead">${seal}<span class="fkind pinkind" style="--k:${it.tipo==="votacao"||it.tipo==="documento"?"var(--ink)":o.cor}">${kind}</span>${repTag(it)}${marcaTag(it)}</span>`;
+  const head = `<span class="thead">${seal}<span class="fkind pinkind" style="--k:${it.tipo==="votacao"||it.tipo==="documento"?"var(--ink)":o.cor}">${kind}</span>${exTag(it)}${repTag(it)}${marcaTag(it)}</span>`;
   const title = it.tipo==="evento" ? `<span class="evrow">${evChip(it)}<span class="ftitle">${esc(it.titulo)}</span></span>` : `<span class="ftitle">${esc(it.titulo)}</span>`;
   const bg = it.tipo==="documento" || it.tipo==="votacao" ? "" : it.tipo==="enquete" ? "background:var(--surface-2)" : `background:color-mix(in srgb,${o.cor} 14%,var(--surface))`;
   return {head, title, foot:footCtx(it) + footInfo(it), bg};
@@ -4815,7 +4836,7 @@ function card(item, mode){
     <div class="facewrap">
       <button class="face ${f.img?"img":"txt"} ${f.vid?"vid":""} ${f.cls||""} ${s.lv==="bad"?"low":""}" type="button" data-act="open" data-uid="${item.uid}" ${f.style?`style="${f.style}"`:""}
         aria-label="Abrir ${kindOf(item)}: ${esc(item.titulo)}. ${s.label}${s.sc!==null?", nota "+s.sc:""}">${f.html}
-        ${f.img && s.sc!==null?`<span class="mini" aria-hidden="true">${sealIco(s,16)}<span>${s.sc}</span></span>`:""}</button>
+        ${f.img && s.sc!==null?`<span class="mini" aria-hidden="true">${sealIco(s,16)}<span>${s.sc}</span></span>`:""}${f.img && ehExemplo(item) ? `<span class="exov">${EXTAG}</span>` : ""}</button>
       <span class="ov" aria-hidden="true"></span>
       ${f.yt ? ytPlayBtn(item) : ""}
       ${f.vid?`<button class="vbadge" type="button" data-act="vplay" aria-label="Reproduzir vídeo"><span class="vi">${ic("play","sm")}</span><span class="vt">${item.dur}</span></button>
@@ -4823,7 +4844,7 @@ function card(item, mode){
       <span class="vprog" aria-hidden="true"><i></i></span>`:""}
       ${saveBtn(item.uid, "savebtn")}
     </div>
-    <div class="cap ${f.img?"capimg":""}">${f.img?capHTML(item,"capp"):`<span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}${ficTag(o)}</span>`}
+    <div class="cap ${f.img?"capimg":""}">${f.img?capHTML(item,"capp"):`<span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span>`}
       <button class="more" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button></div>
   </article>`;
 }
@@ -4833,7 +4854,7 @@ function tabCard(it, mode, v){
   const seal = sealTag(it, s);
   const kind = it.tipo==="documento" && it.doc ? it.doc : kindOf(it);
   const open = (inner, cls="") => `<button class="lmain ${cls}" type="button" data-act="open" data-uid="${uid}" aria-label="Abrir ${kindOf(it)}: ${esc(it.titulo)}. ${s.label}${s.sc!==null?", nota "+s.sc:""}">${inner}</button>`;
-  const who = `<span class="lwho"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}${ficTag(o)}</span></span>`;
+  const who = `<span class="lwho"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span></span>`;
   const art0 = (cls, inner) => `<article class="lcard ${cls} ${s.lv==="bad"?"low":""}" data-card="${uid}" data-mode="${mode}" data-variant="${v}">${inner}</article>`;
   /* MOVIMENTOS: eventos e chamados na mesma grade de 2 colunas irregulares, cada tipo com a sua forma:
      evento = ingresso (a data no topo, picote, local e quem vai) · chamado = meta (o que falta no topo, com a barra, e o prazo) */
@@ -4902,8 +4923,8 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
 const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt">Seu negócio neste espaço, igual para todo mundo.</span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
-const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile${a.casa ? " casa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
-  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
+const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile${a.casa ? " casa" : ""}${a.casa || a.fmt==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
+  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ' data-fmt="f"' : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
 const cardFor = (it, mode, v) => it.anuncio ? adCard(it, mode) : v && v!=="masonry" && v!=="video" ? tabCard(it, mode, v) : card(it, mode);
 const EST = {anuncio:()=>200, video:it=>it.ar*170+70, imagem:it=>(it.ph || 1.25)*170+80, texto:()=>270, evento:()=>320, enquete:()=>330, votacao:()=>330, chamado:()=>330, documento:()=>290};
 const EST_V = {cedula:330, arquivo:150};
@@ -5007,7 +5028,7 @@ const generica = it => (it.tipo==="imagem" && !it.foto) || (it.tipo==="video" &&
    os exemplos ficam em Publicações (um de cada tipo, no meio do verdadeiro), em Organizações e na Busca.
    Nada de abrir sempre com as mesmas notícias: o que já apareceu em visitas anteriores vai para o fim da fila, do mais antigo ao mais novo.
    A memória fica no aparelho, por 14 dias. Dentro da mesma visita, a ordem não muda. */
-const ehExemplo = it => !!it && !it.conta && !it.coletada && !it.daArte && !it.daRede && !it.copia && !!(ORG[it.org] || {}).ficticia;
+const ehExemplo = it => !!it && (!!it.exemplo || exPagId(it.pagina_id)) || !!it && !it.conta && !it.coletada && !it.daArte && !it.daRede && !it.copia && !!(ORG[it.org] || {}).ficticia;
 let FV = store.get("feedVistos", null) || {}, FV_T = null;
 function fvMarca(id){ id = String(id); if (FV[id]) return; FV[id] = Date.now(); clearTimeout(FV_T);
   FV_T = setTimeout(()=>{ const lim = Date.now() - 14*864e5; FV = Object.fromEntries(Object.entries(FV).filter(([, t])=>t > lim).sort((a,b)=>b[1]-a[1]).slice(0, 3000)); store.set("feedVistos", FV); }, 800); }
@@ -5065,7 +5086,7 @@ ORG["ad-casa"] = {id:"ad-casa", nome:"a rede.online", sigla:"AR", cor:"#8D9BFF",
 function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anúncio na aba Vídeos, onde ficam as transmissões oficiais */
   if (S.tab==="tudo" || S.tab==="publicacoes"){   /* 15/11 (Amanda): enquanto a rede cresce, um espaço só, pequeno, no primeiro scroll; o resto é conteúdo */
     if (l.length < 4) return l; const pagos = AD_REAIS.filter(x=>!S.adOculta.has(x.id)), a = pagos.length ? pagos[AD_ROD % pagos.length] : AD_CASA, out = l.slice();
-    const at = a.casa ? 2 : 3;   /* o convite é uma faixa fina depois dos primeiros cartões */
+    const at = a.casa || a.fmt==="f" ? 2 : 3;   /* o convite é uma faixa fina depois dos primeiros cartões */
     out.splice(at, 0, {id:"anuncio-1" + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:1, titulo:a.nome + " · " + a.frase, tema:"", min:l[Math.min(at, l.length) - 1].min}); return out; }
   const out = []; let n = 0, antes = "";
   l.forEach((it,i)=>{ out.push(it); if ((i + 1) % ANUNCIO_CADA === 0){ n++; const a = adDoEspaco(n, antes); if (!a) return; antes = a.id;
@@ -5080,7 +5101,7 @@ function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anú
 const AD_CALL = `<button class="adtag adcall" type="button" data-act="anunciar" aria-label="Anuncie aqui: contratar este espaço"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></button>`;
 /* multiplicadores iguais aos da tabela de anúncios do painel (10 nov 2026): formato 1 · 1,8 · 3,2 e posição 1,6 · 1,3 · 1 */
 const AD_PRECO = {dia:5, minDias:3, maxDias:90, tempos:[3,7,15,30], descontos:[[30,.20],[15,.10],[7,.05]],
-  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",1.8],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.2]],
+  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["f","Faixa","Largura inteira, numa linha fina · 390 × 65 px no celular",1.5],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",1.8],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.2]],
   posicoes:[["rot","Rotativo","Do 4º espaço de anúncio em diante",1],["meio","Meio do feed","2º e 3º espaços de anúncio",1.3],["topo","Início do feed","1º espaço, depois de 8 cartões",1.6]]};
 const AD_CORES = [["#6D28D9","#A78BFA"],["#2338D8","#93A5FF"],["#0F766E","#5EEAD4"],["#15803D","#86EFAC"],["#EA580C","#FDBA74"],["#DC2626","#FCA5A5"],["#BE185D","#F9A8D4"],["#141615","#9CA3AF"]];
 /* pagamento pelo Mercado Pago (Checkout Pro). O modo vem do servidor: "desligado", "teste" (só a administração consegue cobrar, com credenciais de teste) ou "producao".
@@ -5103,6 +5124,7 @@ function adPrecosAplica(d){ if (!d || typeof d!=="object") return false; const P
   const dia = num(d.dia,1,500), mn = num(d.minDias,1,30), mx = num(d.maxDias,1,365), ft = num(f.t,1,10), fw = num(f.w,1,10), pm = num(p.meio,1,10), pt = num(p.topo,1,10), d7 = num(ds["7"],0,.6), d15 = num(ds["15"],0,.6), d30 = num(ds["30"],0,.6);
   if ([dia,mn,mx,ft,fw,pm,pt,d7,d15,d30].some(x=>x===null) || mx < mn || d7 > d15 || d15 > d30) return false;
   P.dia = dia; P.minDias = Math.round(mn); P.maxDias = Math.round(mx); P.descontos = [[30,d30],[15,d15],[7,d7]];
+  const ff = num(f.f,1,10); if (ff !== null) P.formatos.find(x=>x[0]==="f")[3] = ff;   /* 15/11: Faixa */
   P.formatos.find(x=>x[0]==="t")[3] = ft; P.formatos.find(x=>x[0]==="w")[3] = fw; P.posicoes.find(x=>x[0]==="meio")[3] = pm; P.posicoes.find(x=>x[0]==="topo")[3] = pt;
   if (route()==="anunciar") adRefaz(); return true; }
 async function adPrecosCarrega(){ if (LOCAL) adPrecosAplica(store.get("anuncioPrecos", null)); if (!SB) return;
@@ -5140,6 +5162,7 @@ function adFace(d){ const nome = d.nome.trim() || "Sua marca", frase = d.frase.t
     <span class="adbot"><b class="adnome">${esc(nome)}</b><span class="adtxt">${esc(frase)}</span>${d.seg.trim() ? `<span class="adseg">${esc(d.seg.trim())}</span>` : ""}</span></span>`; }
 /* prévia: um bloco do feed (mosaico) com o anúncio no tamanho escolhido e os vizinhos em silhueta */
 function adPrevia(d, mini){ const [c1, c2] = AD_CORES[d.cor] || AD_CORES[0], area = {s:"1 / 1 / span 1 / span 2", t:"1 / 1 / span 2 / span 2", w:"1 / 1 / span 2 / span 4"}[d.fmt];
+  if (d.fmt === "f") return `<div class="blk adpv faixa${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio em faixa no feed"><div class="tile adtile faixa f" style="grid-area:1 / 1 / span 1 / span 6;--adc:${c1};--adc2:${c2}">${adFace(d)}</div></div>`;
   const sk = (a, img) => `<div class="adsk${img ? " img" : ""}" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
   const resto = d.fmt==="s" ? sk("2 / 1 / span 1 / span 2", 1) + sk("1 / 3 / span 2 / span 4") : d.fmt==="t" ? sk("1 / 3 / span 2 / span 4") : sk("1 / 5 / span 1 / span 2", 1) + sk("2 / 5 / span 1 / span 2", 1);
   return `<div class="blk adpv${mini ? " pq" : ""}" role="img" aria-label="Prévia do anúncio no feed"><div class="tile adtile ${d.fmt}" style="grid-area:${area};--adc:${c1};--adc2:${c2}">${adFace(d)}</div>${resto}</div>`; }
@@ -5577,8 +5600,8 @@ function planBlock(Q, final, g){
   const take = (pred, w=LOOK+1) => { const n = Math.min(Q.length, w); for (let i=0;i<n;i++) if (pred(Q[i])) return Q.splice(i,1)[0]; return null; };
   const cell = (it, size, r, c, rs, cs) => ({uid:it.uid, size, area:[r,c,rs,cs]});
   /* a mídia só sobe para o bloco atual se já estiver perto (janela curta): assim imagens e vídeos ficam espalhados pelo feed */
-  const adFmt = it => it.anuncio ? (it.ad.fmt || "s") : "", adPeq = it => it.anuncio && !it.ad.casa && adFmt(it)!=="w";
-  if (Q[0] && Q[0].anuncio && Q[0].ad.casa) return {casa:true, cells:[cell(Q.shift(),"bar",1,1,1,6)]};   /* 15/11: "Anuncie aqui" é uma faixa fina, do tamanho de uma linha */
+  const adFmt = it => it.anuncio ? (it.ad.casa ? "f" : it.ad.fmt || "s") : "", adPeq = it => it.anuncio && adFmt(it)!=="w" && adFmt(it)!=="f";
+  if (Q[0] && Q[0].anuncio && adFmt(Q[0])==="f") return {casa:true, cells:[cell(Q.shift(),"bar",1,1,1,6)]};   /* 15/11: Faixa (e o "Anuncie aqui"): uma linha fina, de ponta a ponta */
   const mediaCol = (c, w=LOOK+1) => { let m = take(it=>!isTextual(it) && !it.anuncio, w);
     if (!m){ const a = take(adPeq, w); if (!a) return null; if (adFmt(a)==="t") return [cell(a,"t",1,c,2,2)];
       const p = take(it=>it.tipo==="imagem", LOOK+6);
@@ -5608,8 +5631,8 @@ function planBlock(Q, final, g){
 }
 function tileHTML(it, cl, mode="none"){
   if (it.anuncio){ const a = it.ad, [r,c,rs,cs] = cl.area;
-    return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
-      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}" data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
+    return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}${a.casa || a.fmt==="f" ? " faixa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
+      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ' data-fmt="f"' : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
   const seal = sealTag(it, s);
@@ -5622,7 +5645,7 @@ function tileHTML(it, cl, mode="none"){
         <span class="tmain">${t.title}<span class="tbody"><p data-full="${esc(readText(it))}" data-g="${esc(it.gancho||"")}" data-max="${maxFrases(cl.size, cl.area[2], fotoOk(it, cl))}"></p></span><span class="tfoot">${t.foot}</span></span></span>`)(textParts(it));
   return `<div class="tile facewrap ${cl.size} ${isVid?"vid":""} ${s.lv==="bad"?"low":""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
     <button class="tbtn" type="button" data-act="topen" data-uid="${it.uid}" aria-label="Abrir ${kindOf(it)}: ${esc(it.titulo)}. ${s.label}${s.sc!==null?", nota "+s.sc:""}">${vis}${media?`<span class="tcap">${capHTML(it)}</span>`:""}</button>
-    ${media ? seal : ""}
+    ${media ? (ehExemplo(it) ? `<span class="tbadges">${seal}${EXTAG}</span>` : seal) : ""}
     ${isVid && it.src?`<span class="tctl"><button class="vbtn2" type="button" data-act="vmute" aria-label="Ativar som">${ic("mute")}</button><button class="vbadge t" type="button" data-act="vplay" aria-label="Reproduzir vídeo"><span class="vi">${ic("play","sm")}</span><span class="vt">${it.dur}</span></button></span><span class="vprog" aria-hidden="true"><i></i></span>`:""}
     ${saveBtn(it.uid, "savebtn")}${tileAcoes(it)}
   </div>`;
@@ -5825,7 +5848,7 @@ function partCard(it){ const t = it.tipo, P = PART[t], o = ORG[it.org] || {nome:
   else { const tot = (it.votos || []).reduce((x,y)=>x + y, 0), f = String(it.fecha || ""); quando = !f ? "" : /^até/i.test(f) ? f : "fecha " + f; medida = it.externo && !tot ? "Consulta pública" : `<b>${partN(tot)}</b> ${tot===1 ? "resposta" : "respostas"}`; }
   if (it.externo) ac = "Ver como participar";
   const feito = partFeito(it); if (feito) ac = ic("check","sm") + " " + partFeitoTxt(it);
-  return `<a class="pcard" data-pt="${t}" href="#pin-${esc(it.uid)}"><span class="pctop"><span class="pctipo">${P[0]}</span><span class="pcquando">${esc(quando)}</span></span>
+  return `<a class="pcard" data-pt="${t}" href="#pin-${esc(it.uid)}"><span class="pctop"><span class="pctipo">${P[0]}</span>${exTag(it)}<span class="pcquando">${esc(quando)}</span></span>
     <b class="pctit">${esc(it.titulo)}</b><span class="pcorg">${o.nome}${t==="evento" && it.local ? " · " + esc(it.local) : ""}</span>
     ${medida ? `<span class="pcmed">${medida}</span>` : ""}${barra!=null ? `<span class="pcbar" aria-hidden="true"><i style="width:${Math.max(3, Math.min(100, Math.round(barra*100)))}%"></i></span>` : ""}
     <span class="pcacao${feito ? " feito" : ""}">${ac}</span></a>`; }
@@ -5896,15 +5919,30 @@ const hubChCols = n => { const w = ($("#hubch") || $("#main .container") || docu
    pelo que a página publica, e o nome dela aparece na página como responsável. Sem candidatos, partidos ou campanhas.
    Por enquanto toda página passa pela curadoria (regra paginas_curadoria, liga e desliga no backoffice). */
 const PAGS = {lista:[], itens:{}, num:{}, secoes:{}, carregou:false};
+/* EXEMPLOS NO SITE REAL (15/11, Amanda): enquanto não há conteúdo original, cada lugar mostra cartões de exemplo, com a etiqueta "exemplo".
+   As páginas de exemplo (tatuagem, beleza, artesanato, escrita) e o que elas publicam vêm de uma cópia na memória (SBX), só de leitura.
+   Nada delas vai para o servidor: seguir, pedir orçamento, conversar e fazer check-in mostram um aviso. */
+let SBX = null;
+const exPagId = id => /^00000000-0000-4000-8000-0000000000a[0-9a-f]$/.test(String(id || ""));
+const sbP = pid => SBX && exPagId(pid) ? SBX : SB;
+const EX_AVISO = {follow:"Esta página é um exemplo. Numa página real, seguir faz o que ela publica chegar ao seu feed.", tatorcamento:"Esta página é um exemplo. Numa página real, aqui você pede orçamento direto para quem atende.",
+  tatconversa:"Esta página é um exemplo. Numa página real, a conversa do seu pedido fica aqui.", tatqr:"Esta página é um exemplo. Numa página real, o QR faz o check-in do atendimento.",
+  tatreferenda:"Esta página é um exemplo. Numa página real, outros profissionais referendam o trabalho aqui."};
+document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest("[data-act]"); if (!b || !EX_AVISO[b.dataset.act]) return;
+  const alvo = b.dataset.p || (String(b.dataset.org || "").startsWith("pg-") ? b.dataset.org.slice(3) : "") || (/^pg-/.test(route()) ? route().slice(3) : "");
+  if (!exPagId(alvo) || TESTE_HTML) return; e.preventDefault(); e.stopPropagation(); toast(EX_AVISO[b.dataset.act]); }, true);
+const exLimpa = x => { if (typeof x === "string") return x.replace(/\s*\(teste\)/gi, ""); if (Array.isArray(x)) return x.map(exLimpa);
+  if (x && typeof x === "object"){ const o = {}; for (const k in x) o[k] = exLimpa(x[k]); return o; } return x; };
 const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e por tudo o que ela publica, assim como pelo que publico em qualquer espaço da rede.online. As informações, ofertas e conteúdos publicados são verdadeiros e de minha responsabilidade, sigo os Termos de uso da rede.online e a lei, e respondo pessoalmente, com a minha conta verificada, pelo que for publicado em nome da página. (Declaração v2 · 14/11/2026)";
-function orgDaPagina(p){ const id = "pg-" + p.id;
+function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa(p);
   ORG[id] = Object.assign(ORG[id] || {}, {id, nome:limpo(p.nome) || "Página", sigla:siglaDe(limpo(p.nome)), cidade:limpo(p.cidade) || "", tema:limpo(p.tema) || "", membros:0, real:true, pagina:true,
     paginaTipo:p.tipo, natureza:p.tipo === "empresa" ? "página de empresa" : "página de conteúdo", cor:CORES_CONTA[(p.cor || 0) % CORES_CONTA.length], sobre:limpo(p.descricao) || "",
-    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido});
+    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, ficticia:exPagId(p.id)});
   return id; }
 async function paginasCarrega(){ if (!SB) return;
   try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
-    PAGS.lista = data || []; PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+    PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
 const pgPerfilHTML = uid => { const l = paginasDoPerfil(uid); return l.length ? `<p style="margin-top:6px">${l.length === 1 ? "Página" : "Páginas"}</p><div class="pgperfil">${l.map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a href="#pg-${p.id}">${avatar(o)}<span>${esc(o.nome)}</span></a>`; }).join("")}</div>` : ""; };
@@ -5922,7 +5960,7 @@ function pgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, f = S.follow.has
 function pgOrgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, h = cmnHash(id), f = S.follow.has(id), meu = ME.user && p.dono === ME.user.id;
   if (tatDe(p)) return tatCard(p, o, h, f, meu);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
-  return `<a class="cmncard kp ${orgAlt(h)}" href="#${id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["arcs","circles","stripes","grid","blocks"][h % 5]}, .3, false)}</span>${avatar(o)}
+  return `<a class="cmncard kp ${orgAlt(h)}" href="#${id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["arcs","circles","stripes","grid","blocks"][h % 5]}, .3, false)}</span>${o.ficticia ? `<span class="cmntag">${EXTAG}</span>` : ""}${avatar(o)}
     <span class="ktipo">${ic("doc","sm")}Página</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([p.tipo === "empresa" ? "Comercial" : "Pessoal", o.cidade].filter(Boolean).join(" · "))}</span>${o.sobre ? `<span class="cmnsobre">${esc(o.sobre)}</span>` : ""}
     <span class="cmnpe2"><span>${o.cnpj ? `<span class="cnpjselo cnpjp" style="margin:0 4px 0 0">${ic("predio","sm")}CNPJ</span>conferido` : "Responsável verificada"}</span>${pe}</span></a>`; }
 /* ===== TATUAGEM (14/11): primeiro nicho das Páginas. Ideias do Ink Creators, simplificadas.
@@ -5957,7 +5995,11 @@ async function tatCarrega(){ if (!SB) return; try{
   const [a, b, c] = await Promise.all([SB.from("pagina_tatuagem").select("pagina_id,modelo,modulos,papel,estilos,preco,preco_un,orc_tabela,orc_ref,tabela,agenda_aberta"), SB.rpc("tat_reputacao"), SB.from("pagina_equipe").select("estudio_id,tatuador_id,aceito_estudio,aceito_tatuador")]);
   TAT.fich = {}; (a.data || []).forEach(r=>{ TAT.fich[r.pagina_id] = r; });
   TAT.rep = {}; (b.data || []).forEach(r=>{ TAT.rep[r.pagina_id] = r; });
-  TAT.equipe = c.data || []; TAT.carregou = true; }catch(e){} }
+  TAT.equipe = c.data || [];
+  if (SBX){ const [x, y, z] = await Promise.all([SBX.from("pagina_tatuagem").select("*"), SBX.rpc("tat_reputacao"), SBX.from("pagina_equipe").select("*")]);   /* páginas de exemplo */
+    (x.data || []).filter(r=>exPagId(r.pagina_id)).forEach(r=>{ TAT.fich[r.pagina_id] = exLimpa(r); }); (y.data || []).filter(r=>exPagId(r.pagina_id)).forEach(r=>{ TAT.rep[r.pagina_id] = exLimpa(r); });
+    TAT.equipe = TAT.equipe.concat((z.data || []).filter(r=>exPagId(r.estudio_id))); }
+  TAT.carregou = true; }catch(e){} }
 const tatDe = p => p && TAT.fich[p.id];
 const tatAnos = p => Math.max(0, Math.floor((Date.now() - new Date(p.criada_em).getTime()) / (365.25*864e5)));
 const tatEstudio = p => { const e = TAT.equipe.find(x=>x.tatuador_id === p.id && x.aceito_estudio && x.aceito_tatuador); return e && PAGS.lista.find(y=>y.id === e.estudio_id && y.status === "aprovada"); };
@@ -6001,7 +6043,7 @@ function tatReputacaoHTML(p){ const r = tatRep(p), l = TAT.aval[p.id], eu = ME.u
     ${eqp.length && !ja ? `<button class="btn" type="button" data-act="tatreferenda" data-p="${p.id}" style="margin-top:10px">${ic("people","sm")} Referendar este trabalho</button>` : ""}
     <h3 class="psec">Avaliações</h3>${!l ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.slice(0, S.tatMais ? 40 : 8).map(a=>`<div class="setting l1 aval"><span class="t"><b><span class="tstar">${"★".repeat(a.nota)}</span> ${esc(limpo(a.autor_nome || "Pessoa tatuada"))}</b><small>${a.texto ? esc(a.texto) : ""}</small><small class="muted">${ic("check","sm")} sessão verificada · ${a.pos ? "saiu sabendo cuidar" : "saiu sem saber cuidar"} · dor ${a.dor === "igual" ? "como foi preparada" : a.dor === "mais" ? "maior que o preparado" : "menor que o preparado"} · ${quando(a.criado_em)}</small></span></div>`).join("")}</div>${l.length > 8 && !S.tatMais ? `<button class="btn ghost" type="button" data-act="tatmais" style="margin-top:10px">Ver mais avaliações</button>` : ""}` : `<p class="empty">Ainda sem avaliações.</p>`}`; }
 async function tatAvalCarrega(pid){ if (!SB || TAT.aval[pid]) return; TAT.aval[pid] = null;
-  try{ const {data} = await SB.from("pagina_avaliacoes").select("id,nota,pos,dor,texto,autor_nome,criado_em").eq("pagina_id", pid).order("criado_em", {ascending:false}).limit(40); TAT.aval[pid] = data || []; }catch(e){ TAT.aval[pid] = []; }
+  try{ const {data} = await sbP(pid).from("pagina_avaliacoes").select("id,nota,pos,dor,texto,autor_nome,criado_em").eq("pagina_id", pid).order("criado_em", {ascending:false}).limit(40); TAT.aval[pid] = data || []; }catch(e){ TAT.aval[pid] = []; }
   if (route() === "pg-" + pid && S.pgTab === "reputacao"){ const b = $("#pgbody"); if (b) b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], PAGS.lista.find(x=>x.id === pid), "reputacao"); } }
 function tatEquipeHTML(p){ const l = tatEquipe(p), meu = pgMeu(p), pend = TAT.equipe.filter(x=>x.estudio_id === p.id && !(x.aceito_estudio && x.aceito_tatuador));
   return `${l.length ? `<div class="cmngrid orgblocos">${l.map(pgOrgCard).join("")}</div>` : `<p class="empty">${meu ? "Convide as páginas de quem tatua no estúdio." : "Ninguém na equipe ainda."}</p>`}
@@ -6204,7 +6246,7 @@ async function tatFichaSalva(pid){ const m = $("#pgmod"); if (!m) return null;
   return error || null; }
 function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.papel === "tatuador" ? tatEstudio(p) : null, sl = tatSelos(p);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
-  return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span>${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
+  return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span>${o.ficticia ? `<span class="cmntag">${EXTAG}</span>` : ""}${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
     <span class="ktipo">${ic("doc","sm")}Página</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([tipoNome(p), est ? limpo(est.nome) : "", o.cidade].filter(Boolean).join(" · "))}</span>${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
     <span class="cmnpe2"><span>${mod(p, "equipe") && t.papel === "estudio" && tatEquipe(p).length ? `${tatEquipe(p).length} na equipe` : !mod(p, "reputacao") ? (mod(p, "loja") ? "Loja" : "") : r.n ? `★ ${nota(r.media)} (${r.n})` : "Sem avaliações"}${t.preco ? " · " + "$".repeat(t.preco) : ""}${mod(p, "agenda") && !agAberta(p) ? " · agenda fechada" : ""}</span>${pe}</span></a>`; }
 function paginasCorpo(){ const f = S.pgFiltro || "todas", ok = PAGS.lista.filter(p=>p.status === "aprovada" && (f === "todas" || modeloDe(p) === f) && !(ME.user && p.dono === ME.user.id)), minhas = minhasPaginas();
@@ -6322,7 +6364,7 @@ function pgPastaHTML(o, p){ const x = (PAGS.secoes[p.id] || []).find(y=>y.id===S
     ${!it.length ? `<p class="empty">${meu ? `Pasta vazia. Toque em ${ic("plus","sm")} para escolher o que entra.` : "Nada nesta pasta ainda."}</p>` : ""}
     ${vit.length ? `<div class="vitrine" style="margin-bottom:14px">${vit.map(i=>`<div class="vitem">${i.foto ? `<img class="vifoto" src="${esc(i.foto)}" alt="" loading="lazy">` : ""}<b>${esc(i.nome)}</b>${i.preco ? `<span class="vpreco">${esc(i.preco)}</span>` : ""}${i.descricao ? `<p>${esc(i.descricao)}</p>` : ""}${i.link || o.site ? `<div class="row" style="gap:6px;margin-top:4px"><a class="btn sm primary" href="${esc(i.link || o.site)}" target="_blank" rel="noopener nofollow">Quero ${ic("ext","sm")}</a></div>` : ""}</div>`).join("")}</div>` : ""}
     ${pubs.length ? `<div class="rwrap"><div data-mas="${pubs.map(i=>i.id).join(",")}" data-tiles="1"${feedDe(p) === "fotos" ? ' data-fotos="1"' : ""}></div></div>` : ""}`; }
-async function pgSecCarrega(pid){ if (!SB) return; try{ const {data, error} = await SB.from("pagina_secoes").select("id,nome,ordem,publicada,pastas").eq("pagina_id", pid).order("ordem").order("criado_em");
+async function pgSecCarrega(pid){ if (!SB) return; try{ const {data, error} = await sbP(pid).from("pagina_secoes").select("id,nome,ordem,publicada,pastas").eq("pagina_id", pid).order("ordem").order("criado_em");
     if (error) return; PAGS.secoes[pid] = (data || []).map(x=>Object.assign(x, {nome:limpo(x.nome), pastas:Array.isArray(x.pastas) ? x.pastas.map(f=>({id:f.id, nome:limpo(f.nome), itens:Array.isArray(f.itens) ? f.itens : []})) : []})); }catch(e){} }
 function pgRepinta(pid){ const t = S.pgTab || "pubs"; if (route() !== "pg-" + pid || !["pubs","pastas"].includes(t)) return; const b = $("#pgbody"); if (!b) return; b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], PAGS.lista.find(x=>x.id === pid), t); fillOrg(); }
 async function pgSecGrava(pid, x, patch){ const {error} = await SB.from("pagina_secoes").update(Object.assign({atualizada_em:new Date().toISOString()}, patch)).eq("id", x.id);
@@ -6338,10 +6380,10 @@ function sheetPgSecao(pid, x){ const nova = !x, tit = nova ? "Nova seção" : "E
 async function paginaPreenche(pid){ if (!PAGS.carregou) return; const p = PAGS.lista.find(x=>x.id === pid); if (!p) return;
   if (["pubs","pastas"].includes(S.pgTab || "pubs")) fillOrg();
   if (!PAGS.secoes[pid]){ pgSecCarrega(pid).then(()=>{ if (mod(p, "loja") && !PAGS.itens[pid]) return; pgRepinta(pid); }); }
-  if (SB){ try{ const {data} = await SB.rpc("pagina_numeros", {p_id:pid}); if (data){ PAGS.num[pid] = data; const n = $("#pgnum"), r = $("#pgresp");
+  if (SB){ try{ const {data} = await sbP(pid).rpc("pagina_numeros", {p_id:pid}); if (data){ PAGS.num[pid] = data; const n = $("#pgnum"), r = $("#pgresp");
       if (n){ n.innerHTML = `<span><b>${data.seguidores}</b> ${data.seguidores === 1 ? "seguidor" : "seguidores"}</span><span><b>${data.publicacoes}</b> ${data.publicacoes === 1 ? "publicação" : "publicações"}</span>`; n.hidden = false; }
-      if (r && data.responsavel) r.innerHTML = `${ic("check","sm")}<span><b>Responsável: <a href="#org-u-${esc(data.responsavel.id)}">${esc(limpo(data.responsavel.nome) || "Conta da rede")}</a></b>, conta verificada. Responde pessoalmente por tudo o que esta página publica: conteúdo, informações e ofertas.</span>`; } }catch(e){} }
-  if (mod(p, "loja") && !PAGS.itens[pid] && SB){ try{ const {data} = await SB.from("pagina_itens").select("id,nome,descricao,preco,link,foto,ordem").eq("pagina_id", pid).order("ordem").order("criado_em");
+      if (r && data.responsavel) r.innerHTML = `${ic("check","sm")}<span><b>Responsável: ${exPagId(pid) ? esc(exLimpa(limpo(data.responsavel.nome)) || "Pessoa de exemplo") + " " + EXTAG : `<a href="#org-u-${esc(data.responsavel.id)}">${esc(limpo(data.responsavel.nome) || "Conta da rede")}</a>`}</b>, conta verificada. Responde pessoalmente por tudo o que esta página publica: conteúdo, informações e ofertas.</span>`; } }catch(e){} }
+  if (mod(p, "loja") && !PAGS.itens[pid] && SB){ try{ const {data} = await sbP(pid).from("pagina_itens").select("id,nome,descricao,preco,link,foto,ordem").eq("pagina_id", pid).order("ordem").order("criado_em");
       PAGS.itens[pid] = (data || []).map(i=>Object.assign(i, {nome:limpo(i.nome), descricao:limpo(i.descricao), preco:limpo(i.preco), link:/^(https:\/\/|mailto:|tel:)/.test(i.link || "") ? i.link : ""}));
       if (S.pgTab === "vitrine" && route() === "pg-" + pid){ const b = $("#pgbody"); if (b) b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], p, "vitrine"); } else pgRepinta(pid); }catch(e){} } }
 function sheetPaginaNova(){
@@ -6418,11 +6460,12 @@ function orgMosaico(l){ const n = orgCols(), cols = Array.from({length:n}, ()=>[
 addEventListener("resize", ()=>{ clearTimeout(window.__ocT); window.__ocT = setTimeout(()=>{ const m = $(".orgmosaico"); if (m && +m.dataset.cols !== orgCols() && route() === "organizacoes"){ const y = scrollY; render(); scrollTo(0, y); } }, 150); });
 /* MERCADO (14/11): os produtos das páginas com Loja ligada, juntos. A compra é combinada com quem vende, fora da rede. */
 const MERC = {itens:null};
-async function mercadoCarrega(){ if (!SB) return; try{ const {data} = await SB.from("pagina_itens").select("id,pagina_id,nome,descricao,preco,link,foto,criado_em").order("criado_em", {ascending:false}).limit(120); MERC.itens = data || []; }catch(e){ MERC.itens = []; } if (route() === "organizacoes") render(); }
+async function mercadoCarrega(){ if (!SB) return; try{ const {data} = await SB.from("pagina_itens").select("id,pagina_id,nome,descricao,preco,link,foto,criado_em").order("criado_em", {ascending:false}).limit(120); MERC.itens = data || []; }catch(e){ MERC.itens = []; }
+  if (SBX){ try{ const r = await SBX.from("pagina_itens").select("*"); MERC.itens = MERC.itens.concat(exLimpa((r.data || []).filter(i=>exPagId(i.pagina_id)))); }catch(e){} }   /* lojas de exemplo */ if (route() === "organizacoes") render(); }
 function mercadoHTML(v){ if (!MERC.itens){ mercadoCarrega(); return `<p class="empty">Carregando…</p>`; }
   const l = MERC.itens.map(i=>({i, p:PAGS.lista.find(x=>x.id === i.pagina_id && x.status === "aprovada")})).filter(x=>x.p && mod(x.p, "loja"));
   const card = ({i, p}) => { const o = ORG["pg-" + p.id] || {}, h = hashN(i.id);
-    return `<a class="mcard" href="#pg-${p.id}"><span class="mfoto">${i.foto ? `<img src="${esc(i.foto)}" alt="" loading="lazy">` : art({id:h, art:CAPAS[h % 5]}, .45, false)}</span>
+    return `<a class="mcard" href="#pg-${p.id}"><span class="mfoto">${exPagId(p.id) ? `<span class="cmntag">${EXTAG}</span>` : ""}${i.foto ? `<img src="${esc(i.foto)}" alt="" loading="lazy">` : art({id:h, art:CAPAS[h % 5]}, .45, false)}</span>
       <span class="mtx"><b>${esc(limpo(i.nome))}</b>${i.preco ? `<span class="mpreco">${esc(limpo(i.preco))}</span>` : ""}<span class="mquem">${avatar(o)}${esc(o.nome || "")}</span></span></a>`; };
   return `<p class="lnote">Produtos de quem tem loja na rede. A compra é combinada direto com cada pessoa, fora da rede.online.</p>
     ${l.length ? (v === "soltos" ? orgMosaico(l.map(card)) : `<div class="cmngrid orgblocos">${l.map(card).join("")}</div>`) : `<p class="empty">Nenhum produto ainda.</p>`}`; }
@@ -6932,7 +6975,7 @@ function interact(it){
    reavaliar se aquele conteúdo merece um Para entender. Contribuições com fonte (confirma ou contesta) viram sinais
    que a curadoria revisa antes de mexer no selo. Tudo o que vem de pessoas é escapado antes de ir para a tela. */
 const uuidDe = h => h.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
-function alvoDe(it){ if (!it) return null;
+function alvoDe(it){ if (!it || it.exemplo) return null;
   if (it.coletada && /^n[0-9a-f]{32}$/.test(String(it.id))) return {col:"noticia_id", id:uuidDe(String(it.id).slice(1))};
   if (it.conta && it.uuid) return {col:"publicacao_id", id:it.uuid}; return null; }
 const pentSlot = it => { const a = alvoDe(it); return a && a.col==="noticia_id" ? `<aside class="pent" data-pent="${a.id}" aria-label="Para entender" hidden></aside>` : ""; };
@@ -7000,8 +7043,8 @@ function detailHTML(it, uid, mode, inline){
   const sibRow = p => `<button class="lk" type="button" data-act="open" data-uid="${p.uid}"><span class="lkic">${p.tipo==="imagem"?art(p,1,false):ic(p.tipo==="evento"?"clock":"doc")}</span><span class="t"><b>${p.titulo}</b><span>${kindOf(p)} · ${o.nome}</span></span>${ic("back","sm flip")}</button>`;
   const vis = isImg ? `<div class="pinvis">${isVid && it.yt ? `<div class="ytbox xvid"${S.ytAuto===it.yt ? " data-auto" : ""}>${ytCapa(it)}${ytPlayBtn(it, true)}</div>` : isVid && !it.src ? `<a class="xvid" href="${it.ext ? it.ext.url : "#"}" target="_blank" rel="noopener" aria-label="Assistir: ${esc(it.titulo)}">${art(it, .5625, false)}<span class="xplay big">${ic("play")}<span>Assistir ${it.plat?"no "+esc(it.plat):""}</span></span></a>` : isVid?`<video class="pinvid" ${inline?"":'id="pinvid"'} src="${it.src}" poster="${it.poster}" controls playsinline preload="metadata" style="--ar:${(1/it.ar).toFixed(4)}" aria-label="Vídeo: ${esc(it.titulo)}"></video>`:(it.foto && it.tipo==="imagem" ? `<img class="pinarte" src="${esc(it.foto)}" alt="${esc(it.titulo)}${it.artista ? ", arte de " + esc(it.artista) : ""}" style="aspect-ratio:${(1/(it.ar||1.41)).toFixed(4)}" referrerpolicy="no-referrer">` : art(it, it.ph))}${inline?"":`<button class="iconbtn solid floatback" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button>`}</div>` : "";
   /* tipo na linha dos ícones; autoria vira linha de crédito logo abaixo do título */
-  const tipoTopo = `<span class="fkind pinkind toptipo" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span><div class="spacer"></div>`;
-  const autor = it.daArte ? "" : `<div class="credito">${avatar(o)}<span class="t"><button class="who" type="button" data-act="openorg" data-org="${o.id}">${o.nome}</button>${String(o.id).startsWith("pg-") ? pgSelo(o.id.slice(3)) : verifBtn(o.verificado)}${ficTag(o)}<span class="cm"> · ${it.ext ? dLabel(it.ext.data) : tempo(it.min)}${it.editada ? " · editada" : ""}${o.pessoa ? "" : ` · <button class="linkbtn segue${f?" on":""}" type="button" data-act="follow" data-org="${o.id}">${f?(o.real?"Seguindo":"Participando"):(o.real?"Seguir":"Participar")}</button>`}</span></span></div>`;
+  const tipoTopo = `<span class="fkind pinkind toptipo" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span>${exTag(it)}<div class="spacer"></div>`;
+  const autor = it.daArte ? "" : `<div class="credito">${avatar(o)}<span class="t"><button class="who" type="button" data-act="openorg" data-org="${o.id}">${o.nome}</button>${String(o.id).startsWith("pg-") ? pgSelo(o.id.slice(3)) : verifBtn(o.verificado)}<span class="cm"> · ${it.ext ? dLabel(it.ext.data) : tempo(it.min)}${it.editada ? " · editada" : ""}${o.pessoa ? "" : ` · <button class="linkbtn segue${f?" on":""}" type="button" data-act="follow" data-org="${o.id}">${f?(o.real?"Seguindo":"Participando"):(o.real?"Seguir":"Participar")}</button>`}</span></span></div>`;
   const bar = inline
     ? `<div class="pinbar">${tipoTopo}
         <button class="iconbtn" type="button" data-act="page" data-uid="${uid}" aria-label="Abrir em página própria" title="Abrir em página própria">${ic("expand")}</button>${likeBtn(it)}<button class="iconbtn" type="button" data-act="share" data-uid="${uid}" aria-label="Copiar link">${ic("share")}</button>${saveBtn(uid)}${editBtn(it, uid)}${podeApagar(it) ? `<button class="iconbtn" type="button" data-act="apagarreal" data-uid="${uid}" aria-label="${ME.user && it.autorId===ME.user.id ? "Apagar publicação" : "Remover (moderação)"}" title="${ME.user && it.autorId===ME.user.id ? "Apagar publicação" : "Remover (moderação)"}">${ic("trash")}</button>` : ""}
@@ -7348,10 +7391,11 @@ function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(D
       ["denuncia_analisada","Moderação","Denúncias e contestações","Quando uma denúncia sua é analisada."],["anuncio","Anúncios","Andamento do seu anúncio","Quando o seu anúncio muda de situação."],["avisos_rede","Rede","Avisos da rede.online","Avisos gerais da administração."]]
       .map(([chave,grupo,nome,descricao],i)=>({chave, grupo, nome, descricao, existe:true, padrao:true, ordem:(i+1)*10}))}};
 }
-function mockSB(){
-  const K = "arede-teste-db", MID = {}; let db = null;
-  try{ db = JSON.parse(localStorage.getItem(K)); }catch(e){} if (!db || db.v !== 1) db = testeSemente();
-  const salva = () => { try{ localStorage.setItem(K, JSON.stringify(db)); }catch(e){} };
+function mockSB(o = {}){
+  /* o.mem (15/11): cópia só de leitura, na memória, sem ninguém logado. No site real, serve as páginas de exemplo. */
+  const K = o.mem ? null : "arede-teste-db", MID = {}; let db = null;
+  if (K) try{ db = JSON.parse(localStorage.getItem(K)); }catch(e){} if (!db || db.v !== 1) db = testeSemente(); if (o.mem) db.logada = false;
+  const salva = () => { if (!K) return; try{ localStorage.setItem(K, JSON.stringify(db)); }catch(e){} };
   const novoId = () => crypto.randomUUID ? crypto.randomUUID() : "t" + Date.now().toString(36) + Math.random().toString(36).slice(2);
   const agora = () => new Date().toISOString(), tab = t => db.t[t] || (db.t[t] = []);
   const eu = () => db.logada ? TESTE_EU : null, perfil = id => tab("perfis").find(p=>p.id === id);
@@ -7718,7 +7762,8 @@ function sbCarrega(){ return new Promise(ok=>{ if (window.supabase) return ok(tr
 async function contaInicia(){
   const veio = new URLSearchParams(location.search), erroUrl = veio.get("error_description");
   if (TESTE_HTML){ SB = mockSB(); testeChip(); }
-  else { if (!(await sbCarrega())){ ME.offline = true; ME.pronto = true; noticiasCarrega(); contaAtualiza(); redesAtualizaTodas(); acessoMudou(true); return; }
+  else { try{ SBX = mockSB({mem:true}); }catch(e){ SBX = null; }   /* 15/11: as páginas de exemplo vêm desta cópia, até haver páginas reais */
+    if (!(await sbCarrega())){ ME.offline = true; ME.pronto = true; noticiasCarrega(); contaAtualiza(); redesAtualizaTodas(); acessoMudou(true); return; }
   try{ SB = window.supabase.createClient(SB_URL, SB_KEY, {auth:{flowType:"pkce", detectSessionInUrl:true, persistSession:true, autoRefreshToken:true}}); }
   catch(e){ ME.offline = true; ME.pronto = true; contaAtualiza(); return; } }
   SB.auth.onAuthStateChange((ev, ses)=>{ ME.user = ses ? ses.user : null;
@@ -7841,7 +7886,8 @@ async function publicacoesCarrega(){ if (!SB) return;
   const {data, error} = await SB.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}).limit(200);
   if (error || !data) return;
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].conta) POOL.splice(i, 1);
-  data.slice().reverse().forEach(p=>POOL.unshift(itemDaPublicacao(p)));
+  let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
+  data.concat(ex).slice().reverse().forEach(p=>{ const it = itemDaPublicacao(p); if (exPagId(p.pagina_id)) it.exemplo = true; POOL.unshift(it); });   /* 15/11: o que as páginas de exemplo publicam é exemplo */
   await prioridadesCarrega(data.map(p=>p.autor));
   F.key = null; const r = route(); if (r==="inicio" || r==="" || r==="organizacoes" || r.startsWith("pg-") || r.startsWith("org-")) render(); }   /* 15/11: a página aberta direto pelo link também mostra as publicações */
 
@@ -9227,7 +9273,7 @@ const A = {
   csatnota: b => { const c = USO.csat; if (!c) return; c.nota = +b.dataset.v; csatManda(false); sheetCsat(); },   /* a nota já fica guardada, mesmo que a pessoa feche sem enviar */
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
-  anunciar: () => { closeSheet(); go("anunciar"); },
+  anunciar: b => { closeSheet(); if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
   adset: b => { const d = adDraft(), k = b.dataset.k, v = b.dataset.v; d[k] = (k==="cor" || k==="dias") ? +v : v; adGuarda(); adRefaz(); },
   addia: b => { const d = adDraft(); d.dias = Math.max(AD_PRECO.minDias, Math.min(AD_PRECO.maxDias, (d.dias|0) + (+b.dataset.v))); adGuarda(); adRefaz(); },
   admeio: b => { adDraft().meio = b.dataset.v; adGuarda(); sheetAdRevisar(); },
@@ -9827,7 +9873,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 10:36";
+const VERSAO = "v1 registrada · 15/11 10:49";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
