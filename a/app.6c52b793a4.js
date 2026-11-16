@@ -2413,7 +2413,7 @@ function sheetOrcamento(pid, modo){ if (!ME.user) return A.acessar(); const p = 
   const fi = $("#orcfile"); S.orcRefs = []; if (fi) fi.addEventListener("change", async ()=>{ const a = fi.files && fi.files[0]; fi.value = ""; if (!a) return; if (S.orcRefs.length >= 3) return toast("Até 3 fotos.");
     try{ S.orcRefs.push(await fotoReduz(a, 1000)); $("#orcrefs").innerHTML = S.orcRefs.map((u, i)=>`<span class="orcref"><img src="${u}" alt="Referência ${i+1}"><button class="iconbtn solid" type="button" data-act="orcreftira" data-i="${i}" aria-label="Tirar a foto">${ic("close","sm")}</button></span>`).join(""); }catch(e){ toast("Não foi possível usar essa imagem."); } }); }
 function fotoReduz(file, max){ return new Promise((ok, erro)=>{ const img = new Image(), u = URL.createObjectURL(file); img.onload = ()=>{ const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", .82)); }; img.onerror = erro; img.src = u; }); }
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL(IMG_TIPO, IMG_Q)); }; img.onerror = erro; img.src = u; }); }
 const PED = {lista:null, msgs:{}};
 async function pedCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.from("tat_pedidos").select("*").order("atualizado_em", {ascending:false}); PED.lista = data || []; }catch(e){ PED.lista = []; } }
 const pedPagina = x => PAGS.lista.find(p=>p.id === x.pagina_id) || {};
@@ -2632,11 +2632,11 @@ function sheetCapa(alvo){ const op = []; CAPAS.forEach((t, i)=>[3, 11].forEach(n
   const f = $("#capafile"); if (f) f.addEventListener("change", async ()=>{ const a = f.files && f.files[0]; if (!a) return; if (a.size > 12e6) return toast("Imagem grande demais (até 12 MB).");
     try{ const v = await capaReduz(a); await capaGrava(alvo, v); }catch(e){ toast("Não foi possível usar essa imagem."); } }); }
 function capaReduz(file){ return new Promise((ok, erro)=>{ const img = new Image(), u = URL.createObjectURL(file); img.onload = ()=>{ const W = 1600, H = 560, c = document.createElement("canvas"); c.width = W; c.height = H;
-    const r = Math.max(W / img.width, H / img.height), w = img.width * r, h = img.height * r; c.getContext("2d").drawImage(img, (W - w) / 2, (H - h) / 2, w, h); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", .8)); };
+    const r = Math.max(W / img.width, H / img.height), w = img.width * r, h = img.height * r; c.getContext("2d").drawImage(img, (W - w) / 2, (H - h) / 2, w, h); URL.revokeObjectURL(u); ok(c.toDataURL(IMG_TIPO, IMG_WEBP ? .78 : .8)); };
   img.onerror = erro; img.src = u; }); }
 async function midiaSobe(v, pre){ if (TESTE_HTML || !/^data:image\//.test(v || "")) return v;
-  const blob = await (await fetch(v)).blob(), nome = ME.user.id + "/" + pre + "-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + ".jpg";
-  const up = await SB.storage.from("midia").upload(nome, blob, {contentType:"image/jpeg", upsert:false}); if (up.error) throw up.error;
+  const blob = await (await fetch(v)).blob(), tipo = blob.type === "image/webp" ? "image/webp" : "image/jpeg", nome = ME.user.id + "/" + pre + "-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + "." + imgExt(tipo);
+  const up = await SB.storage.from("midia").upload(nome, blob, {contentType:tipo, upsert:false}); if (up.error) throw up.error;
   return SB.storage.from("midia").getPublicUrl(nome).data.publicUrl; }
 async function capaGrava(alvo, v){ const [k, id] = alvo.split(/:(.+)/);
   if (k === "pg"){ try{ v = await midiaSobe(v, "capa"); }catch(e){ return toast(erroAuth(e)); }
@@ -5356,10 +5356,15 @@ const erroAuth = e => { const m = (e && e.message) || String(e); const f = ERROS
 const ocupado = (b, on, txt) => { if (!b) return; if (on){ b.dataset.txt = b.innerHTML; b.disabled = true; b.textContent = txt || "Aguarde…"; } else { b.disabled = false; if (b.dataset.txt) b.innerHTML = b.dataset.txt; } };
 
 /* comprime a foto no aparelho antes de enviar (até 1600 px, JPEG) */
-function fotoComprime(file){ return new Promise((ok, no)=>{ const img = new Image(), u = URL.createObjectURL(file);
-  img.onload = () => { const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+/* 16/11 (custos, passo 3): fotos em WebP quando o aparelho sabe gerar (cerca de 30% menores que JPEG na mesma qualidade);
+   senão, JPEG como antes. Lado maior de até 1440 px, que cobre telas de alta definição no maior cartão. */
+const IMG_WEBP = (()=>{ try{ const c = document.createElement("canvas"); c.width = c.height = 1; return c.toDataURL("image/webp").startsWith("data:image/webp"); }catch(e){ return false; } })();
+const IMG_TIPO = IMG_WEBP ? "image/webp" : "image/jpeg", IMG_Q = IMG_WEBP ? .8 : .82;
+const imgExt = t => t === "image/webp" ? "webp" : "jpg";
+function fotoComprime(file, max = 1440){ return new Promise((ok, no)=>{ const img = new Image(), u = URL.createObjectURL(file);
+  img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
     c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    c.toBlob(b=>{ URL.revokeObjectURL(u); b ? ok(b) : no(new Error("imagem")); }, "image/jpeg", .84); };
+    c.toBlob(b=>{ URL.revokeObjectURL(u); b ? ok(b) : no(new Error("imagem")); }, IMG_TIPO, IMG_Q); };
   img.onerror = () => no(new Error("Não foi possível ler a imagem.")); img.src = u; }); }
 
 /* CRIAR com a conta real: publica no servidor, em seu nome */
@@ -5619,8 +5624,11 @@ const A = {
     if (!f) return erro("Escolha a foto ou o PDF do documento."); if (f.size > 5*1024*1024) return erro("O arquivo passa de 5 MB. Tente uma foto menor.");
     const ext = (f.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || (f.type==="application/pdf" ? "pdf" : "jpg");
     if (!/^(jpe?g|png|webp|heic|pdf)$/.test(ext)) return erro("Use foto (JPG, PNG, WEBP, HEIC) ou PDF.");
-    ocupado(b, true, "Enviando…"); const caminho = `${ME.user.id}/${Date.now()}.${ext}`, B = SB.storage.from("verificacao-docs");
-    const up = await B.upload(caminho, f, {contentType:f.type || undefined, upsert:false});
+    ocupado(b, true, "Enviando…");
+    /* 16/11 (custos): foto de documento é reduzida no aparelho (2000 px, legível); PDF e HEIC sobem como estão */
+    const corpo = /^image\/(jpeg|png|webp)$/.test(f.type) ? await fotoComprime(f, 2000).catch(()=>f) : f, ext2 = corpo === f ? ext : imgExt(corpo.type);
+    const caminho = `${ME.user.id}/${Date.now()}.${ext2}`, B = SB.storage.from("verificacao-docs");
+    const up = await B.upload(caminho, corpo, {contentType:corpo.type || undefined, upsert:false});
     if (up.error){ ocupado(b, false); return erro("Não deu para enviar o arquivo. " + erroAuth(up.error)); }
     const r = await SB.rpc("verificacao_envia", {p_tipo:tipo, p_doc_tipo:tipo==="instituicao" ? "documento da instituição" : "documento com foto", p_path:caminho, p_cpf:IDENT_EXIGE && tipo === "pessoa" ? cpf : null});
     if (r.error){ await B.remove([caminho]); ocupado(b, false); return erro(erroAuth(r.error)); }
@@ -5737,8 +5745,8 @@ const A = {
     if (f && f.size > 5*1024*1024) return formErro("A imagem passa de 5 MB.");
     formErro(""); ocupado(b, true, f ? "Enviando a imagem…" : ed ? "Salvando…" : "Publicando…");
     let imagem_url = velha && !($("#rsemfoto") && $("#rsemfoto").checked) ? velha.imagem_url || null : null;
-    try{ if (f){ const blob = await fotoComprime(f), nome = ME.user.id + "/" + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + ".jpg";
-        const up = await SB.storage.from("midia").upload(nome, blob, {contentType:"image/jpeg", upsert:false}); if (up.error) throw up.error;
+    try{ if (f){ const blob = await fotoComprime(f), nome = ME.user.id + "/" + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + "." + imgExt(blob.type);
+        const up = await SB.storage.from("midia").upload(nome, blob, {contentType:blob.type || "image/jpeg", upsert:false}); if (up.error) throw up.error;
         imagem_url = SB.storage.from("midia").getPublicUrl(nome).data.publicUrl; }
       b.textContent = ed ? "Salvando…" : "Publicando…";
       const dados = {titulo:tit, texto:txt, tema:$("#rtema").value, cidade:$("#rcid").value.trim() || null, imagem_url, extra};
@@ -6419,7 +6427,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 10:41";
+const VERSAO = "v1 registrada · 16/11 11:22";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
