@@ -530,7 +530,8 @@ button.setting{width:100%;border:0;text-align:left;color:var(--ink)}
 .tfoot{flex:none;display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:4px}
 .tface.aperta .fctx .ftag,.tface.aperta .fctx .indtag,.tface.aperta2 .fctx{display:none}
 /* pé em 2 linhas: cada linha cabe numa só; o que não cabe vai para uma segunda linha escondida (sai inteiro, sem corte) */
-.fctx,.finfo{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:6px;height:18px;line-height:18px;overflow:hidden;font-size:12px;color:var(--muted);min-width:0}
+.fctx,.finfo .fmais{font-weight:600;color:var(--ink-2,var(--ink));white-space:nowrap}
+.finfo{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:6px;height:18px;line-height:18px;overflow:hidden;font-size:12px;color:var(--muted);min-width:0}
 .fctx > *,.finfo > *{flex:none;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .fctx .tloc{overflow:visible}.fctx .tloc b{overflow:visible}
 .finfo > span + span::before{content:"·";margin-right:8px;color:var(--muted)}

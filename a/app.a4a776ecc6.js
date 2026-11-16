@@ -1121,7 +1121,9 @@ function footInfo(it){
     return I(...t, `participar em ${esc(it.ext.dom)} ↗`); }
   if (it.daArte) return I(esc(it.artista || "Autoria não informada"), "Design Ativista ↗");
   if (it.daRede) return I(`<b>${esc(o.nome)}</b>`, (it.notaFilme ? `<span class="rstars" aria-label="nota ${String(it.notaFilme).replace(".",",")} de 5">${estrelas(it.notaFilme)}</span> ` : "") + REDES[it.rede].nome + " ↗", dLabel(it.ext.data));
-  if (it.ext && (it.tipo==="texto" || it.tipo==="imagem" || it.tipo==="video")) return I(`<b>${esc(o.nome)}</b> ↗`, dLabel(it.ext.data));
+  /* 16/11 (Amanda): a mesma notícia em outras fontes aparece como "+N fontes" ao lado do nome; os detalhes seguem no selo */
+  if (it.ext && (it.tipo==="texto" || it.tipo==="imagem" || it.tipo==="video")){ const nm = new Set((it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia").map(v=>v.fonte).filter(f=>f && f!==o.nome)).size;
+    return I(`<b>${esc(o.nome)}</b> ↗`, nm ? `<span class="fmais">+${nm} ${nm===1 ? "fonte" : "fontes"}</span>` : "", dLabel(it.ext.data)); }
   switch(it.tipo){
     case "evento": return I(esc(it.hora), esc(it.local), `${vaoOf(it)} vão${S.rsvp[it.uid]==="vou" ? " · você vai" : ""}`);
     case "enquete": { const p = pollState(it), i = p.lead;
@@ -6600,7 +6602,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 14:21";
+const VERSAO = "v1 registrada · 16/11 14:26";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
