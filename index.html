@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-XSIU12nVZG679ODMzEwQ2CaFhjnSx0/sHx9CNmVJv48=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-gjMoKddK+v4TwPsYYigep08U4jYUHuKg6kqmlyYdFyc=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -2122,8 +2122,7 @@ p.phrep{cursor:default}.phrep{display:flex;align-items:center;gap:6px;max-width:
 .qrselo{flex:none;width:52px;height:52px;margin:0 0 -2px;padding:0;border:0;border-radius:12px;background:color-mix(in srgb,var(--bg) 94%,transparent);color:var(--ink);box-shadow:0 2px 10px rgba(0,0,0,.14);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;pointer-events:auto;display:grid;place-items:center}
 .qrselo svg{width:48px;height:48px;display:block}.qrselo:hover{transform:translateY(-1px)}
 @media (min-width:768px){ .qrselo{width:60px;height:60px} .qrselo svg{width:56px;height:56px} }
-.iconbtn.qrac{position:relative;overflow:visible}
-.ibnum{position:absolute;right:-4px;bottom:-4px;min-width:20px;height:18px;padding:0 5px;border-radius:999px;background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line);font-size:10.5px;font-weight:700;line-height:18px;text-align:center;pointer-events:none}
+.phver{display:inline-flex;align-items:center;gap:4px}.phi{white-space:nowrap}.phver .icon{width:14px;height:14px}
 @media (max-width:480px){ .phcapa .phtop .phacoes{gap:4px} .phcapa .phacoes .iconbtn{width:36px;height:36px} .phcapa .phacoes .iconbtn .icon{width:18px;height:18px} }
 /* LINHA DO ALTO (15/11): voltar, tipo do lugar e ações, igual em perfil, página e comunidade */
 .lugtopo{display:flex;align-items:center;gap:8px;width:100%;min-height:48px}
@@ -3821,6 +3820,7 @@ const ICON = {
   compass:'<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
   message:'<path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/>',
+  msgcifrao:'<path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M12 7.4v7.2M13.9 9.2c-.3-.7-1-1.1-1.9-1.1-1.1 0-1.9.6-1.9 1.4 0 2 4 1.1 4 3.2 0 .9-.8 1.4-2 1.4-1 0-1.8-.5-2.1-1.2" stroke-width="1.5"/>',
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
   trash:'<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
   back:'<path d="M15 5l-7 7 7 7"/>',
@@ -6057,7 +6057,7 @@ let SBX = null;
 const exPagId = id => /^00000000-0000-4000-8000-0000000000a[0-9a-f]$|^00000000-0000-4000-8000-0000000002[0-9a-f]{2}$/.test(String(id || ""));
 const sbP = pid => SBX && exPagId(pid) ? SBX : SB;
 const EX_AVISO = {follow:"Esta página é um exemplo. Numa página real, seguir faz o que ela publica chegar ao seu feed.", tatorcamento:"Esta página é um exemplo. Numa página real, aqui você pede orçamento direto para quem atende.",
-  tatconversa:"Esta página é um exemplo. Numa página real, a conversa do seu pedido fica aqui.", tatqr:"Esta página é um exemplo. Numa página real, o QR faz o check-in do atendimento.",
+  tatconversa:"Esta página é um exemplo. Numa página real, aqui você pede orçamento e, depois, conversa com quem atende.", tatqr:"Esta página é um exemplo. Numa página real, o QR faz o check-in do atendimento.",
   tatreferenda:"Esta página é um exemplo. Numa página real, outros profissionais referendam o trabalho aqui."};
 document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest("[data-act]"); if (!b || !EX_AVISO[b.dataset.act]) return;
   const alvo = b.dataset.p || (String(b.dataset.org || "").startsWith("pg-") ? b.dataset.org.slice(3) : "") || (/^pg-/.test(route()) ? route().slice(3) : "");
@@ -6156,7 +6156,9 @@ const agAberta = p => { const f = tatDe(p); return !f || f.agenda_aberta !== fal
 const agTag = p => mod(p, "agenda") ? `<span class="agtag ${agAberta(p) ? "on" : "off"}"><i aria-hidden="true"></i>Agenda ${agAberta(p) ? "aberta" : "fechada"}</span>` : "";
 function tatResumo(p){ const f = tatDe(p), preco = f && f.preco ? tatPreco(f) : "";   /* 15/11: estrelas e custo na linha do tipo; sessões verificadas viram ícone na linha dos números */
   const r = tatRep(p), est = mod(p, "reputacao") ? (r.n ? `<button class="phstar" type="button" data-act="pgtab" data-tab="reputacao" aria-label="Nota ${nota(r.media)}, ${r.n} ${r.n===1 ? "avaliação" : "avaliações"}: ver a reputação"><span class="tstar" aria-hidden="true">★</span> <b>${nota(r.media)}</b> (${r.n})</button>` : `<button class="phstar" type="button" data-act="pgtab" data-tab="reputacao">sem avaliações</button>`) : "";
-  return [preco, est, agTag(p)].filter(Boolean).join(" · "); }   /* 15/11: primeiro o custo, depois as estrelas */
+  const nv = mod(p, "reputacao") ? (r.sessoes || 0) : 0, tv = modeloDe(p) === "tatuagem";
+  const ver = nv ? `<button class="phstar phver" type="button" data-act="pgtab" data-tab="reputacao" aria-label="${nv} ${tv ? (nv===1 ? "sessão verificada" : "sessões verificadas") : (nv===1 ? "atendimento verificado" : "atendimentos verificados")} por QR: ver a reputação">${ic("qrselo","sm")}<b>${nv > 999 ? "999+" : nv}</b>${tv ? (nv===1 ? "sessão verificada" : "sessões verificadas") : (nv===1 ? "atendimento verificado" : "atendimentos verificados")}</button>` : "";
+  return [preco, est, ver, agTag(p)].filter(Boolean).map(x=>`<span class="phi">${x}</span>`).join("&nbsp;· "); }   /* 15/11: primeiro o custo, depois as estrelas */
 const tatSesIcone = p => { if (!mod(p, "reputacao")) return ""; const n = tatRep(p).sessoes || 0; if (!n) return "";
   const t = `${n} ${modeloDe(p) === "tatuagem" ? (n===1 ? "sessão verificada" : "sessões verificadas") : (n===1 ? "atendimento verificado" : "atendimentos verificados")}`;
   const fs = n >= 1000 ? 10 : n >= 100 ? 12.5 : 15, fi = (x, y) => `<rect x="${x}" y="${y}" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="${x+3}" y="${y+3}" width="3" height="3" rx=".6" fill="currentColor"/>`;
@@ -6440,9 +6442,14 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const aviso = p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
   const ib = (act, icn, rot, extra, cl) => `<button class="iconbtn${cl ? " " + cl : ""}" type="button" data-act="${act}" ${extra || ""} aria-label="${rot}" title="${rot}">${ic(icn)}</button>`;
   /* 15/11: o QR é uma ação. Quem é atendido faz o check-in ali e começa a sessão; quem atende mostra o QR da próxima sessão. O número é o de sessões já verificadas. */
-  const nses = tt && mod(p, "reputacao") ? (tatRep(p).sessoes || 0) : 0, qrb = tt && mod(p, "agenda") && p.status === "aprovada" ? `<button class="iconbtn qrac" type="button" data-act="tatqr" data-p="${pid}" aria-label="${meu ? "Mostrar o QR do check-in" : "Fazer check-in"}${nses ? ` (${nses} ${nses===1 ? "sessão verificada" : "sessões verificadas"})` : ""}" title="${meu ? "QR do check-in" : "Check-in"}">${ic("qrselo")}${nses ? `<span class="ibnum" aria-hidden="true">${nses > 999 ? "999+" : nses}</span>` : ""}</button>` : "";
+  /* 16/11: o QR continua: quem atende mostra o QR do dia; quem é atendido vê o QR só quando tem sessão marcada nesta página (em destaque na janela do check-in). As sessões verificadas foram para a linha das estrelas. */
+  const qrb = meu && tt && mod(p, "agenda") && p.status === "aprovada" ? `<button class="iconbtn" type="button" data-act="tatqr" data-p="${pid}" aria-label="Mostrar o QR do check-in" title="QR do check-in">${ic("qrselo")}</button>` : "";
+  if (!meu && tt && mod(p, "agenda") && ME.user && SB && SES.minhas === null && !SES.pedindo){ SES.pedindo = true; sesCarrega("cliente", ME.user.id).then(l=>{ SES.minhas = l; SES.pedindo = false; if (route() === "pg-" + pid && l.some(y=>y.pagina_id === pid && y.status === "marcada")) render(); }).catch(()=>{ SES.pedindo = false; }); }
+  const sesV = !meu && tt && mod(p, "agenda") && SES.minhas ? SES.minhas.filter(y=>y.pagina_id === pid && y.status === "marcada" && new Date(y.quando).getTime() + 12*36e5 > Date.now()).sort((a, c)=>new Date(a.quando) - new Date(c.quando))[0] : null;
+  const qrv = sesV ? `<button class="iconbtn${sesJanela(sesV) ? " prim" : ""}" type="button" data-act="tatqr" data-p="${pid}" aria-label="Check-in da sua ${modeloDe(p) === "tatuagem" ? "sessão" : "atendimento"}, ${dataHora(sesV.quando)}" title="Check-in">${ic("qrselo")}</button>` : "";
+  const orcb = tt && mod(p, "orcamento") && (tt.orc_tabela || tt.orc_ref) ? ib("tatconversa", "msgcifrao", "Pedir orçamento ou abrir a conversa do seu pedido", `data-p="${pid}"`) : "";
   const acoes = meu ? (p.status === "aprovada" ? ib("ctypereal", "plus", "Publicar como página", 'data-k="texto"', "prim") : "") + qrb + ib("paginaedita", "lapis", "Editar página", `data-id="${pid}"`) + ib("share", "share", "Compartilhar", `data-perfil="pg-${pid}"`)
-    : (p.status === "aprovada" ? (tt && mod(p, "orcamento") && (tt.orc_tabela || tt.orc_ref) ? ib("tatorcamento", "cifrao", "Pedir orçamento", `data-p="${pid}"`) : "") + qrb + (tt && mod(p, "orcamento") && (tt.orc_tabela || tt.orc_ref) ? ib("tatconversa", "message", "Conversar", `data-p="${pid}"`) : "")
+    : (p.status === "aprovada" ? qrv + orcb
       + `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo. Tocar para deixar de seguir" : "Seguir"}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>` : "") + ib("share", "share", "Compartilhar", `data-perfil="pg-${pid}"`);
   const est = tt && tt.papel === "tatuador" ? tatEstudio(p) : null;
   const tipo = tipoNome(p);
@@ -9714,8 +9721,8 @@ const A = {
   tataceita: async b => { const {error} = await SB.from("pagina_equipe").update({aceito_tatuador:true}).eq("estudio_id", b.dataset.e).eq("tatuador_id", b.dataset.p); if (error) return toast(erroAuth(error)); await tatCarrega(); toast("Agora esta página aparece na equipe do estúdio."); render(); },
   tatrecusa: async b => { const {error} = await SB.from("pagina_equipe").delete().eq("estudio_id", b.dataset.e).eq("tatuador_id", b.dataset.p); if (error) return toast(erroAuth(error)); await tatCarrega(); toast("Convite recusado."); render(); },
   tatorcamento: b => sheetOrcamento(b.dataset.p),
-  tatconversa: async b => { if (!ME.user) return A.acessar(); if (!PED.lista) await pedCarrega(); const x = (PED.lista || []).find(y=>y.pagina_id === b.dataset.p && y.cliente === ME.user.id);
-    if (x) return go("conversa-" + x.id); toast("A conversa começa com um pedido de orçamento."); sheetOrcamento(b.dataset.p); },
+  tatconversa: async b => { if (!ME.user) return sheetOrcamento(b.dataset.p); if (!PED.lista) await pedCarrega(); const x = (PED.lista || []).find(y=>y.pagina_id === b.dataset.p && y.cliente === ME.user.id);
+    if (x) return go("conversa-" + x.id); sheetOrcamento(b.dataset.p); },
   orcmodo: b => sheetOrcamento(b.dataset.p, b.dataset.m),
   orcreftira: b => { S.orcRefs.splice(+b.dataset.i, 1); b.closest(".orcref").remove(); },
   orclinha: () => { const l = $(".orclinhas"); if ($$(".orclin").length >= 12) return toast("Até 12 linhas."); l.insertAdjacentHTML("beforeend", orcLinha()); },
@@ -10101,7 +10108,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 07:58";
+const VERSAO = "v1 registrada · 16/11 08:10";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
