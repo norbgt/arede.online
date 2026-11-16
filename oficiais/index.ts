@@ -164,7 +164,8 @@ Deno.serve(async (req) => {
     catch (e) { return new Response(JSON.stringify({ erro: String(e) })); }
   }
   const rel: Record<string, any> = {};
-  for (const [nome, fn] of Object.entries({ camara, senado, ibge, bcb, queridoDiario, transparencia })) {
+  // 16/11 (Amanda): Querido Diário fora da coleta (o serviço não respondia). A função fica aqui para voltar, se ela pedir.
+  for (const [nome, fn] of Object.entries({ camara, senado, ibge, bcb, transparencia })) {
     try {
       const docs = await (fn as () => Promise<Doc[]>)();
       if (docs.length) {
