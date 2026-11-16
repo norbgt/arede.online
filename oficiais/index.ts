@@ -33,7 +33,8 @@ function materiaDe(t: string): string | null {
   return null;
 }
 const RESSALVA = /,?\s*ressalvad[oa]s? os destaques\.?/i;
-const RESSALVA_TXT = "Texto principal aprovado; trechos ainda serão votados separadamente.";
+// 16/11 (Amanda): resumo curto, que cabe no cartão; a ementa vai à parte (dados.ementa) e aparece no cartão aberto
+const RESSALVA_TXT = "Trechos ainda vão a voto.";
 // voto de mérito: o projeto ou o texto que o substitui; não o de um trecho (destaque) nem de uma emenda avulsa
 const merito = (t: string) => { const x = t.replace(RESSALVA, ""); return /substitutiv/i.test(x) || (/\b(projeto|proposta de emenda|pec|medida provis|plp|pl)\b/i.test(x) && !/\bdestaques?\b|\bemenda n[ºo°]/i.test(x)); };
 
@@ -49,7 +50,8 @@ async function camara(): Promise<Doc[]> {
     const d0 = v.descricao.replace(/\s+/g, " ").trim(), ress = RESSALVA.test(d0), desc = d0.replace(RESSALVA, ".").replace(/\.\.$/, ".");
     const grande = /^(aprovad|rejeitad)[ao]s?\b/i.test(desc) && merito(desc);
     return { chave: "camara-" + v.id, tipo: "votacao", fonte: "Câmara dos Deputados", titulo: "Câmara: " + desc,
-      resumo: ress && v.aprovacao === 1 ? RESSALVA_TXT : v.aprovacao === 1 ? "Aprovado no plenário." : v.aprovacao === 0 ? "Rejeitado no plenário." : null,
+      // o título da Câmara já diz "Aprovado o…" ou "Rejeitado o…": o resumo só entra quando ainda há trechos a votar
+      resumo: ress && v.aprovacao === 1 ? "Texto principal aprovado. " + RESSALVA_TXT : null,
       url: ev ? `https://www.camara.leg.br/evento-legislativo/${ev}` : "https://www.camara.leg.br/", publicado_em: new Date((v.dataHoraRegistro || v.data) + "-03:00").toISOString(),
       destaque: grande, dados: { id: v.id, aprovacao: v.aprovacao, materia: materiaDe(desc) } };
   });
@@ -65,15 +67,15 @@ async function senado(): Promise<Doc[]> {
     const desc = d0.replace(RESSALVA, "").replace(/,?\s*nos termos d[oa]s? parecer(es)?\.?$/i, "").replace(/^emenda n[ºo°]\s*[\d.]+\s*\(substitutivo\)\s+/i, "Substitutivo ").replace(/[.,;]\s*$/, "").trim();
     const vs = Array.isArray(v.votos) ? v.votos : [];
     const sim = vs.filter((x: any) => /^sim$/i.test(x.siglaVotoParlamentar)).length, nao = vs.filter((x: any) => /^n[aã]o$/i.test(x.siglaVotoParlamentar)).length;
-    const placar = vs.length ? `${sim} sim · ${nao} não` : null;
+    const placar = vs.length ? `${sim} sim · ${nao} não` : null, aXb = vs.length ? `: ${sim} a ${nao}` : "";
     const ementa = String(v.ementa || "").replace(/\s+/g, " ").trim();
     return { chave: "senado-" + (v.codigoSessaoVotacao || v.sequencialVotacao || desc.slice(0, 60)), tipo: "votacao", fonte: "Senado Federal",
       titulo: "Senado: " + desc.charAt(0).toUpperCase() + desc.slice(1),
-      resumo: [ress && res === "Aprovado" ? RESSALVA_TXT : res ? res + " no plenário." : "", placar ? "Placar: " + placar + "." : "", ementa].filter(Boolean).join(" ") || null, valor: placar,
+      resumo: (ress && res === "Aprovado" ? `Texto principal aprovado${aXb}. ${RESSALVA_TXT}` : res ? `${res}${aXb}.` : "") || null, valor: placar,
       url: v.codigoMateria ? `https://www25.senado.leg.br/web/atividade/materias/-/materia/${v.codigoMateria}` : "https://www25.senado.leg.br/web/atividade/plenario",
       publicado_em: new Date((v.dataSessao || iso(hoje())) + "T18:00:00-03:00").toISOString(),
       destaque: /aprovad|rejeitad/i.test(res) && merito(d0),
-      dados: { codigo: v.codigoSessaoVotacao, codigoMateria: v.codigoMateria, materia: (v.identificacao ? String(v.identificacao).replace(/\s+/g, " ").trim() : null) || materiaDe(desc) } };
+      dados: { codigo: v.codigoSessaoVotacao, codigoMateria: v.codigoMateria, ementa: ementa || null, materia: (v.identificacao ? String(v.identificacao).replace(/\s+/g, " ").trim() : null) || materiaDe(desc) } };
   });
 }
 
@@ -165,7 +167,8 @@ Deno.serve(async (req) => {
       const docs = await (fn as () => Promise<Doc[]>)();
       if (docs.length) {
         // indicador já guardado não muda a data: o upsert ignora o que já existe
-        const { error } = await SB.from("dados_oficiais").upsert(docs, { onConflict: "chave", ignoreDuplicates: true });
+        // 16/11: votação é regravada a cada coleta (formato novo vale para as já guardadas, sem apagar); indicador e diário só entram se forem novos
+        const { error } = await SB.from("dados_oficiais").upsert(docs, { onConflict: "chave", ignoreDuplicates: !(nome === "camara" || nome === "senado") });
         rel[nome] = error ? { erro: error.message } : { lidos: docs.length };
       } else rel[nome] = { lidos: 0 };
     } catch (e) { rel[nome] = { erro: String(e).slice(0, 200) }; }

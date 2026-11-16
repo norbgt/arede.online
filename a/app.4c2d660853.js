@@ -608,7 +608,7 @@ function rapidoAplica(l){
   if (S.rapido==="alta") return l.filter(it=>!it.daArte && it.min <= 4320 && calor(it) > 0).sort((a,b)=>calor(b)-calor(a) || a.min-b.min);
   return l; }
 const rapidosHTML = () => `<div class="qf" role="group" aria-label="Filtros rápidos">${RAPIDOS.map(([k,n,i])=>`<button class="qchip" type="button" data-act="rapido" data-k="${k}" aria-pressed="${S.rapido===k}">${ic(i,"sm")}${n}</button>`).join("")}</div>`;
-const kindOf = it => it.opiniao ? "Opinião" : it.autoral ? "Autoral · " + AUTORAL[it.autoral][0] : it.base ? it.doc : desmente(it) ? "Desmentido" + (veredito(it) ? " · " + veredito(it) : "") : ehChecagem(it) && it.ext ? "Checagem" : it.arte ? "Arte · " + (CAT_ARTE[it.catArte] || "Imagem") : it.daRede ? (TIPO_REDE[it.rtipo] || "Publicação") + " · " + REDES[it.rede].nome : it.ext && it.tipo==="texto" && ORG[it.org] && ORG[it.org].fonte ? (it.lingua && it.lingua!=="pt" ? "Notícia · " + it.lingua.toUpperCase() : "Notícia") : it.tipo==="votacao" ? (it.fase==="apoios" ? "Proposta de votação" : it.critico ? "Eleição" : "Votação") : KIND[it.tipo];
+const kindOf = it => it.opiniao ? "Opinião" : it.oficial ? it.doc : it.autoral ? "Autoral · " + AUTORAL[it.autoral][0] : it.base ? it.doc : desmente(it) ? "Desmentido" + (veredito(it) ? " · " + veredito(it) : "") : ehChecagem(it) && it.ext ? "Checagem" : it.arte ? "Arte · " + (CAT_ARTE[it.catArte] || "Imagem") : it.daRede ? (TIPO_REDE[it.rtipo] || "Publicação") + " · " + REDES[it.rede].nome : it.ext && it.tipo==="texto" && ORG[it.org] && ORG[it.org].fonte ? (it.lingua && it.lingua!=="pt" ? "Notícia · " + it.lingua.toUpperCase() : "Notícia") : it.tipo==="votacao" ? (it.fase==="apoios" ? "Proposta de votação" : it.critico ? "Eleição" : "Votação") : KIND[it.tipo];
 const KIND = {video:"Vídeo", imagem:"Publicação", texto:"Publicação", evento:"Evento", enquete:"Consulta", votacao:"Votação", chamado:"Chamado", documento:"Documento"};
 /* cada aba tem o leiaute que melhor serve ao seu tipo (4º campo):
    blocos (Início misto) · video (1 coluna) · agenda (eventos e chamados, pelo que acontece ou vence primeiro) · cedula (voto no cartão) · arquivo (lista de documentos) */
@@ -3523,7 +3523,7 @@ function detailHTML(it, uid, mode, inline){
       ${it.daArte ? `<div class="srcblock">${it.campanha ? `<span class="atag camp">Campanha · ${esc(it.campanha)}</span>` : ""}
           <a class="btn ghost srcbtn" href="${it.ext.url}" target="_blank" rel="noopener">Ver e baixar no acervo ${ic("ext","sm")}</a>
           <span class="srcnote">Acervo do Design Ativista · publicada em ${dLabel(it.ext.data)}${it.copia ? " · imagem reduzida na prévia sem internet" : ""}</span></div>`
-        : it.ext ? (() => { const nota = it.daRede ? `${it.notaFilme ? estrelas(it.notaFilme) + " · " : ""}${it.minha ? "do seu feed público" : "do feed público"}${it.exemplo ? " · exemplo" : ""}` : it.base ? `texto oficial · ${esc(it.num)}` : it.yt || it.coletada ? "" : "resumo da curadoria";
+        : it.ext ? (() => { const nota = it.daRede ? `${it.notaFilme ? estrelas(it.notaFilme) + " · " : ""}${it.minha ? "do seu feed público" : "do feed público"}${it.exemplo ? " · exemplo" : ""}` : it.base ? `texto oficial · ${esc(it.num)}` : it.oficial ? `texto oficial · ${esc(ORG[it.org].nome)}` : it.yt || it.coletada ? "" : "resumo da curadoria";
           const rot = it.daRede ? "Ver no " + REDES[it.rede].nome : it.yt ? "Assistir no YouTube" : it.tipo==="documento" ? "Documento em " + esc(it.ext.dom) + (it.pags ? ` · ${it.pags} pág.` : "") : "Ler em " + esc(it.ext.dom);
           return `<p class="srcline"><a class="srclink" href="${it.ext.url}" target="_blank" rel="noopener">${rot}${ic("ext","sm")}</a>${nota ? `<span class="srcnote">· ${nota}</span>` : ""}</p>`; })()
         : orig ? `<div class="srcblock"><div class="native">${ic("ext","sm")}<span>Original em ${orig}</span><span class="fic" title="Endereço de exemplo, sem destino real">exemplo</span></div></div>` : ""}
@@ -4757,7 +4757,8 @@ async function oficiaisCarrega(){ if (!SB) return;
         titulo:d.titulo, texto:d.resumo || "", cidade:d.cidade || "", pags:null, data:dLabel(isoDia(d.publicado_em)),
         min:Math.max(1, Math.round((Date.now() - new Date(d.publicado_em)) / 60000)),
         ext:{url:d.url, dom:hostOf(d.url), data:isoDia(d.publicado_em), verif:[], motivo:"Dado oficial, direto da fonte.", obs:""}};
-      RESUMO[id] = d.resumo || ""; BODY[id] = [d.resumo, d.anterior && !/antes/i.test(d.resumo || "") ? "Antes: " + d.anterior + "." : ""].filter(Boolean); SEAL[id] = 95;
+      RESUMO[id] = d.resumo || ""; const em = d.dados && d.dados.ementa;   /* 16/11: aberto em duas partes: resultado e placar; depois a ementa */
+      BODY[id] = [d.resumo, em ? "Ementa: " + em : "", d.anterior && !/antes/i.test(d.resumo || "") ? "Antes: " + d.anterior + "." : ""].filter(Boolean); SEAL[id] = 95;
       POOL.push(it); });
     feedDadosNovos("oficiais"); }catch(e){} }
 /* no Tudo: tira os oficiais e devolve só os destaques, no máximo 1 a cada 20 cartões (o primeiro depois do 10º) */
@@ -6629,7 +6630,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:41";
+const VERSAO = "v1 registrada · 16/11 15:58";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
