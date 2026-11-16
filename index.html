@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-txIxJJvWuwzFAvmv+Ckncx7zjGB5uR4iY2nbTmQTLs8=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-qoirSd/oszy9ce457SBRqlOBRSMSHU4qPaE6h/Syd0Q=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1320,6 +1320,18 @@ html.snapvid #aovivo{scroll-snap-align:start;scroll-margin-top:var(--vtop,72px)}
 .lvcred a,.lvcred button{display:inline-flex;align-items:center;min-height:36px;padding:0;border:0;background:none;font:inherit;font-weight:600;color:var(--accent);text-decoration:none;cursor:pointer}
 .lvcred .lvsp{flex:1}
 .lvnota{margin:6px 0 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
+/* 16/11: no cartão de texto, a fonte mora no pé do próprio cartão; os três pontinhos ficam no canto de baixo */
+.face.txt .fsrc{display:flex;align-items:center;gap:6px;min-width:0;margin-top:8px;padding-top:8px;padding-right:30px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent)}
+.face.txt .fsrc .capname{color:inherit;opacity:.78}
+article.card{position:relative}.card > .more.morein{position:absolute;right:4px;bottom:4px;margin:0;width:36px;height:36px;z-index:2}
+/* 16/11: o convite "Anuncie aqui" chama mais atenção (cor da marca) e nunca corta frase: o texto quebra linha e o quadro cresce */
+.adcard .adtile.faixa.casa{height:auto;min-height:88px;container-type:inline-size}
+.adtile.faixa.casa .adface{position:relative;padding:14px 40px 14px 14px;height:auto;min-height:88px}
+.adtile.casa .csshort{display:none}
+.adtile.casa .adnome{white-space:nowrap}
+@container (max-width:260px){ .adtile.faixa.casa .admk{display:none} .adtile.faixa.casa .adface{padding:14px 30px 14px 14px} .adtile.casa .cslong{display:none} .adtile.casa .csshort{display:inline} .adtile.faixa.casa .adface::after{right:10px} }
+.adtile.faixa.casa .adnome,.adtile.faixa.casa .adtxt{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance}
+.adtile.faixa.casa .adface::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;font-weight:400;opacity:.9}
 /* CANAIS (16 nov 2026): três partes bem separadas. Ao vivo e Rádio são quadros; os vídeos começam depois de um título próprio. */
 .canaistopo{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:6px 0 4px}
 .canaistopo .aovivo{margin:0}
@@ -1493,11 +1505,11 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adseg{margin-top:3px;font-size:10.5px;opacity:.78}
 .adshort{display:none}
 .adtile:hover .adface{filter:brightness(1.06)}
-.adface.casa{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.adface.casa{background:var(--accent);color:var(--on-accent);box-shadow:none}
 .adface.casa .adtag{background:var(--surface);color:var(--muted)}
-.adface.casa .admk{color:var(--brand)}
+.adface.casa .admk{color:inherit}
 .adface.casa .adnome{font-size:16px}
-.adface.casa .adtxt{color:var(--muted);font-size:12px}
+.adface.casa .adtxt{color:inherit;opacity:.88;font-size:12.5px}
 .adtile:has(.casa) .tbtn{color:var(--ink)}
 .blk.casa{grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}
 .blk.casa > .tile{height:auto;min-height:0;align-self:stretch;aspect-ratio:auto}
@@ -4960,7 +4972,8 @@ function face(item){
     default: { const t = textParts(item);
       /* foto da matéria também no cartão solto (11 nov 2026): antes só o mosaico mostrava, e a vista Cartões ficava quase toda só com texto */
       const ph = item.foto && !item.fotoFalhou ? `<span class="fph"><img src="${esc(item.foto)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">${item.credito ? `<span class="fcred">${esc(item.credito)}</span>` : ""}</span>` : "";
-      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${t.foot}</span>`}; }
+      const o = ORG[item.org] || {cor:"#888", sigla:"", nome:""};   /* 16/11: a fonte fica dentro do cartão, no pé, como no mosaico */
+      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${t.foot}<span class="fsrc"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span></span></span>`}; }
   }
 }
 function card(item, mode){
@@ -4977,8 +4990,9 @@ function card(item, mode){
       <span class="vprog" aria-hidden="true"><i></i></span>`:""}
       ${saveBtn(item.uid, "savebtn")}
     </div>
-    <div class="cap ${f.img?"capimg":""}">${f.img?capHTML(item,"capp"):`<span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span>`}
-      <button class="more" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button></div>
+    ${f.img ? `<div class="cap capimg">${capHTML(item,"capp")}
+      <button class="more" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button></div>`
+      : `<button class="more morein" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button>`}
   </article>`;
 }
 /* ---------- cartões das abas de tipo: cada aba destaca o que importa naquele tipo ---------- */
@@ -5054,7 +5068,7 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   const uf = Object.entries(UF_NOME).find(([sg,nm])=>c===sg || semAcento(c)===semAcento(nm));
   if (uf) return {k:"est", nivel:"Estadual", lugar:uf[1]};
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
-const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt">Seu negócio neste espaço, igual para todo mundo.</span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
+const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt"><span class="cslong">Seu negócio neste espaço, igual para todo mundo.</span><span class="csshort">Seu negócio aqui.</span></span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
 const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile${a.casa ? " casa" : ""}${a.casa || a.fmt==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
   <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ' data-fmt="f"' : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
@@ -10204,7 +10218,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 08:43";
+const VERSAO = "v1 registrada · 16/11 08:48";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
