@@ -157,6 +157,13 @@ img,svg{max-width:100%}
 .mark{display:inline-flex;align-items:baseline;font-family:var(--font-display);font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--ink)}
 .mark .ldot{width:.24em;height:.24em;margin-left:.06em}
 .pagehead{font-size:var(--fs-h1);font-weight:600}
+/* 16/11 (Amanda): topo equilibrado pelo do Início. O título da seção tem o tamanho e o peso da marca (22px), e a ação do topo
+   tem a forma do "Apoie" (pílula de 36px, contorno), com o ícone e a borda na cor da marca para seguir em destaque. */
+.top .toprow .pagehead{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+@media (max-width:429px){ .top .toprow .pagehead{font-size:21px} }
+.topacao{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:99px;border:1px solid color-mix(in srgb,var(--brand) 55%,var(--line));background:color-mix(in srgb,var(--brand) 10%,transparent);color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.topacao .icon{width:15px;height:15px;color:var(--brand)}
+.topacao:hover{background:color-mix(in srgb,var(--brand) 18%,transparent)}
 @media (min-width:600px){ .logo{font-size:25px} .topin{padding-top:14px} }
 
 /* ---------- 4. Componentes ---------- */

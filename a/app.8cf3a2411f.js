@@ -2941,14 +2941,14 @@ function screenOrgs(){
   const feed = !lista || merc ? [] : pgAplica(pgItens(t, f), t).map(x=>x.h);
   const filtrando = S.pgRap || S.pgTema;
   const fim = t === "tudo" ? orgVerTodas("tudo") : t === "orgs" ? orgVerTodas("comunidades") : orgVerTodas(f === "tudo" ? "paginas" : f);
-  return header(`<div class="toprow"><h1 class="pagehead">Organizações</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
+  return header(`<div class="toprow"><h1 class="pagehead">Organizações</h1><div class="spacer"></div><button class="topacao" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
     <div class="tabs" role="tablist" aria-label="Organizações">${PGABAS.map(aba).join("")}</div>${lista ? pgBarra(t, f) : ""}`)
     + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : merc ? mercadoHTML(v) : `
       ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${filtrando ? `Nada com esses filtros. <button class="linkbtn" type="button" data-act="pglimpa">Tirar filtros</button>` : PAGS.carregou || t === "orgs" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
       <div class="orgfim">${fim}</div>
       <p class="cmnpe">Página é de uma pessoa verificada, que responde pelo que ela publica. Comunidade é criada por qualquer conta, em torno de qualquer tema; a que tem selo “oficial” passa pela curadoria. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
 }
-function screenPgTodas(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Todas as páginas</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="paginova">${ic("plus","sm")} Criar</button></div>`)
+function screenPgTodas(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Todas as páginas</h1><div class="spacer"></div><button class="topacao" type="button" data-act="paginova">${ic("plus","sm")} Criar</button></div>`)
   + `<div class="container">${paginasCorpo()}</div>`; }
 function carrNav(){ const c = $("#hubcarr"); if (!c) return; const [a, b] = $$('[data-act="carr"]'), fim = c.scrollWidth - c.clientWidth;
   if (a) a.disabled = c.scrollLeft <= 2; if (b) b.disabled = c.scrollLeft >= fim - 2;
@@ -6636,7 +6636,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:26";
+const VERSAO = "v1 registrada · 16/11 15:29";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
