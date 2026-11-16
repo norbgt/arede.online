@@ -2871,24 +2871,56 @@ function mercadoHTML(v){ if (!MERC.itens){ mercadoCarrega(); return `<p class="e
 const PGABAS = [["tudo","Tudo"],["paginas","Páginas"],["orgs","Organizações"],["decidir","Consultas"],["eventos","Eventos"]];
 const PGF = [["tudo","Todas"],["mercado","Mercado"],["tatuagem","Tatuagem"],["beleza","Beleza"],["artesanato","Artesanato"],["escrita","Escrita"]];
 function pgAbaAtual(){ let t = S.orgAba || "tudo"; if (t === "feed") t = "tudo"; return PGABAS.some(a=>a[0]===t) ? t : "tudo"; }
-/* Tudo: o feed de páginas e organizações, com uma consulta ou evento a cada três cartões */
-function tudoFeed(){ const base = orgFeed("tudo"), part = partDestaques().filter(it=>DECIDE.includes(it.tipo) || IRJUNTO.includes(it.tipo)).filter(it=>!partFeito(it)).map(partCard), l = [];
-  base.forEach((h, i)=>{ l.push(h); if ((i + 1) % 3 === 0 && part.length) l.push(part.shift()); }); return l.concat(part); }
+/* 16/11 (Amanda): Tudo, Páginas e Organizações têm a mesma barra do Início: forma de ver, filtrar e ordenar num grupo, e filtros rápidos ao lado.
+   Cada cartão vira um item com cidade, tema e se a pessoa segue; filtro e ordem trabalham sobre isso. */
+const PGRAP = {tudo:[["segue","Que sigo","seguindo"],["perto","Por perto","pin"],["participar","Para participar","hand"]],
+  orgs:[["segue","Que participo","seguindo"],["perto","Por perto","pin"],["oficiais","Oficiais","vfy"]]};
+const PGORDS = [["voce","Para você","Quem você segue primeiro, depois o que tem a ver com você"],["perto","Mais perto","Sua cidade, depois seu estado"],["maiores","Mais membros","Organizações maiores primeiro"],["az","De A a Z","Pelo nome"]];
+function pertoDe(cid){ const R = minhaRegiao(), oc = semAcento(cid || ""); if (R.cidade.length > 2 && oc.startsWith(R.cidade)) return 2; if (R.uf && oc.endsWith(", " + R.uf.toLowerCase())) return 1; return 0; }
+function pgItens(t, f){ const eu = ME.user ? ME.user.id : null, l = [];
+  const comOrgs = t === "tudo" || t === "orgs", comPags = t === "tudo" || t === "paginas", nicho = t === "paginas" && MODELOS[f];
+  if (comOrgs){
+    CMNS.forEach(c=>{ const o = ORG[c.id] || {}; l.push({k:"org", nome:c.nome, cid:o.cidade || "", tema:c.tema, membros:1, segue:true, oficial:false, h:cmnCard(o, c)}); });
+    ORGS.filter(o=>isOrg(o) && S.follow.has(o.id)).forEach(o=>l.push({k:"org", nome:o.nome, cid:o.cidade, tema:o.tema, membros:o.membros || 0, segue:true, oficial:!!o.real, h:cmnCard(o)}));
+    cmnParaVoce(ORGS.filter(o=>isOrg(o) && !S.follow.has(o.id))).forEach(o=>l.push({k:"org", nome:o.nome, cid:o.cidade, tema:o.tema, membros:o.membros || 0, segue:false, oficial:!!o.real, h:cmnCard(o)})); }
+  const P = []; if (comPags){ const ar = PAGS.lista.filter(p=>p.status === "aprovada" && (!nicho || modeloDe(p) === f)), segue = p => p.dono === eu || S.follow.has("pg-" + p.id);
+    PAGS.lista.filter(p=>p.dono === eu && p.status !== "aprovada" && (!nicho || modeloDe(p) === f)).concat(ar.filter(segue), ar.filter(p=>!segue(p)))
+      .forEach(p=>P.push({k:"pag", nome:p.nome || "", cid:p.cidade || "", tema:p.tema || "", membros:0, segue:segue(p), oficial:false, h:pgOrgCard(p)})); }
+  /* páginas e organizações uma de cada, alternando (como antes) */
+  const O = l.splice(0), mix = []; for (let i = 0; i < Math.max(O.length, P.length); i++){ if (i < O.length) mix.push(O[i]); if (i < P.length) mix.push(P[i]); }
+  if (t === "tudo"){ const part = partDestaques().filter(it=>(DECIDE.includes(it.tipo) || IRJUNTO.includes(it.tipo)) && !partFeito(it)).map(it=>{ const o = ORG[it.org] || {};
+      return {k:"part", nome:it.titulo || "", cid:o.cidade || "", tema:it.tema || o.tema || "", membros:0, segue:S.follow.has(it.org), oficial:false, h:partCard(it)}; });
+    const out = []; mix.forEach((x, i)=>{ out.push(x); if ((i + 1) % 3 === 0 && part.length) out.push(part.shift()); }); return out.concat(part); }
+  return mix; }
+function pgAplica(l, t){ const r = S.pgRap, tema = S.pgTema, o = S.pgOrd || "voce";
+  if (r === "segue") l = l.filter(x=>x.segue); else if (r === "perto") l = l.filter(x=>pertoDe(x.cid) > 0); else if (r === "participar") l = l.filter(x=>x.k === "part"); else if (r === "oficiais") l = l.filter(x=>x.oficial);
+  if (tema) l = l.filter(x=>x.tema === tema);
+  if (o === "perto") l = l.map((x, i)=>[x, i]).sort((a, b)=>pertoDe(b[0].cid) - pertoDe(a[0].cid) || a[1] - b[1]).map(a=>a[0]);
+  else if (o === "maiores") l = l.slice().sort((a, b)=>b.membros - a.membros);
+  else if (o === "az") l = l.slice().sort((a, b)=>a.nome.localeCompare(b.nome, "pt"));
+  return l; }
+function pgBarra(t, f){ const v = S.orgVista || "soltos", nF = S.pgTema ? 1 : 0, o = S.pgOrd || "voce";
+  const vista = `<button class="iconbtn tool" type="button" data-act="orgvista" aria-label="Forma de ver: ${v==="soltos" ? "cartões soltos" : "em blocos"}. Tocar para ver ${v==="soltos" ? "em blocos" : "em cartões soltos"}" title="${v==="soltos" ? "Cartões soltos" : "Em blocos"}">${ic(v==="soltos" ? "vsoltos" : "vblocos")}</button>`;
+  const grupo = `<div class="algogroup pggroup"><div class="status tools">${vista}<button class="iconbtn tool" type="button" data-act="pgfiltra" aria-label="Filtrar${nF ? ", 1 ativo" : ""}">${ic("filter")}${nF ? `<span class="badge">1</span>` : ""}</button><button class="iconbtn tool" type="button" data-act="pgordem" aria-label="Ordenar: ${PGORDS.find(x=>x[0]===o)[1]}">${ic("sort")}${o !== "voce" ? `<span class="badge dot2"></span>` : ""}</button></div></div>`;
+  const rap = t === "paginas" ? PGF.map(([k, n])=>`<button class="qchip" type="button" data-act="orgfiltro" data-f="${k}" aria-pressed="${f===k}">${n}</button>`)
+    : (PGRAP[t] || []).map(([k, n, i])=>`<button class="qchip" type="button" data-act="pgrap" data-k="${k}" aria-pressed="${S.pgRap===k}">${ic(i,"sm")}${n}</button>`);
+  return `<div class="ctlwrap"><div class="ctlrow">${grupo}<div class="qf" role="group" aria-label="Filtros rápidos">${rap.join("")}</div></div></div>`; }
+function sheetPgFiltro(){ const t = pgAbaAtual(), temas = [...new Set(pgItens(t, S.orgFiltro || "tudo").map(x=>x.tema).filter(Boolean))].sort((a, b)=>a.localeCompare(b, "pt"));
+  openSheet(shead("Filtrar") + `<h3 class="osec">Tema</h3><div class="chips">${[["", "Todos"]].concat(temas.map(x=>[x, x])).map(([k, n])=>`<button class="chip" type="button" data-act="pgtema" data-v="${esc(k)}" aria-pressed="${(S.pgTema || "")===k}">${esc(n)}</button>`).join("")}</div>`, "Filtrar"); }
+function sheetPgOrdem(){ const o = S.pgOrd || "voce";
+  openSheet(shead("Ordenar") + `<div class="list" role="radiogroup" aria-label="Ordenar por">${PGORDS.map(([k, n, d])=>`<button class="setting" type="button" role="radio" aria-checked="${o===k}" data-act="pgordset" data-v="${k}"><span class="t"><b>${n}</b><small>${d}</small></span>${o===k ? ic("check") : ""}</button>`).join("")}</div>`, "Ordenar"); }
 function screenOrgs(){
   const t = pgAbaAtual(), v = S.orgVista || "soltos";
   let f = S.orgFiltro || "tudo"; if (!PGF.some(x=>x[0]===f)) f = "tudo";
   const aba = ([k, n]) => `<button class="tab" type="button" role="tab" data-act="orgaba" data-t="${k}" aria-selected="${t===k}">${n}</button>`;
-  const chip = ([k, n]) => `<button class="chip" type="button" data-act="orgfiltro" data-f="${k}" aria-pressed="${f===k}">${n}</button>`;
-  const vistaOrg = `<button class="iconbtn tool" type="button" data-act="orgvista" aria-label="Forma de ver: ${v==="soltos" ? "cartões soltos" : "em blocos"}. Tocar para ver ${v==="soltos" ? "em blocos" : "em cartões soltos"}" title="${v==="soltos" ? "Cartões soltos" : "Em blocos"}">${ic(v==="soltos" ? "vsoltos" : "vblocos")}</button>`;
   const lista = ["tudo","paginas","orgs"].includes(t), merc = t === "paginas" && f === "mercado";
-  const feed = !lista || merc ? [] : t === "tudo" ? tudoFeed() : orgFeed(t === "orgs" ? "comunidades" : f === "tudo" ? "paginas" : f);
-  const barra = t === "paginas" ? `<div class="orgbar"><div class="chips umalinha" role="group" aria-label="Mostrar">${PGF.map(chip).join("")}</div>${vistaOrg}</div>`
-    : lista ? `<div class="orgbar"><div class="spacer"></div>${vistaOrg}</div>` : "";
+  const feed = !lista || merc ? [] : pgAplica(pgItens(t, f), t).map(x=>x.h);
+  const filtrando = S.pgRap || S.pgTema;
   const fim = t === "tudo" ? orgVerTodas("tudo") : t === "orgs" ? orgVerTodas("comunidades") : orgVerTodas(f === "tudo" ? "paginas" : f);
   return header(`<div class="toprow"><h1 class="pagehead">Páginas</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
-    <div class="tabs" role="tablist" aria-label="Páginas">${PGABAS.map(aba).join("")}</div>${barra}`)
+    <div class="tabs" role="tablist" aria-label="Páginas">${PGABAS.map(aba).join("")}</div>${lista ? pgBarra(t, f) : ""}`)
     + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : merc ? mercadoHTML(v) : `
-      ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${PAGS.carregou || t === "orgs" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
+      ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${filtrando ? `Nada com esses filtros. <button class="linkbtn" type="button" data-act="pglimpa">Tirar filtros</button>` : PAGS.carregou || t === "orgs" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
       <div class="orgfim">${fim}</div>
       <p class="cmnpe">Página é de uma pessoa verificada, que responde pelo que ela publica. Organização é criada por qualquer conta, em torno de qualquer tema; a que tem selo “oficial” passa pela curadoria. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
 }
@@ -6068,7 +6100,13 @@ const A = {
   histmais: () => { S.histN = (S.histN || 10) + 20; const y = scrollY; profShow(); scrollTo(0, y); },
   pessaba: b => { S.pessAba = {u:b.dataset.u, t:b.dataset.t}; S.vPasta = null; if (b.dataset.t === "pastas") delete PESS_PASTAS[b.dataset.u]; const y = scrollY; render(); scrollTo(0, y); },
   vpasta: b => { const uid = route().slice(6); S.vPasta = b.dataset.s ? {u:uid, s:b.dataset.s, f:b.dataset.f} : null; const y = scrollY; render(); if (b.dataset.s) scrollTo(0, Math.min(y, ($("#orgbody") || {offsetTop:0}).offsetTop - 80)); else scrollTo(0, y); },
-  orgaba: b => { S.orgAba = b.dataset.t; S.decTipo = "todos"; store.set("orgAba", S.orgAba); render(); },
+  orgaba: b => { S.orgAba = b.dataset.t; S.decTipo = "todos"; S.pgRap = null; S.pgTema = ""; store.set("orgAba", S.orgAba); render(); },
+  pgrap: b => { S.pgRap = S.pgRap === b.dataset.k ? null : b.dataset.k; const y = window.scrollY; render(); window.scrollTo(0, Math.min(y, 0));
+    if (S.pgRap === "perto"){ const R = minhaRegiao(); if (!R.cidade && !R.uf) toast("Escolha sua cidade em Perfil para ver o que está por perto."); } },
+  pgfiltra: sheetPgFiltro, pgordem: sheetPgOrdem,
+  pgtema: b => { S.pgTema = b.dataset.v || ""; closeSheet(); render(); window.scrollTo(0, 0); },
+  pgordset: b => { S.pgOrd = b.dataset.v; closeSheet(); render(); window.scrollTo(0, 0); },
+  pglimpa: () => { S.pgRap = null; S.pgTema = ""; render(); },
   dectipo: b => { S.decTipo = b.dataset.pt; render(); },
   decfeito: () => { S.decFeito = !S.decFeito; render(); },
   orgcria: () => openSheet(shead("Criar um espaço") + criarEspacos().replace(/^<h3[^>]*>Criar um espaço<\/h3>/, ""), "Criar um espaço"),   /* 15/11: sem título repetido */
@@ -6539,7 +6577,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:28";
+const VERSAO = "v1 registrada · 16/11 13:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
