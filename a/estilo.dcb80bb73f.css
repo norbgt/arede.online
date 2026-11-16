@@ -1620,12 +1620,20 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .docres ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .docseg{margin:26px 0 8px;padding-top:18px;border-top:1px solid var(--line)}
 .docseg p{margin:0 0 10px;color:var(--muted);font-size:var(--fs-sm)}
-.segselo{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none;margin:4px 0}
-.segselo:hover{background:var(--surface-2)}
-.segl{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;font-weight:700;font-size:18px;color:#fff;background:#4B5563}
-.segl.ok{background:#15803D}.segl.warn{background:#B45309}.segl.bad{background:#B91C1C}
-.segl .icon{width:20px;height:20px}
-.segt{display:flex;flex-direction:column;line-height:1.25;min-width:0}.segt b{font-size:15px}.segt small{color:var(--muted);font-size:12.5px}
+/* SELO DE SEGURANÇA (16/11): pílula compacta, verde quando a nota é A, com escudo; anel duplo para ler como selo */
+.segselo{--sc:#4B5563;display:inline-flex;align-items:center;gap:8px;padding:3px 12px 3px 3px;border-radius:999px;color:var(--ink);text-decoration:none;
+  background:color-mix(in srgb,var(--sc) 9%,var(--surface));border:1.5px solid color-mix(in srgb,var(--sc) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--sc) 10%,transparent);max-width:100%}
+.segselo.ok{--sc:#15803D}.segselo.warn{--sc:#B45309}.segselo.bad{--sc:#B91C1C}
+.segselo:hover{background:color-mix(in srgb,var(--sc) 16%,var(--surface))}
+.segl{position:relative;flex:none;width:30px;height:32px;display:grid;place-items:center}
+.segl svg{position:absolute;inset:0;width:100%;height:100%;fill:var(--sc)}
+.segl b{position:relative;color:#fff;font-size:12px;font-weight:800;letter-spacing:-.02em;margin-top:-2px}
+.segl .icon{position:relative;width:14px;height:14px;color:#fff}
+.segt{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.segt b{font-size:13px;font-weight:700}
+.segt small{color:var(--muted);font-size:11px;white-space:nowrap}
+.segselo{width:max-content;align-self:flex-start;flex:none}
+.sheet .segselo{margin:6px 0 6px 4px}
 .list .segselo{margin:0}
 .docleg a.segselo, .docleg a.segselo:hover{color:var(--ink);text-decoration:none}
 /* 16/11: esqueleto enquanto o feed espera o conteúdo principal (no máximo 2,5 s) */

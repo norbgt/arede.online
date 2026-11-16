@@ -5304,7 +5304,7 @@ const DIREITOS = () => String(MARCA.direitos || "").replace("{ano}", new Date().
    edita no backoffice › Textos do site. O que está escrito aqui é a cópia de segurança, usada se o servidor não responder.
    Só passam negrito, itálico, riscado, quebra de linha e links; o resto vira texto. */
 const MARCA = {titulo:"a rede.online", links:{legal:"Termos e privacidade", termos:"Termos de uso", privacidade:"Privacidade", manifesto:"Manifesto", funciona:"Como a rede.online funciona"},
-  fale:"Fale com a rede:", email:"contato@arede.online", direitos:"© {ano} a rede.online. Todos os direitos reservados.",
+  fale:"E-mail:", email:"contato@arede.online", direitos:"© {ano} a rede.online. Todos os direitos reservados.",
   terceiros:"Notícias, imagens e vídeos de terceiros pertencem aos seus veículos e autores, sempre com link para a fonte original ou perfil responsável."};
 const TERCEIROS = () => MARCA.terceiros;
 const limpaTx = v => typeof v === "string" ? esc(v).replace(/&lt;(\/?)(s|b|i|em|strong)&gt;/g, "<$1$2>").replace(/&lt;br\s*\/?&gt;/g, "<br>")
@@ -5343,8 +5343,10 @@ async function segCarrega(){ if (!SB) return; try{ const r = await SB.rpc("segur
   if (SEG) $$("[data-seg]").forEach(el=>{ el.outerHTML = seloSeg(); }); }
 const SEG_REL = "https://developer.mozilla.org/en-US/observatory/analyze?host=arede.online";
 function seloSeg(){ const g = SEG && SEG.grade, cor = !g ? "na" : /^A/.test(g) ? "ok" : /^B/.test(g) ? "warn" : "bad";
-  return `<a class="segselo" data-seg href="${SEG_REL}" target="_blank" rel="noopener"><span class="segl ${cor}" aria-hidden="true">${g ? esc(g) : ic("lock")}</span>
-    <span class="segt"><b>${g ? `Segurança do site: ${esc(g)}` : "Segurança do site"}</b><small>${g ? "Nota pública do Mozilla Observatory ↗" : "Conferir a nota no Mozilla Observatory ↗"}</small></span></a>`; }
+  /* 16/11 (Amanda): com cara de selo e menor. Pílula com escudo e a nota dentro; não parece mais uma linha do menu. */
+  return `<a class="segselo ${cor}" data-seg href="${SEG_REL}" target="_blank" rel="noopener" aria-label="${g ? `Segurança do site: nota ${esc(g)} no Mozilla Observatory. Abre o relatório público` : "Conferir a segurança do site no Mozilla Observatory"}">
+    <span class="segl" aria-hidden="true"><svg viewBox="0 0 24 26"><path d="M12 1.5 3 4.8v6.6c0 6 3.9 11.3 9 13.1 5.1-1.8 9-7.1 9-13.1V4.8z"/></svg><b>${g ? esc(g) : ic("lock")}</b></span>
+    <span class="segt" aria-hidden="true"><b>${g ? "Site seguro" : "Segurança do site"}</b><small>Mozilla Observatory ↗</small></span></a>`; }
 function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("pt-BR", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) : "";
   const chev = ic("back","sm flip");
   return `<section class="acard" aria-labelledby="hseg"><h2 id="hseg">Segurança da conta</h2><div class="list">
@@ -6482,7 +6484,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 12:54";
+const VERSAO = "v1 registrada · 16/11 12:57";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
