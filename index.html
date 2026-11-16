@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-KmQ8g6iaGYgmhPcRretZsahHqLP303NNqinCCRqP5UM=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-e8p7ZzIj5hJB9o85w21k5QxCc2Ga/85AJOEGjpfp0oo=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1332,7 +1332,8 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 @container (max-width:260px){ .adtile.faixa.casa .admk{display:none} .adtile.faixa.casa .adface{padding:14px 30px 14px 14px} .adtile.casa .cslong{display:none} .adtile.casa .csshort{display:inline} .adtile.faixa.casa .adface::after{right:10px} }
 .adtile.faixa.casa .adnome,.adtile.faixa.casa .adtxt{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance}
 .adtile.faixa.casa .adface::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;font-weight:400;opacity:.9}
-/* 16/11: filtro de grupos da Rádio */
+/* 16/11: filtro de grupos da Rádio e do Ao vivo; etiqueta de idioma dos internacionais */
+.lgtag{margin-left:6px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,currentColor 12%,transparent);font-size:10.5px;font-weight:700;letter-spacing:.04em;opacity:.8}
 .cmod .lvlist.rdfil{margin-bottom:10px;gap:6px}
 .rdf{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .rdf .icon{width:14px;height:14px}
@@ -8485,8 +8486,11 @@ const AOVIVO_PADRAO = [
   {k:"tse",      nome:"Justiça Eleitoral",    canal:"UC1kilS1DdyYOEGItHPRukBw", url:"https://www.youtube.com/@justicaeleitoral/streams"},
   {k:"canalgov", nome:"CanalGov",             canal:"UCjaWLFTNqLkq3ZY2BJ4NYRg", url:"https://www.youtube.com/@canalgov/streams"},
   {k:"tvbrasil", nome:"TV Brasil",            canal:"UCSv9d0kQegylHWpP83jWSQg", url:"https://www.youtube.com/@tvbrasil/streams"},
-  {k:"onu",      nome:"Nações Unidas",        canal:"UC5O114-PQNYkurlTg6hekZw", url:"https://www.youtube.com/@unitednations/streams", direto:true}];
-const LV = {lista:null, em:0}; let LV_ON = null, LV_IO = null;
+  {k:"onu",      nome:"Nações Unidas",        canal:"UC5O114-PQNYkurlTg6hekZw", url:"https://www.youtube.com/@unitednations/streams", direto:true, ambito:"int", lingua:"en"}];
+/* 16/11 (Amanda): internacionais. Primeiro o que está no idioma escolhido em "Origem das notícias"; a etiqueta mostra o idioma. */
+const LING_ROT = {pt:"PT", en:"EN", es:"ES", fr:"FR"};
+const lingOrdem = x => (S.origens || ["pt"]).includes(x.lingua || "pt") ? 0 : 1;
+const LV = {lista:null, em:0, f:store.get("vivoFiltro", "br")}; let LV_ON = null, LV_IO = null;
 /* SALVOS DOS CANAIS (16/11): canais ao vivo e rádios salvos ficam numa linha própria, abaixo da linha com todos.
    Ficam só neste aparelho, de propósito: a Privacidade promete que a rede não sabe qual rádio a pessoa ouve. */
 const CN_SALVOS = new Set((store.get("canaisSalvos", []) || []).filter(k=>/^(tv|rd):[\w-]{1,40}$/.test(k)));
@@ -8505,16 +8509,17 @@ async function aoVivoCarrega(){ if (!SB){ if ((LV.t = (LV.t || 0) + 1) <= 8) set
   if (Date.now() - LV.em < 5*60e3) return; LV.em = Date.now();
   try { const {data, error} = await SB.rpc("aovivo_lista"); if (error || !Array.isArray(data) || !data.length) return;
     LV.lista = data.filter(c=>c && /^[\w-]{1,24}$/.test(c.k || "") && /^UC[\w-]{22}$/.test(c.canal || "") && LV_OK.test(c.url || "") && (!c.video || /^[\w-]{11}$/.test(c.video)))
-      .map(c=>({k:c.k, nome:String(c.nome || "").slice(0, 40), canal:c.canal, url:c.url, video:c.video || null, estado:c.estado, conferido_em:c.conferido_em, direto:(AOVIVO_PADRAO.find(x=>x.k===c.k) || {}).direto}));
+      .map(c=>({k:c.k, nome:String(c.nome || "").slice(0, 40), canal:c.canal, url:c.url, video:c.video || null, estado:c.estado, conferido_em:c.conferido_em, direto:(AOVIVO_PADRAO.find(x=>x.k===c.k) || {}).direto, ambito:c.ambito==="int" ? "int" : "br", lingua:/^(pt|en|es|fr)$/.test(c.lingua || "") ? c.lingua : "pt"}));
     if (!LV.lista.length) LV.lista = null; if (!LV_ON) aoVivoPinta(); } catch(e){} }
-function aoVivoHTML(){ const l = lvLista(), c = l.find(x=>x.k===LV_ON), e = c && lvEstado(c);
+function aoVivoHTML(){ const tudo = lvLista(), temInt = tudo.some(x=>x.ambito==="int"), f = temInt && LV.f==="int" ? "int" : "br";
+  const l = tudo.filter(x=>(x.ambito || "br")===f).sort((a, b)=>f==="int" ? lingOrdem(a) - lingOrdem(b) : 0), c = tudo.find(x=>x.k===LV_ON), e = c && lvEstado(c);
   const src = c && (c.video && e && e!=="fora" ? "https://www.youtube-nocookie.com/embed/" + c.video + "?autoplay=1&playsinline=1&rel=0"
     : !e && c.direto ? "https://www.youtube-nocookie.com/embed/live_stream?channel=" + c.canal + "&autoplay=1&playsinline=1&rel=0" : "");
   const rot = x => ({aovivo:"ao vivo agora", agendado:"transmissão agendada", fora:"sem transmissão agora"})[lvEstado(x)] || "";
-  const nv = l.filter(x=>lvEstado(x)==="aovivo").length;
-  return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true">${ic("tv")}</span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais${nv ? ` · ${nv} no ar agora` : ""}</span></div>
-    ${(()=>{ const chip = x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}</button>`, sv = l.filter(x=>cnSalvo("tv:" + x.k));
-      return `<div class="lvlist">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
+  const nv = tudo.filter(x=>lvEstado(x)==="aovivo").length;
+  return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true">${ic("tv")}</span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais e públicos${nv ? ` · ${nv} no ar agora` : ""}</span></div>
+    ${(()=>{ const chip = x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${x.ambito==="int" ? " (" + (LING_ROT[x.lingua] || "") + ")" : ""}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}${x.ambito==="int" ? `<span class="lgtag">${LING_ROT[x.lingua] || ""}</span>` : ""}</button>`, sv = tudo.filter(x=>cnSalvo("tv:" + x.k));
+      return `${temInt ? `<div class="lvlist rdfil" role="group" aria-label="Mostrar canais">${[["br","Brasil"],["int","Internacional"]].map(([k, n])=>`<button class="rdf" type="button" data-act="vivofil" data-f="${k}" aria-pressed="${k===f}">${n}</button>`).join("")}</div>` : ""}<div class="lvlist">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${!c ? "" : src ? `<div class="lvbox"><iframe class="lvframe" src="${src}" title="Transmissão ao vivo: ${esc(c.nome)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
       <p class="lvcred"><span>Transmissão oficial: <b>${esc(c.nome)}</b> · YouTube</span><span class="lvsp"></span>${cnSalvaBtn("tv:" + c.k, c.nome)}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><button type="button" data-act="vivofecha">Fechar</button></p>
       <p class="lvnota">Sinal do próprio canal, sem cortes. A rede.online não exibe anúncios nesta aba.</p>`
@@ -8539,31 +8544,33 @@ const RADIO_PADRAO = [
   {k:"nacional-rio", nome:"Rádio Nacional", grupo:"publica", cidade:"Rio de Janeiro", uf:"RJ", stream:"https://radionacionalrio-stream.ebc.com.br/ebc/radionacionalriodejaneiro/playlist.m3u8", site:"https://radios.ebc.com.br/radionacional"},
   {k:"mec-fm", nome:"Rádio MEC FM", grupo:"publica", cidade:"Rio de Janeiro", uf:"RJ", stream:"https://radiomecfm-stream.ebc.com.br/ebc/radiomecfm/MEC_FM-mp4a_277200_eng=20000.m3u8", site:"https://radios.ebc.com.br/radiomec"},
   {k:"senado", nome:"Rádio Senado", grupo:"poderes", cidade:"Brasília", uf:"DF", stream:"https://www12.senado.leg.br/radiosenado/fmaac/playlist.m3u8", site:"https://www12.senado.leg.br/radio"}];
-const RD_GRUPO = {publica:"Públicas", poderes:"Dos Poderes", estadual:"Estaduais", universitaria:"Universitárias", comunitaria:"Comunitárias", comercial:"Comerciais"};
+const RD_GRUPO = {publica:"Públicas", poderes:"Dos Poderes", estadual:"Estaduais", universitaria:"Universitárias", comunitaria:"Comunitárias", comercial:"Comerciais", internacional:"Internacionais"};
+const PAIS_NOME = {GB:"Reino Unido", FR:"França", ES:"Espanha", AR:"Argentina", CA:"Canadá", AU:"Austrália", US:"Estados Unidos", PT:"Portugal", JP:"Japão", DE:"Alemanha", MX:"México", CL:"Chile", UY:"Uruguai", CO:"Colômbia"};
+const rdLugar = x => x.grupo==="internacional" ? [x.cidade, PAIS_NOME[x.uf] || x.uf].filter(Boolean).join(", ") : [x.cidade, x.uf].filter(Boolean).join(", ");
 const RD = {lista:null, em:0, t:0, f:store.get("radioFiltro", "")};
 /* 16/11 (Amanda): achar a rádio pelo grupo, com "Perto de você" primeiro quando a pessoa já escolheu a região na rede */
 const rdUF = () => { const r = String(S.regiao || ""); const m = r.match(/,\s*([A-Z]{2})\b/) || r.match(/^([A-Z]{2})$/); if (m && UF_NOME[m[1]]) return m[1];
   const n = semAcento(r).toLowerCase(), e = Object.entries(UF_NOME).find(([sg, nm])=>n && n.includes(semAcento(nm).toLowerCase())); return e ? e[0] : ""; };
 const rdPerto = l => { const uf = rdUF(), cid = semAcento(String(S.regiao || "").split(",")[0]).toLowerCase().trim();
-  return l.filter(x=>(uf && x.uf===uf) || (cid && semAcento(x.cidade || "").toLowerCase()===cid)); }; let RD_ON = null, RD_EST = "", RD_AUD = null, RD_HLS = null;
+  return l.filter(x=>x.grupo!=="internacional" && ((uf && x.uf===uf) || (cid && semAcento(x.cidade || "").toLowerCase()===cid))); }; let RD_ON = null, RD_EST = "", RD_AUD = null, RD_HLS = null;
 const RD_URL = /^https:\/\/[^\s"<>]+$/;
 async function radioCarrega(){ if (!SB){ if ((RD.t = (RD.t || 0) + 1) <= 8) setTimeout(radioCarrega, 1500); return; }
   if (Date.now() - RD.em < 10*60e3) return; RD.em = Date.now();
   try { const {data, error} = await SB.rpc("radios_lista"); if (error || !Array.isArray(data) || !data.length) return;
     const l = data.filter(r=>r && /^[a-z0-9-]{2,40}$/.test(r.k || "") && RD_URL.test(r.stream || "") && (!r.site || RD_URL.test(r.site)))
-      .map(r=>({k:r.k, nome:String(r.nome || "").slice(0, 60), grupo:RD_GRUPO[r.grupo] ? r.grupo : "publica", cidade:String(r.cidade || "").slice(0, 40), uf:String(r.uf || "").slice(0, 2), stream:r.stream, site:r.site || "", aviso:String(r.aviso || "").slice(0, 240)}));
+      .map(r=>({k:r.k, nome:String(r.nome || "").slice(0, 60), grupo:RD_GRUPO[r.grupo] ? r.grupo : "publica", cidade:String(r.cidade || "").slice(0, 40), uf:String(r.uf || "").slice(0, 2), stream:r.stream, site:r.site || "", aviso:String(r.aviso || "").slice(0, 240), lingua:/^(pt|en|es|fr)$/.test(r.lingua || "") ? r.lingua : "pt"}));
     if (l.length){ RD.lista = l; radioPinta(); } } catch(e){} }
 const radioLista = () => RD.lista || RADIO_PADRAO;
 function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g)), perto = rdPerto(l);
   const fs = (perto.length ? [["perto", "Perto de você"]] : []).concat([["todas", "Todas"]], gs.map(g=>[g, g==="poderes" ? "Poderes" : RD_GRUPO[g]]));
   const f = fs.some(x=>x[0]===RD.f) ? RD.f : (perto.length ? "perto" : "todas");
-  const vis = f==="perto" ? perto : f==="todas" ? gs.flatMap(g=>l.filter(x=>x.grupo===g)) : l.filter(x=>x.grupo===f);
+  const vis = f==="perto" ? perto : f==="todas" ? gs.flatMap(g=>l.filter(x=>x.grupo===g)) : l.filter(x=>x.grupo===f).sort((a, b)=>f==="internacional" ? lingOrdem(a) - lingOrdem(b) : 0);
   const est = {conecta:"Conectando…", toca:"No ar", erro:"Esta rádio não respondeu agora. Tente outra ou abra o site dela."}[RD_EST] || "";
-  return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas, universitárias e Mix</span></div>
-    ${(()=>{ const chip = x=>`<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc([x.cidade, x.uf].filter(Boolean).join(", "))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}</button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
+  return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas, universitárias e do mundo</span></div>
+    ${(()=>{ const chip = x=>`<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc(rdLugar(x))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}${x.grupo==="internacional" ? `<span class="lgtag">${LING_ROT[x.lingua] || ""}</span>` : ""}</button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
       return `<div class="lvlist rdfil" role="group" aria-label="Mostrar rádios">${fs.map(([k, n])=>`<button class="rdf" type="button" data-act="radiofil" data-f="${k}" aria-pressed="${k===f}">${k==="perto" ? ic("pin", "sm") : ""}${n}</button>`).join("")}</div>
       <div class="lvlist rdlist">${vis.map(chip).join("")}</div>${sv.length ? `<div class="lvlist rdlist cnsalvos" role="group" aria-label="Rádios salvas"><span class="rdg">${icFill("bookmark", true)}Salvas</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
-    ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([[c.cidade, c.uf].filter(Boolean).join(", "), est].filter(Boolean).join(" · "))}</small></span>
+    ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([rdLugar(c), est].filter(Boolean).join(" · "))}</small></span>
       ${cnSalvaBtn("rd:" + c.k, c.nome)}${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
       ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal da própria emissora, ao vivo. A rede.online não exibe anúncios nesta aba.</p>` : ""}`; }
 function radioPinta(){ const box = $("#radio"); if (!box || box.hidden) return; const sx = RD.zera ? 0 : (box.querySelector(".rdlist") || {}).scrollLeft || 0, fx = (box.querySelector(".rdfil") || {}).scrollLeft || 0; RD.zera = false;
@@ -9730,6 +9737,7 @@ const A = {
     $$(".face.vid video, .tile video, video.pinvid").forEach(v=>{ if (!v.paused){ v.dataset.user = "paused"; v.pause(); } });
     LV_ON = k; aoVivoPinta(); const x = $("#aovivo"); x && x.scrollIntoView({block:"nearest"}); },
   vivofecha: b => { vivoFecha(); },
+  vivofil: b => { LV.f = b.dataset.f; store.set("vivoFiltro", LV.f); aoVivoPinta(); },
   cnsalva: b => cnSalva(b.dataset.k, b.dataset.nome),
   radiofil: b => { RD.f = b.dataset.f; store.set("radioFiltro", RD.f); RD.zera = true; radioPinta(); },
   cnconta: () => { closeSheet(); A.acessar(); },
@@ -10270,7 +10278,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:10";
+const VERSAO = "v1 registrada · 16/11 09:22";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
