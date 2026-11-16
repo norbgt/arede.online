@@ -4,4 +4,5 @@
 !/index.html
 !/*/index.html
 !/.well-known/security.txt
+!/a/*
 !/_headers
