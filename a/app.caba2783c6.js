@@ -1699,10 +1699,14 @@ function sourceBase(fl=S.filt, types=tabTypes()){
   /* publicações das contas reais vêm primeiro, das mais novas às mais antigas */
   const reais = S.tab!=="tudo" ? l.filter(it=>it.conta) : [];   /* 15/11: em Tudo, as publicações das contas entram pela data, junto com o resto */
   if (reais.length) l = reais.sort((a,b)=>(a.min - prioDe(a) * PRIO_HORAS * 60) - (b.min - prioDe(b) * PRIO_HORAS * 60)).concat(l.filter(it=>!it.conta));
-  /* variedade: a mesma fonte não aparece em sequência (olha até 8 itens à frente para trocar a ordem) */
-  if (S.ord==="padrao" && S.tab!=="agenda"){ const fila = l.slice(), out = [];
-    while (fila.length){ const ult = out.slice(-2).map(x=>x.org); let i = fila.findIndex((x,k)=>k < 8 && (x.conta || !ult.includes(x.org))); if (i < 0) i = 0; out.push(fila.splice(i,1)[0]); }
-    l = out; }
+  /* variedade: a mesma fonte não aparece em sequência (olha até 8 itens à frente para trocar a ordem).
+     16/11 (Amanda): equilíbrio bloco a bloco. Em cada 20 cartões, no máximo 3 do mesmo grupo de mídia (Grupo Globo = g1, O Globo e Valor)
+     e no máximo 10 da grande imprensa (50%, o mesmo limite do servidor); nunca dois do mesmo grupo seguidos.
+     O que passa do teto não some: vai mais para a frente. */
+  /* 16/11 (Amanda): pauta policial de longe desce. Crime, polícia, prisão, morte e acidente (pelo título) que não são da sua cidade
+     nem do seu estado vão para depois do resto, sem sumir. Caso que várias fontes cobrem (2 ou mais) fica no lugar. */
+  if (S.ord==="padrao" && S.tab!=="agenda"){ const perto = [], longe = []; l.forEach(it=>(policialLonge(it) ? longe : perto).push(it)); l = perto.concat(longe); }
+  if (S.ord==="padrao" && S.tab!=="agenda") l = equilibra(l);
   if (vivo && S.ord==="padrao") l = fvOrdena(l);   /* 15/11: o que você já viu em outra visita vai para o fim */
   if (vivo && S.tab==="publicacoes") l = comExemplos(l, exemplosPorTipo(fl));
   /* arte no feed geral (decisão de 9 nov 2026): 1 peça do acervo para cada 5 de outros tipos, para todo mundo,
@@ -1715,6 +1719,17 @@ function sourceBase(fl=S.filt, types=tabTypes()){
   /* Movimentos (eventos e chamados) é uma agenda: no padrão, o que acontece ou vence primeiro */
   return S.tab==="agenda" && S.ord==="padrao" && types===tabTypes() ? l.slice().sort((a,b)=>(+a.dia || a.ate || 99) - (+b.dia || b.ate || 99)) : l;
 }
+const POLICIAL = /\b(mort[oa]s?|mata|matou|assassin\w*|crimes?|pres[oa]s?|pris[aã]o|pol[ií]cia\w*|tiros?|baleado\w*|acidentes?|viol[eê]ncia|homic[ií]dio\w*|estupr\w*|tr[aá]fico|furto|roubo|assalt\w*|sequestr\w*|police|killed|shooting|murder\w*|arrest\w*|polic[ií]a|asesin\w*|detenid\w*|muert[eo]s?)\b/i;
+const policialLonge = it => !!it && it.coletada && POLICIAL.test(it.titulo || "") && prox(it) < 2 && !((it.ext && it.ext.verif || []).length >= 2);
+const EQ = {bloco:20, grupo:3, grande:10, olhar:40};
+const grupoDe = it => it.grupoMidia || it.org;
+function equilibra(l){ const fila = l.slice(), out = [];
+  const ok = (x, nivel) => { if (x.conta) return true; const ult = out.slice(-2), jan = out.slice(-(EQ.bloco - 1)), g = grupoDe(x);
+    if (ult.some(y=>y.org===x.org) || (out.length && grupoDe(out[out.length-1])===g)) return false;   /* nunca dois seguidos */
+    if (nivel > 0) return true;
+    return jan.filter(y=>grupoDe(y)===g).length < EQ.grupo && (!x.grande || jan.filter(y=>y.grande).length < EQ.grande); };
+  while (fila.length){ let i = fila.findIndex((x,k)=>k < EQ.olhar && ok(x, 0)); if (i < 0) i = fila.findIndex((x,k)=>k < 8 && ok(x, 1)); if (i < 0) i = 0; out.push(fila.splice(i,1)[0]); }
+  return out; }
 function source0(fl, types, soReal){
   const t = ofTab(types), f = it => t(it) && passa(it, fl) && redePronta(it) && !(soReal && ehExemplo(it));
   if (!S.algo) return ordena(soReal ? amplo(POOL.filter(f)).sort((a,b)=>a.min - b.min) : amplo(POOL.filter(f)));   /* 15/11: no feed verdadeiro, o mais novo primeiro */
@@ -4476,7 +4491,7 @@ function noticiasAplica(data, ref){
   data.forEach(n=>{ if (urls.has(n.url) || vistos.has(n.grupo)) return; vistos.add(n.grupo);
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
     const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[n.grupo].filter(x=>x.id!==n.id);
-    const it = {id, tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
+    const it = {id, grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
       ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
     const yt = (String(n.url).match(/youtube\.com\/watch\?v=([\w-]{11})/) || [])[1];
@@ -6583,7 +6598,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:44";
+const VERSAO = "v1 registrada · 16/11 14:15";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
