@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-mQwJzPPHawc0aoLGJmtyGQue0m7X5MwxPB+yR725KzU=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-G2WZPjWgdvKXc0aRMu12/ZYgt0y6VOU768FVdfMsLXg=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -10146,8 +10146,16 @@ document.addEventListener("input", e=>{
 document.addEventListener("keydown", e=>{ if (e.key==="Escape" && $("#layer .scrim")) closeSheet(); });
 const START = "";
 /* 16/11 (Amanda): abrir o endereço sem # leva sempre ao Início. Só o painel de controle do arquivo local reabre onde estava. */
-/* 16/11: arede.online/canais (que leva a #canais) abre o Início direto na aba Canais. O endereço volta para #inicio sem recarregar. */
-function abaPorEndereco(){ if (location.hash !== "#canais") return; S.tab = "videos"; S.rapido = null; persist("tab"); try{ history.replaceState(null, "", "#inicio"); }catch(err){ location.hash = "inicio"; } }
+/* ENDEREÇOS DIRETOS (16/11): arede.online/<nome> é uma página mínima no GitHub Pages que leva a #<nome>; aqui cada nome vira a tela certa,
+   e o endereço volta para a rota de verdade sem recarregar. Rotas que já são endereços (#em-alta, #manifesto, #termos, #privacidade) não precisam de atalho. */
+const ATALHOS = {tudo:{tab:"tudo"}, publicacoes:{tab:"publicacoes"}, canais:{tab:"videos"}, documentos:{tab:"documentos"},
+  buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, comunidades:{r:"comunidades-todas"}, paginas:{r:"paginas-todas"},
+  orgs:{r:"organizacoes", org:"feed"}, consultas:{r:"organizacoes", org:"decidir"}, eventos:{r:"organizacoes", org:"eventos"}, apoie:{acao:"apoie"}};
+function abaPorEndereco(){ const a = ATALHOS[location.hash.slice(1)]; if (!a) return;
+  if (a.tab){ S.tab = a.tab; S.rapido = null; persist("tab"); }
+  if (a.org){ S.orgAba = a.org; S.decTipo = "todos"; store.set("orgAba", a.org); }
+  try{ history.replaceState(null, "", "#" + (a.r || "inicio")); }catch(err){ location.hash = a.r || "inicio"; }
+  if (a.acao === "apoie") setTimeout(()=>{ try{ sheetApoie(); }catch(e){} }, 800); }
 abaPorEndereco(); window.addEventListener("hashchange", abaPorEndereco);
 if (!location.hash){ const ul = store.get("ultima", ""), ini = (LOCAL && /^painel\//.test(ul)) ? ul : START; if (ini && ini!=="inicio"){ try{ history.replaceState(null, "", "#" + ini); }catch(err){ location.hash = ini; } } }
 window.addEventListener("hashchange", render);
@@ -10224,7 +10232,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 08:54";
+const VERSAO = "v1 registrada · 16/11 09:00";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
