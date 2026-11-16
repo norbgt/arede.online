@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-XKgap5ZJeEL90CPRq89aClUH9NY/aou0OogSMwhCRV8=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-XSIU12nVZG679ODMzEwQ2CaFhjnSx0/sHx9CNmVJv48=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1556,6 +1556,15 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .segt{display:flex;flex-direction:column;line-height:1.25;min-width:0}.segt b{font-size:15px}.segt small{color:var(--muted);font-size:12.5px}
 .list .segselo{margin:0}
 .docleg a.segselo, .docleg a.segselo:hover{color:var(--ink);text-decoration:none}
+/* 16/11: esqueleto enquanto o feed espera o conteúdo principal (no máximo 2,5 s) */
+.feedesp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:6px 0}
+.fesq{border-radius:var(--r);background:var(--surface);overflow:hidden;display:flex;flex-direction:column;gap:8px;padding-bottom:14px}
+.fesq span{display:block;aspect-ratio:4/3;background:var(--surface-2)}
+.fesq.b span{aspect-ratio:3/4}
+.fesq i{display:block;height:10px;margin:0 12px;border-radius:6px;background:var(--surface-2)}
+.fesq i + i{width:55%}
+@media (prefers-reduced-motion:no-preference){ .fesq span, .fesq i{animation:fesqp 1.2s ease-in-out infinite alternate} }
+@keyframes fesqp{from{opacity:.55}to{opacity:1}}
 .adpdica{margin:-4px 0 0;color:var(--muted);font-size:var(--fs-sm);line-height:1.45}
 .adpainel > .adpdica:first-child{margin-top:2px}
 .adregras.curta{margin:2px 0 0;padding-left:18px;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
@@ -4272,7 +4281,7 @@ async function localAtualiza(silencio){ let c;
   if (!L){ if (!silencio) toast("Não encontrei a cidade desta posição. Você pode escrever a cidade."); return null; }
   const txt = L.uf ? `${L.cidade}, ${L.uf}` : L.pais && !/^bra[sz]il$/i.test(L.pais) ? `${L.cidade}, ${L.pais}` : L.cidade, mudou = txt !== S.regiao;
   S.regiao = txt; persist("regiao"); S.localQuando = Date.now(); persist("localQuando");
-  if (mudou){ F.key = null; toast(silencio ? `Você está em ${txt}. Região atualizada.` : `Região: ${txt}.`); if (route()==="inicio" || route()==="") render(); }
+  if (mudou){ toast(silencio ? `Você está em ${txt}. Região atualizada.` : `Região: ${txt}.`); feedDadosNovos(); }
   else if (!silencio) toast(`Região: ${txt}.`);
   return txt; }
 function sheetLocal(para){ openSheet(shead("Usar minha localização") + `<div class="cform sform">
@@ -4432,7 +4441,7 @@ async function contaDadosCarrega(){ if (!SB || !ME.user || CD_DE===ME.user.id) r
     if (S[k] instanceof Set) S[k] = new Set(Array.isArray(v) ? v : []); else S[k] = (v && typeof v==="object" && !Array.isArray(v)) ? v : {};
     store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); mudou = true; });
   CD_DE = uid; contaDadosEnvia(); vitrineAgenda(); if (mudou) render(); }
-const sessionStart = Date.now();
+let sessionStart = Date.now();
 const HOST_THEME = document.documentElement.getAttribute("data-theme");
 function applyTheme(){ const r = document.documentElement;
   if (S.tema==="auto"){ HOST_THEME ? r.setAttribute("data-theme", HOST_THEME) : r.removeAttribute("data-theme"); }
@@ -4696,6 +4705,17 @@ function prevObserva(){ if (!PREV.obs) PREV.obs = new IntersectionObserver(es=>e
 let prevRaf = 0;
 new MutationObserver(()=>{ if (prevRaf) return; prevRaf = requestAnimationFrame(()=>{ prevRaf = 0; prevObserva(); }); }).observe(document.getElementById("main"), {childList:true, subtree:true});
 document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState!=="visible") prevPara(); });
+/* 16/11 (Amanda): quem volta depois de 30 minutos ou mais, numa tela de leitura, recomeça no Início, no topo e com conteúdo novo.
+   Telas de preencher (criar, anunciar, conta…) ficam como estavam, para ninguém perder o que estava escrevendo. */
+let SAIU_EM = 0;
+function voltaDepoisDeTempo(){ if (!SAIU_EM || Date.now() - SAIU_EM < 30*60000 || PREVIA){ SAIU_EM = 0; return; } SAIU_EM = 0;
+  const r = route(), leitura = r==="" || r==="inicio" || r==="explorar" || r==="organizacoes" || /^(pin|org|pg|pessoa|n)-/.test(r);
+  if (!leitura) return;
+  sessionStart = Date.now(); F.fixos = null; F.manter = false; F.key = null; closeSheet && closeSheet();
+  if (r!=="inicio"){ try{ history.replaceState(null, "", "#inicio"); }catch(e){} }
+  render(); window.scrollTo(0, 0); if (SB && typeof noticiasCarrega==="function") noticiasCarrega(); }
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="hidden") SAIU_EM = Date.now(); else voltaDepoisDeTempo(); });
+window.addEventListener("pageshow", e=>{ if (e.persisted) voltaDepoisDeTempo(); });
 function ytPara(exceto){ if (typeof LV_ON!=="undefined" && LV_ON) vivoFecha(); $$(".ytframe").forEach(fr=>{ if (exceto && exceto.contains(fr)) return; const box = fr.parentNode; fr.remove(); box.classList.remove("ytvivo"); }); }
 /* cota de vídeos: visitante, 8 por visita; conta com e-mail, 15 a cada 12 horas e depois só no canal original */
 function ytNegado(id, g){ ytPara();
@@ -5148,7 +5168,7 @@ function adReal(p){ p = Object.assign(limpoObj(p), {link:linkSeguro(p.link)}); c
   return {id, real:true, pid:p.id, nome:p.nome, frase:p.frase, curta:p.frase, seg:p.seg || "", cta:p.cta || "", link:p.link, cor:c[0], cor2:c[1], fmt:p.formato, pos:p.posicao, fim:p.fim, logo:adLetra(p.nome)}; }
 async function adNoArCarrega(){ if (!SB) return; try{ const r = await SB.rpc("anuncios_no_ar"); if (r.error || !Array.isArray(r.data)) return;
   const novo = r.data.map(adReal), mudou = JSON.stringify(novo.map(a=>a.id)) !== JSON.stringify(AD_REAIS.map(a=>a.id)); AD_REAIS = novo;
-  if (mudou && route()==="inicio"){ F.key = null; render(); } }catch(e){} }
+  if (mudou && route()==="inicio") feedDadosNovos(); }catch(e){} }
 function adDoEspaco(n, antes){ const ok = a=>!S.adOculta.has(a.id), R = AD_REAIS.filter(ok);
   const pega = (pos, k) => { const l = R.filter(a=>a.pos===pos); return l.length ? l[(k + AD_ROD) % l.length] : null; };
   const pago = n===1 ? pega("topo", 0) : n<=3 ? pega("meio", n - 2) : pega("rot", n - 4);
@@ -5415,7 +5435,14 @@ function sheetAnuncio(uid){ const it = findItem(uid); if (!it) return; const a =
     <button class="btn ghost block" type="button" data-act="adoculta" data-a="${a.id}">Não mostrar mais ${esc(a.nome)}</button>
     <button class="btn ghost block" type="button" data-act="anunciar">Anuncie aqui</button></div>
     <p class="srcnote" style="margin-top:8px">Anunciante fictício, de exemplo: o link fica desativado.</p>`, "Anúncio"); }
-function source(fl=S.filt, types=tabTypes()){
+/* 16/11 (Amanda): FEED ESTÁVEL. Quando chega conteúdo novo (notícias, publicações, artes, anúncios, região), o que já apareceu
+   na tela fica no mesmo lugar e na mesma ordem; o que é novo entra depois. Só ações da pessoa (aba, filtros, tocar de novo no Início)
+   montam o feed do zero. */
+function source(fl=S.filt, types=tabTypes()){ const l = sourceBase(fl, types);
+  if (!F.fixos || fl!==S.filt || types!==tabTypes()) return l;
+  const por = new Map(l.map(it=>[String(it.id), it])), ja = new Set(F.fixos);
+  return F.fixos.map(id=>por.get(id) || F.fixosObj[id]).filter(Boolean).concat(l.filter(it=>!ja.has(String(it.id)))); }
+function sourceBase(fl=S.filt, types=tabTypes()){
   const vivo = (S.tab==="tudo" || S.tab==="publicacoes") && types===tabTypes();   /* 15/11: Tudo e Publicações partem só do que é verdadeiro */
   let l = source0(fl, types, vivo).filter(it=>!it.base);
   if (S.tab==="documentos" && DOCTIPO && types===tabTypes()) l = l.filter(it=>docTipoDe(it)===DOCTIPO);
@@ -5553,12 +5580,15 @@ function feedCols(L){ const w = ($("#feed") || document.body).clientWidth || inn
   return w >= 720 ? 2 : 1; }
 function resetFeed(){
   altaFaixa(); docBase(); aoVivo();
+  const manter = F.manter && F.items.length; F.manter = false;
+  if (manter){ const vis = F.items.filter(i=>!i.base && !S.created.includes(i)); F.fixos = vis.map(i=>String(i.id)); F.fixosObj = Object.fromEntries(vis.map(i=>[String(i.id), i])); } else { F.fixos = null; F.fixosObj = {}; }
+  const nAntes = manter ? F.fixos.length : 0;
   F.items = []; F.cursor = 0; F.vistos = 0; F.gate = null; F.paused = false; F.ended = false; F.key = feedKey();
   wrapClass(); const L = feedLayout();
   F.grid = L==="blocos" ? new TileGrid("feed", $("#feed"), feedMode()) : new Grid("feed", $("#feed"), feedMode(), feedCols(L), L);
   F.grid.arte = S.tab==="arte";
   const types = tabTypes(); S.created.slice().reverse().forEach(c=>{ if(!types || types.includes(c.tipo)){ F.items.push(c); F.grid.add(c); } });
-  F.grid.render(); more(12);
+  F.grid.render(); more(Math.max(12, nAntes));
 }
 /* avisos do feed: discretos, centralizados, sem bloco pesado */
 function renderStop(){
@@ -7426,8 +7456,9 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else {
     main.innerHTML = screenHome();
     const keep = !same && F.items.length && F.key===feedKey();
-    if (keep){ altaFaixa(); docBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
-    F.obs = new IntersectionObserver(es=>{ if (es[0].isIntersecting) more(10); }, {rootMargin:"800px"});
+    if (!FEED_PRONTO && !PREVIA){ const fd = $("#feed"); if (fd) fd.innerHTML = feedEsqueleto(); }
+    else if (keep){ altaFaixa(); docBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
+    F.obs = new IntersectionObserver(es=>{ if (es[0].isIntersecting && FEED_PRONTO) more(10); }, {rootMargin:"800px"});
     F.obs.observe($("#sentinel"));
   }
   const logoNovo = main.querySelector(".logo");   /* a marca é a mesma em toda tela: mantém o elemento antigo, e o movimento segue sem pulo */
@@ -7944,7 +7975,7 @@ const ME = {user:null, perfil:null, pronto:false, offline:false, pend:null};
 /* o nível de acesso mudou (entrou, saiu, virou verificada): refaz o feed e carrega ou tira as artes */
 let NIVEL_ATUAL = nivel();
 function acessoMudou(forca){ const n = nivel(), mudou = n!==NIVEL_ATUAL; if (!mudou && !forca) return; NIVEL_ATUAL = n; LG = null;
-  artesCarrega(); if (mudou){ if (ME.pronto && (!ME.srv || ME.srv.nivel!==n)) noticiasCarrega(); if (route()==="inicio" || route()==="") render(); } }
+  artesCarrega(); if (mudou){ if (ME.pronto && (!ME.srv || ME.srv.nivel!==n)) noticiasCarrega(); feedDadosNovos(); } }
 function sbCarrega(){ return new Promise(ok=>{ if (window.supabase) return ok(true);
   const sc = document.createElement("script"); /* versão fixa e conferida por assinatura (SRI): se o arquivo do CDN mudar, o navegador recusa (10 nov 2026) */
   sc.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js";
@@ -8080,7 +8111,7 @@ async function publicacoesCarrega(){ if (!SB) return;
   let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
   data.concat(ex).slice().reverse().forEach(p=>{ const it = itemDaPublicacao(p); if (exPagId(p.pagina_id)) it.exemplo = true; POOL.unshift(it); });   /* 15/11: o que as páginas de exemplo publicam é exemplo */
   await prioridadesCarrega(data.map(p=>p.autor));
-  F.key = null; const r = route(); if (r==="inicio" || r==="" || r==="organizacoes" || r.startsWith("pg-") || r.startsWith("org-")) render(); }   /* 15/11: a página aberta direto pelo link também mostra as publicações */
+  const r = route(); if (r==="inicio" || r==="") feedDadosNovos("publicacoes"); else { feedFonteOk("publicacoes"); F.key = null; if (r==="organizacoes" || r.startsWith("pg-") || r.startsWith("org-")) render(); } }   /* 15/11: a página aberta direto pelo link também mostra as publicações */
 
 /* NOTÍCIAS DO COLETOR (servidor, atualizado a cada 15 minutos): entram no feed como as notícias da curadoria.
    Uma entrada por notícia; as outras fontes que deram a mesma notícia aparecem em "A mesma notícia em outras fontes". */
@@ -8133,7 +8164,7 @@ function noticiasAplica(data, ref){
     const arruma = t => (t || "").replace(/[ \t]+([,.;:!?])/g, "$1").replace(/[ \t]{2,}/g, " ");   /* o feed às vezes deixa espaço antes da vírgula */
     RESUMO[id] = arruma(n.chamada); BODY[id] = n.resumo ? n.resumo.split(/\n\s*\n/).map(arruma).filter(Boolean) : n.chamada ? [arruma(n.chamada)] : []; it.texto = RESUMO[id]; SEAL[id] = Math.max(0, Math.min(100, f.nota + (n.selo_ajuste || 0))); if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
     POOL.push(it); });
-  F.key = null; if (route()==="inicio" || route()==="") render(); }
+  feedDadosNovos("noticias"); }
 
 /* =====================================================================
    OUTRAS REDES: o que a pessoa publica em outras redes vai para o perfil dela (e, se ela escolher, também para o feed);
@@ -8486,6 +8517,15 @@ function artesDaCopia(){ if (!ARTES_COPIA) return;
       artista:a.artista || "", artistaIg:a.artista_instagram || "", catArte:a.categoria || "outros", campanha:a.campanha || "", min:Math.max(1, Math.round((Date.now() - dt) / 60000)),
       ext:{url:a.url, dom:"designativista.pages.dev", data:isoDia(dt), verif:[], motivo:"", obs:""}}); SEAL[id] = null; RESUMO[id] = ""; BODY[id] = []; });
   F.key = null; }
+/* 16/11 (Amanda): o feed só aparece quando o conteúdo principal chegou (ou depois de 2,5 s), para não trocar na frente de quem lê.
+   Enquanto isso, um esqueleto. Depois, conteúdo novo entra sem mexer no que já está na tela (F.manter). */
+var FEED_PRONTO = false, FEED_ESPERA = new Set(["noticias", "publicacoes", "artes"]);
+function feedLibera(){ if (FEED_PRONTO) return; FEED_PRONTO = true; const r = route(); if (r==="inicio" || r===""){ F.key = null; render(); } }
+function feedFonteOk(k){ FEED_ESPERA.delete(k); if (!FEED_ESPERA.size) feedLibera(); }
+setTimeout(feedLibera, 2500);
+function feedDadosNovos(fonte){ if (fonte) feedFonteOk(fonte); if (!FEED_PRONTO) return; F.key = null; const r = route();
+  if (r==="inicio" || r===""){ if (F.items.length) F.manter = true; render(); } }
+function feedEsqueleto(){ return `<div class="feedesp" aria-busy="true" aria-label="Carregando o feed">${Array.from({length:4}, (_, i)=>`<div class="fesq${i % 2 ? " b" : ""}"><span></span><i></i><i></i></div>`).join("")}</div>`; }
 /* página de um conteúdo aberta direto (link ou volta ao abrir): espera notícias e artes chegarem antes de dizer que não existe */
 let PIN_ESPERA = true;
 function pinPronto(final){ if (final) PIN_ESPERA = false; if (route().startsWith("pin-") && !$("#pinwrap")) render(); }
@@ -8494,17 +8534,17 @@ async function artesCarrega(){
   /* ARTE FECHADA (10 nov 2026): por enquanto só a administradora vê. Para as outras pessoas as artes nem entram na página,
      e o servidor também não as entrega (regra no banco). */
   if (!veArte()){ let tinha = false; for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].daArte){ POOL.splice(i, 1); tinha = true; }
-    if (tinha){ F.key = null; if (route()==="inicio" || route()==="") render(); } pinPronto(true); return; }
-  if (!SB || ME.offline){ artesDaCopia(); if (route()==="inicio" || route()==="") render(); pinPronto(true); return; }
+    if (tinha) feedDadosNovos("artes"); else feedFonteOk("artes"); pinPronto(true); return; }
+  if (!SB || ME.offline){ artesDaCopia(); feedFonteOk("artes"); if (route()==="inicio" || route()==="") render(); pinPronto(true); return; }
   try{ const r = await SB.from("artes").select("id,ext_id,titulo,artista,artista_instagram,categoria,campanha,imagem_url,url,largura,altura,criada_na_fonte,revisada_em").eq("status","publicada").order("criada_na_fonte", {ascending:false}).limit(300);
-    if (r.error || (!r.data.length && ARTES_COPIA)){ artesDaCopia(); F.key = null; if (route()==="inicio" || route()==="") render(); pinPronto(true); return; }
+    if (r.error || (!r.data.length && ARTES_COPIA)){ artesDaCopia(); feedDadosNovos("artes"); pinPronto(true); return; }
     for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].daArte) POOL.splice(i, 1);
     r.data.forEach((a,k)=>{ const id = "art" + a.id.slice(0, 8), dt = Date.parse(a.criada_na_fonte || a.revisada_em || Date.now());
       const it = {id, artUuid:a.id, tipo:"imagem", arte:true, daArte:true, org:"designativista", tema:"Cultura", titulo:a.titulo, texto:"", cidade:"", lingua:"pt",
         foto:a.imagem_url, ar:a.largura && a.altura ? a.altura / a.largura : 1.41, ph:Math.min(1.6, a.largura && a.altura ? a.altura / a.largura : 1.41), artista:a.artista || "", artistaIg:a.artista_instagram || "", catArte:a.categoria || "outros", campanha:a.campanha || "",
         min:Math.max(1, Math.round((Date.now() - dt) / 60000)), ext:{url:a.url, dom:"designativista.pages.dev", data:isoDia(dt), verif:[], motivo:"", obs:""}};
       SEAL[id] = null; RESUMO[id] = ""; BODY[id] = []; POOL.push(it); });
-    F.key = null; if (route()==="inicio" || route()==="") render(); pinPronto(true); }catch(e){ artesDaCopia(); pinPronto(true); } }
+    feedDadosNovos("artes"); pinPronto(true); }catch(e){ artesDaCopia(); feedFonteOk("artes"); pinPronto(true); } }
 /* na arte, quem assina é a artista; o acervo aparece como origem, embaixo */
 const artistaLinha = it => { const nome = it.artista || "Autoria não informada", ig = it.artistaIg;
   return `<div class="orgline arteby"><span class="av" style="background:${ORG[it.org].cor}" aria-hidden="true">${siglaDe(nome)}</span><span class="t"><b class="who">${esc(nome)}</b>
@@ -9985,7 +10025,8 @@ document.addEventListener("input", e=>{
 });
 document.addEventListener("keydown", e=>{ if (e.key==="Escape" && $("#layer .scrim")) closeSheet(); });
 const START = "";
-if (!location.hash){ const ini = store.get("ultima", "") || START; if (ini && ini!=="inicio"){ try{ history.replaceState(null, "", "#" + ini); }catch(err){ location.hash = ini; } } }
+/* 16/11 (Amanda): abrir o endereço sem # leva sempre ao Início. Só o painel de controle do arquivo local reabre onde estava. */
+if (!location.hash){ const ul = store.get("ultima", ""), ini = (LOCAL && /^painel\//.test(ul)) ? ul : START; if (ini && ini!=="inicio"){ try{ history.replaceState(null, "", "#" + ini); }catch(err){ location.hash = ini; } } }
 window.addEventListener("hashchange", render);
 /* TOQUE DE NOVO NO ÍCONE DA BARRA (11 nov 2026): já estando numa seção, tocar outra vez no mesmo ícone volta ao começo dela,
    atualizado e no topo (como no Instagram e no X). Início: aba Tudo com as notícias recarregadas; Busca: sem busca nem tema;
@@ -10005,7 +10046,7 @@ document.addEventListener("click", e=>{ const a = e.target.closest && e.target.c
   if (sec==="inicio") noticiasCarrega(); uso("nav", "de-novo", sec); });
 if (S.localAuto && navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(q=>{ if (q.state==="granted" && Date.now() - (S.localQuando || 0) > 6 * 3600e3) localAtualiza(true); }).catch(()=>{});
 contaInicia();
-if (/[?&]teste=1/.test(location.search)) window.__arede = {sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
+if (/[?&]teste=1/.test(location.search)) window.__arede = {feedDadosNovos, POOL, F, sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
 window.addEventListener("scroll", ()=>{ const t = $("#top"); if (t) t.classList.toggle("scrolled", window.scrollY > 4); }, {passive:true});
 window.addEventListener("resize", debounce(()=>{
   placeLogoDots();
@@ -10060,7 +10101,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 15/11 12:33";
+const VERSAO = "v1 registrada · 16/11 07:58";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
