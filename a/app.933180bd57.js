@@ -5305,7 +5305,7 @@ const DIREITOS = () => String(MARCA.direitos || "").replace("{ano}", new Date().
    Só passam negrito, itálico, riscado, quebra de linha e links; o resto vira texto. */
 const MARCA = {titulo:"a rede.online", links:{legal:"Termos e privacidade", termos:"Termos de uso", privacidade:"Privacidade", manifesto:"Manifesto", funciona:"Como a rede.online funciona"},
   fale:"Fale com a rede:", email:"contato@arede.online", direitos:"© {ano} a rede.online. Todos os direitos reservados.",
-  terceiros:"Notícias, imagens e vídeos de terceiros pertencem aos seus veículos e autores, sempre com link para a fonte original."};
+  terceiros:"Notícias, imagens e vídeos de terceiros pertencem aos seus veículos e autores, sempre com link para a fonte original ou perfil responsável."};
 const TERCEIROS = () => MARCA.terceiros;
 const limpaTx = v => typeof v === "string" ? esc(v).replace(/&lt;(\/?)(s|b|i|em|strong)&gt;/g, "<$1$2>").replace(/&lt;br\s*\/?&gt;/g, "<br>")
     .replace(/&lt;a href=&quot;((?:https?:\/\/|mailto:|#)[^&<>]*)&quot;&gt;(.*?)&lt;\/a&gt;/g, '<a href="$1">$2</a>')
@@ -6482,7 +6482,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 12:50";
+const VERSAO = "v1 registrada · 16/11 12:53";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
