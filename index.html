@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-96Jq8w7/f/gdgOE9JSxlW/F99PqGR3CCpiWUEdz6rB8=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-spqj3YFoE7NCyzomyzBVuR2kzAdYM8LhkAiqQKWWofQ=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1326,7 +1326,12 @@ html.snapvid #aovivo{scroll-snap-align:start;scroll-margin-top:var(--vtop,72px)}
 article.card{position:relative}.card > .more.morein{position:absolute;right:4px;bottom:4px;margin:0;width:36px;height:36px;z-index:2}
 /* 16/11: o convite "Anuncie aqui" chama mais atenção (cor da marca) e nunca corta frase: o texto quebra linha e o quadro cresce */
 .adcard .adtile.faixa.casa{height:auto;min-height:88px;container-type:inline-size}
-.adtile.faixa.casa .adface{position:relative;padding:14px 40px 14px 14px;height:auto;min-height:88px}
+.adtile.faixa.casa .adface{position:relative;padding:14px 40px 14px 14px;height:100%;min-height:0}
+.adcard .adtile.faixa.casa .adface{height:auto;min-height:88px}
+/* 16/11: no mosaico o espaço tem altura fixa; o texto se adapta à altura em vez de ser cortado */
+@container (max-height:110px){ .adtile.faixa.casa .adface{padding:8px 36px 8px 14px} .adtile.faixa.casa .cslong{display:none} .adtile.faixa.casa .csshort{display:inline} .adtile.faixa.casa .adnome{font-size:15px;line-height:1.2} }
+@container (max-height:62px){ .adtile.faixa.casa .adtxt{display:none} .adtile.faixa.casa .admk svg{width:20px;height:20px} }
+@container (max-height:62px) and (min-width:420px){ .adtile.faixa.casa .adbot{flex-direction:row;align-items:baseline;gap:10px} .adtile.faixa.casa .adtxt{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} }
 .adtile.casa .csshort{display:none}
 .adtile.casa .adnome{white-space:nowrap}
 @container (max-width:260px){ .adtile.faixa.casa .admk{display:none} .adtile.faixa.casa .adface{padding:14px 30px 14px 14px} .adtile.casa .cslong{display:none} .adtile.casa .csshort{display:inline} .adtile.faixa.casa .adface::after{right:10px} }
@@ -10278,7 +10283,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:31";
+const VERSAO = "v1 registrada · 16/11 09:43";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
