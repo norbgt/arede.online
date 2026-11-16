@@ -22,6 +22,21 @@ async function getJSON(url: string, headers: Record<string, string> = {}, ms = 2
   } finally { clearTimeout(t); }
 }
 
+// 16/11 (Amanda): o voto do texto principal (inclusive substitutivo) é o que decide; vale igual na Câmara e no Senado.
+// Um cartão por projeto no Tudo: cada votação guarda a matéria ("PL 504/2021") para o site agrupar.
+const SIGLAS: [RegExp, string][] = [[/projeto de lei complementar/i, "PLP"], [/projeto de decreto legislativo/i, "PDL"], [/projeto de lei de convers[aã]o/i, "PLV"], [/projeto de lei/i, "PL"],
+  [/proposta de emenda (à|a) constitui[cç][aã]o/i, "PEC"], [/medida provis[oó]ria/i, "MPV"]];
+function materiaDe(t: string): string | null {
+  const m = t.match(/\b(PLP|PDL|PLV|PEC|MPV|PL)\s*n?[ºo°]?\s*([\d.]+)\s*(?:\/|,?\s*de\s*)(\d{4})/i);
+  if (m) return `${m[1].toUpperCase()} ${m[2].replace(/\./g, "")}/${m[3]}`;
+  for (const [re, sg] of SIGLAS) { const r = t.match(new RegExp(re.source + "\\s*n[ºo°]?\\s*([\\d.]+),?\\s*de\\s*(\\d{4})", "i")); if (r) return `${sg} ${r[1].replace(/\./g, "")}/${r[2]}`; }
+  return null;
+}
+const RESSALVA = /,?\s*ressalvad[oa]s? os destaques\.?/i;
+const RESSALVA_TXT = "Texto principal aprovado; trechos ainda serão votados separadamente.";
+// voto de mérito: o projeto ou o texto que o substitui; não o de um trecho (destaque) nem de uma emenda avulsa
+const merito = (t: string) => { const x = t.replace(RESSALVA, ""); return /substitutiv/i.test(x) || (/\b(projeto|proposta de emenda|pec|medida provis|plp|pl)\b/i.test(x) && !/\bdestaques?\b|\bemenda n[ºo°]/i.test(x)); };
+
 type Doc = { chave: string; tipo: string; fonte: string; titulo: string; resumo?: string | null; valor?: string | null; anterior?: string | null;
   url: string; publicado_em: string; cidade?: string | null; uf?: string | null; destaque?: boolean; dados?: any };
 
@@ -31,11 +46,12 @@ async function camara(): Promise<Doc[]> {
   const PROC = /requerimento|reda[cç][aã]o final|regime de tramita|recurso|retirada de pauta|adiamento|encerramento da discuss|quebra de interst|preferência/i;
   return (j.dados || []).filter((v: any) => v.descricao && !PROC.test(v.descricao)).map((v: any) => {
     const ev = String(v.uriEvento || "").split("/").pop();
-    const grande = /^(aprovad|rejeitad)[ao]s?\b.*\b(projeto|proposta de emenda|pec|medida provis)/i.test(v.descricao.trim()) && !/destaque|emenda n[ºo°]/i.test(v.descricao);
-    return { chave: "camara-" + v.id, tipo: "votacao", fonte: "Câmara dos Deputados", titulo: "Câmara: " + v.descricao.replace(/\s+/g, " ").trim(),
-      resumo: v.aprovacao === 1 ? "Aprovado no plenário." : v.aprovacao === 0 ? "Rejeitado no plenário." : null,
+    const d0 = v.descricao.replace(/\s+/g, " ").trim(), ress = RESSALVA.test(d0), desc = d0.replace(RESSALVA, ".").replace(/\.\.$/, ".");
+    const grande = /^(aprovad|rejeitad)[ao]s?\b/i.test(desc) && merito(desc);
+    return { chave: "camara-" + v.id, tipo: "votacao", fonte: "Câmara dos Deputados", titulo: "Câmara: " + desc,
+      resumo: ress && v.aprovacao === 1 ? RESSALVA_TXT : v.aprovacao === 1 ? "Aprovado no plenário." : v.aprovacao === 0 ? "Rejeitado no plenário." : null,
       url: ev ? `https://www.camara.leg.br/evento-legislativo/${ev}` : "https://www.camara.leg.br/", publicado_em: new Date((v.dataHoraRegistro || v.data) + "-03:00").toISOString(),
-      destaque: grande, dados: { id: v.id, aprovacao: v.aprovacao } };
+      destaque: grande, dados: { id: v.id, aprovacao: v.aprovacao, materia: materiaDe(desc) } };
   });
 }
 
@@ -45,18 +61,19 @@ async function senado(): Promise<Doc[]> {
   const RES: Record<string, string> = { A: "Aprovado", R: "Rejeitado" };
   return (Array.isArray(j) ? j : []).filter((v: any) => v && v.descricaoVotacao && !/requerimento/i.test(v.descricaoVotacao)).map((v: any) => {
     const res = RES[String(v.resultadoVotacao || "").trim()] || "";
-    const desc = String(v.descricaoVotacao).replace(/\s+/g, " ").replace(/^vota[cç][aã]o nominal d[oa]s?\s+/i, "").replace(/,?\s*nos termos d[oa]s? parecer(es)?\.?$/i, "").trim();
+    const d0 = String(v.descricaoVotacao).replace(/\s+/g, " ").replace(/^vota[cç][aã]o nominal d[oa]s?\s+/i, "").trim(), ress = RESSALVA.test(d0);
+    const desc = d0.replace(RESSALVA, "").replace(/,?\s*nos termos d[oa]s? parecer(es)?\.?$/i, "").replace(/^emenda n[ºo°]\s*[\d.]+\s*\(substitutivo\)\s+/i, "Substitutivo ").replace(/[.,;]\s*$/, "").trim();
     const vs = Array.isArray(v.votos) ? v.votos : [];
     const sim = vs.filter((x: any) => /^sim$/i.test(x.siglaVotoParlamentar)).length, nao = vs.filter((x: any) => /^n[aã]o$/i.test(x.siglaVotoParlamentar)).length;
     const placar = vs.length ? `${sim} sim · ${nao} não` : null;
     const ementa = String(v.ementa || "").replace(/\s+/g, " ").trim();
     return { chave: "senado-" + (v.codigoSessaoVotacao || v.sequencialVotacao || desc.slice(0, 60)), tipo: "votacao", fonte: "Senado Federal",
       titulo: "Senado: " + desc.charAt(0).toUpperCase() + desc.slice(1),
-      resumo: [res ? res + " no plenário." : "", placar ? "Placar: " + placar + "." : "", ementa].filter(Boolean).join(" ") || null, valor: placar,
+      resumo: [ress && res === "Aprovado" ? RESSALVA_TXT : res ? res + " no plenário." : "", placar ? "Placar: " + placar + "." : "", ementa].filter(Boolean).join(" ") || null, valor: placar,
       url: v.codigoMateria ? `https://www25.senado.leg.br/web/atividade/materias/-/materia/${v.codigoMateria}` : "https://www25.senado.leg.br/web/atividade/plenario",
       publicado_em: new Date((v.dataSessao || iso(hoje())) + "T18:00:00-03:00").toISOString(),
-      destaque: /aprovad|rejeitad/i.test(res) && /\b(projeto|pec|proposta de emenda|medida provis|plp|pl)\b/i.test(desc) && !/emenda n[ºo°]|destaque/i.test(desc),
-      dados: { codigo: v.codigoSessaoVotacao, materia: v.codigoMateria, identificacao: v.identificacao || null } };
+      destaque: /aprovad|rejeitad/i.test(res) && merito(d0),
+      dados: { codigo: v.codigoSessaoVotacao, codigoMateria: v.codigoMateria, materia: (v.identificacao ? String(v.identificacao).replace(/\s+/g, " ").trim() : null) || materiaDe(desc) } };
   });
 }
 

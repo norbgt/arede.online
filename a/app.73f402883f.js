@@ -4757,11 +4757,11 @@ const OF_ORG = {"Câmara dos Deputados":["camara-dep","Câmara dos Deputados","C
   "Portal da Transparência":["cgu-transparencia","Portal da Transparência","PT","#334155","https://portaldatransparencia.gov.br","Controladoria-Geral da União: os contratos do governo federal e quanto custam."]};
 Object.values(OF_ORG).forEach(([id,nome,sigla,cor,site,sobre])=>{ if (!ORG[id]) ORG[id] = {id, nome, sigla, cidade:"Nacional", natureza:"Governo e diário oficial", real:true, fonte:true, cor, membros:0, site, sobre}; });
 async function oficiaisCarrega(){ if (!SB) return;
-  try{ const r = await SB.from("dados_oficiais").select("id,tipo,fonte,titulo,resumo,valor,anterior,url,publicado_em,cidade,uf,destaque").order("publicado_em", {ascending:false}).limit(200);
+  try{ const r = await SB.from("dados_oficiais").select("id,tipo,fonte,titulo,resumo,valor,anterior,url,publicado_em,cidade,uf,destaque,dados").order("publicado_em", {ascending:false}).limit(200);
     if (r.error || !r.data) return;
     for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].oficial) POOL.splice(i, 1);
     r.data.forEach(d=>{ const o = OF_ORG[d.fonte]; if (!o) return; const id = "of" + d.id.replace(/-/g, "");
-      const it = {id, tipo:"documento", oficial:true, destaque:!!d.destaque, org:o[0], tema:OF_TEMA[d.tipo] || temaDe(d.titulo, d.resumo || ""), doc:OF_TIPO[d.tipo] || "Documento", docTipo:OF_TIPO[d.tipo] || "Documento",
+      const it = {id, tipo:"documento", oficial:true, destaque:!!d.destaque, materia:(d.dados && d.dados.materia) || null, org:o[0], tema:OF_TEMA[d.tipo] || temaDe(d.titulo, d.resumo || ""), doc:OF_TIPO[d.tipo] || "Documento", docTipo:OF_TIPO[d.tipo] || "Documento",
         titulo:d.titulo, texto:d.resumo || "", cidade:d.cidade || "", pags:null, data:dLabel(isoDia(d.publicado_em)),
         min:Math.max(1, Math.round((Date.now() - new Date(d.publicado_em)) / 60000)),
         ext:{url:d.url, dom:hostOf(d.url), data:isoDia(d.publicado_em), verif:[], motivo:"Dado oficial, direto da fonte.", obs:""}};
@@ -4769,7 +4769,9 @@ async function oficiaisCarrega(){ if (!SB) return;
       POOL.push(it); });
     feedDadosNovos("oficiais"); }catch(e){} }
 /* no Tudo: tira os oficiais e devolve só os destaques, no máximo 1 a cada 20 cartões (o primeiro depois do 10º) */
-function oficiaisNoTudo(l){ const resto = l.filter(it=>!it.oficial), dest = l.filter(it=>it.oficial && it.destaque).sort((a,b)=>a.min - b.min);
+/* 16/11 (Amanda): um cartão por projeto. Se o mesmo projeto teve mais de um voto de mérito na mesma casa, fica o mais recente */
+function oficiaisNoTudo(l){ const resto = l.filter(it=>!it.oficial), visto = new Set();
+  const dest = l.filter(it=>it.oficial && it.destaque).sort((a,b)=>a.min - b.min).filter(it=>{ if (!it.materia) return true; const k = it.org + "|" + it.materia; if (visto.has(k)) return false; visto.add(k); return true; });
   if (!dest.length) return resto; const out = []; let k = 0;
   resto.forEach((it,i)=>{ out.push(it); if ((i + 1) % OF_CADA === OF_CADA / 2 && k < dest.length) out.push(dest[k++]); });
   return out; }
@@ -6634,7 +6636,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:13";
+const VERSAO = "v1 registrada · 16/11 15:26";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
