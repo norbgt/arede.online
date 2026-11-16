@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-SSy9Rtfi5VAV8y9Ssf+f0vDG+nqW6pQMcVAFNZcorxw=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-m15FLmSm5IjvhRRsgc+C7HmHhuqplvaGu2skAlvzUD8=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1364,6 +1364,9 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 .phcapa .phmeta .agtag i{vertical-align:.08em}
 .phcapa .phmeta + .phmeta{margin-top:4px}
 .phcapa .phtop h1{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+/* REVISÃO DA V1 (16/11): área de toque de pelo menos 40 px nos botões pequenos, sem mudar o desenho */
+[data-act="verifinfo"]::after,[data-act="vmute"]::after,[data-act="vplay"]::after,[data-act="savepick"]::after{content:"";position:absolute;inset:-9px}
+.ctlrow .iconbtn.tool::after{content:"";position:absolute;inset:-2px -5px}
 /* CANAIS (16 nov 2026): três partes bem separadas. Ao vivo e Rádio são quadros; os vídeos começam depois de um título próprio. */
 .canaistopo{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:6px 0 4px}
 .canaistopo .aovivo{margin:0}
@@ -5754,7 +5757,7 @@ function screenHome(){
         <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
         <div class="status tools" id="status">${statusLine()}</div></div>
       ${rapidosHTML()}</div></div>`)
-  + `<div class="container"><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
+  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
   return `<button class="rowitem" type="button" data-act="openorg" data-org="${o.id}">${avatar(o)}<span class="t"><b>${o.nome}${ficTag(o)}${ofTag(o)}</b><small>${o.cidade} · ${orgMeta(o)}${f?(o.real?" · você segue":" · você participa"):""}</small></span></button>`; }
@@ -6018,7 +6021,7 @@ function exploreOrgs(){
   return orgs.length ? `<div class="orgstrip">${orgs.map(orgRow).join("")}</div>` : "";
 }
 function screenExplore(){
-  return header(`<div class="toprow"><label class="search pill" for="q" style="flex:1">${ic("search")}<span class="sr">Buscar</span><input id="q" type="search" enterkeyhint="search" placeholder="Pesquisar" value="${esc(S.exploreQ)}" autocomplete="off"></label>
+  return header(`<h1 class="sr">Buscar</h1><div class="toprow"><label class="search pill" for="q" style="flex:1">${ic("search")}<span class="sr">Buscar</span><input id="q" type="search" enterkeyhint="search" placeholder="Pesquisar" value="${esc(S.exploreQ)}" autocomplete="off"></label>
       <button class="iconbtn" type="button" data-act="openfolder" aria-label="Pastas salvas">${ic("bookmark")}</button></div>
     <div class="chips umalinha" role="group" aria-label="Em alta e temas"><a class="chip altachip" href="#inicio" data-act="rapido" data-k="alta" title="Os assuntos mais comentados do dia, e se são confiáveis ou boato"><span class="adot2" aria-hidden="true"></span>Em alta agora</a>${TEMAS.map(t=>`<button class="chip" type="button" data-act="etema" data-t="${t}" aria-pressed="${S.exploreTema===t}">${t}</button>`).join("")}</div>`)
     + `<div class="container"><div id="exsub">${exploreSubs()}</div><div id="exorgs">${exploreOrgs()}</div><div id="emas" style="margin-top:var(--gap)"></div><div id="egate"></div></div>`;
@@ -10297,7 +10300,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:45";
+const VERSAO = "v1 registrada · 16/11 10:06";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
