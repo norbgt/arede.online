@@ -3586,7 +3586,7 @@ const ENV = {"inaug": ["Tudo o que criamos aqui é bem intencionado. Nosso códi
 const envBar = r => `<header class="ebar"><button class="ebtn" type="button" data-act="envexit" aria-label="Voltar para a rede">${ic("back")}<span class="emark">arede<i class="ldot"></i><span class="com">online</span></span></button>
   <nav class="elinks" aria-label="Sobre a rede.online">${nivel()==="admin" ? `<a href="#manifesto" ${r==="manifesto"?'aria-current="page"':""}>Manifesto</a>` : ""}<a href="#funciona" ${r==="funciona"?'aria-current="page"':""}>Como funciona</a></nav></header>`;
 /* 16/11 (Amanda): Termos e privacidade usa o mesmo topo do Manifesto e do Como funciona: voltar com a marca e os botões à direita */
-const docBar = k => `<header class="ebar"><button class="ebtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}<span class="emark">arede<i class="ldot"></i><span class="com">online</span></span></button>
+const docBar = k => `<header class="ebar"><button class="ebtn" type="button" data-act="envexit" aria-label="Voltar para a rede">${ic("back")}<span class="emark">arede<i class="ldot"></i><span class="com">online</span></span></button>
   <nav class="elinks" aria-label="${(MARCA.links && MARCA.links.legal) || "Termos e privacidade"}">${[["termos", (MARCA.links && MARCA.links.termos) || "Termos de uso"], ["privacidade", (MARCA.links && MARCA.links.privacidade) || "Privacidade"]].map(([a, n])=>`<a href="#${a}" ${a===k?'aria-current="page"':""}>${n}</a>`).join("")}</nav></header>`;
 const envFoot = () => `<footer class="efoot"><span class="emark big">arede<i class="ldot"></i><span class="com">online</span></span>
   <nav aria-label="Rodapé">${nivel()==="admin" ? `<a href="#manifesto">Manifesto</a>` : ""}<a href="#funciona">Como a rede.online funciona</a><a href="#inicio">Entrar na rede</a><a href="mailto:contato@arede.online">Contato</a><a href="#termos">${(MARCA.links && MARCA.links.legal) || "Termos e privacidade"}</a></nav><small>${DIREITOS()} ${TERCEIROS()}</small><small>versão ${VERSAO}</small></footer>`;
@@ -3666,7 +3666,8 @@ const route = () => (location.hash || "#inicio").slice(1) || "inicio";
 const go = r => { if (route()===r) render(); else location.hash = r; };
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
-function envExit(){ let h; do { h = NAV.pop(); } while (h && /^(manifesto|funciona)$/.test(h)); location.hash = h || "inicio"; }
+/* 16/11 (Amanda): voltar sai do módulo inteiro (Manifesto, Como funciona, Termos, Privacidade) e volta para a tela de antes, sem passar pelas abas */
+function envExit(){ let h; do { h = NAV.pop(); } while (h && /^(manifesto|funciona|termos|privacidade)$/.test(h)); location.hash = h || "inicio"; }
 function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.dataset.segnum, el)), 0);
   const r = route(), main = $("#main"), logoVelho = main.querySelector(".logo");
   if (r!=="inicio"){ document.documentElement.classList.remove("snapvid"); LV_ON = null; }
@@ -6489,7 +6490,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:16";
+const VERSAO = "v1 registrada · 16/11 13:19";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
