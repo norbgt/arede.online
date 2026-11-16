@@ -129,7 +129,7 @@ img,svg{max-width:100%}
 @media (max-width:359px){ .logo{font-size:20px} .lchev{width:14px;height:14px;margin-left:2px} }
 .semsobre .navfoot[href="#manifesto"]{display:none}
 .marcape{margin:14px 0 2px;text-align:center;font-size:12.5px;line-height:1.5;color:var(--muted)}.marcape p{margin:6px 0}.marcape a{color:inherit;text-decoration:underline;text-underline-offset:2px}.marcape .rterc{font-size:11px;opacity:.85;max-width:46ch;margin-left:auto;margin-right:auto}.marcape .ver{margin:6px 0 0}
-.marcape .marcaselo{margin:14px 0 12px}
+.marcape .marcaselo{margin:16px 0 0}
 .lchev{align-self:center;width:14px;height:14px;margin-left:2px;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 /* o ponto se move: parado, fica entre "a" e "rede" ("a.rede", a rede, ligada ao manifesto); ao passar o mouse, corre para
    entre "rede" e "online" e a marca se completa: "arede.online". Duas posições-fantasma (.lg) marcam onde ele pousa;

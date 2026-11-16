@@ -1866,7 +1866,9 @@ function renderStop(){
    A versão pública (GitHub, link, artefato) sai sem ele. */
 const LOCAL = !!document.getElementById("copia-local");
 /* REVISÃO DA V1 (16/11): o painel antigo (dentro deste arquivo, com chave) foi aposentado. O painel é um só: painel.arede.online, com login. */
-const painelRow = () => nivel()==="admin" && !DEMO ? `<a class="setting painel" href="https://painel.arede.online/" target="_blank" rel="noopener"><span class="t"><b>Painel de controle <span class="plock" title="Abre com o seu login" aria-label="Abre com o seu login">${ic("lock","sm")}</span></b><small>painel.arede.online</small></span>${ic("ext","sm")}</a>` : "";
+/* 16/11 (Amanda): cadeado marca o que só a administração vê */
+const SOADM = () => `<span class="plock" title="Só a administração vê" aria-label="Só a administração vê">${ic("lock","sm")}</span>`;
+const painelRow = () => nivel()==="admin" && !DEMO ? `<a class="setting painel" href="https://painel.arede.online/" target="_blank" rel="noopener"><span class="t"><b>Painel de controle ${SOADM()}</b><small>painel.arede.online</small></span>${ic("ext","sm")}</a>` : "";
 /* o logo da barra superior abre "Sobre arede.online": Manifesto e Como arede.online funciona */
 /* 14 nov 2026 (pedido da Amanda): a marca volta a abrir o menu, com a setinha, em todo lugar. Nele ficam Contato, Termos de uso,
    Privacidade e o que antes era rodapé (contato, direitos, terceiros e versão). Manifesto e Como funciona só aparecem quando o
@@ -5972,14 +5974,14 @@ const A = {
   assinar: () => { S.assinou = !S.assinou; persist("assinou"); const y = window.scrollY; render(); window.scrollTo(0,y); if (S.assinou) toast("Obrigada por assinar o manifesto."); },
   toid: (b, e) => { e.preventDefault(); const el = document.getElementById(b.dataset.id); el && scrollToEl(el); },
   /* 16/11 (Amanda): quem acessa vê "Como a rede.online funciona" e "Termos e privacidade". Experimentar a rede, Manifesto e Painel
-     de controle aparecem só para a administração. Rodapé: e-mail, direitos, versão, selo de segurança e, por fim, o aviso de terceiros. */
-  sobre: () => { const M = MARCA, L = M.links, seta = ic("back","sm flip"), adm = nivel()==="admin";
+     de controle aparecem só para a administração. Rodapé: e-mail, direitos, versão, aviso de terceiros e, por último, o selo de site seguro. */
+  sobre: () => { const M = MARCA, L = M.links, seta = ic("back","sm flip"), adm = nivel()==="admin", cad = SOADM();
     openSheet(shead(M.titulo) + `<div class="list">
-      ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : adm ? `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>` : ""}
+      ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : adm ? `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede ${cad}</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>` : ""}
       <button class="setting" type="button" data-nav-to="funciona"><span class="t"><b>${L.funciona || "Como a rede.online funciona"}</b></span>${seta}</button>
       <button class="setting" type="button" data-nav-to="termos"><span class="t"><b>${L.legal || "Termos e privacidade"}</b></span>${seta}</button>
-      ${adm ? `<button class="setting" type="button" data-nav-to="manifesto"><span class="t"><b>${L.manifesto}</b></span>${seta}</button>${painelRow()}` : ""}</div>
-      <div class="marcape"><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="ver">versão ${VERSAO}</p><div class="marcaselo">${seloSeg()}</div><p class="rterc">${TERCEIROS()}</p></div>`, M.titulo); },
+      ${adm ? `<button class="setting" type="button" data-nav-to="manifesto"><span class="t"><b>${L.manifesto} ${cad}</b></span>${seta}</button>${painelRow()}` : ""}</div>
+      <div class="marcape"><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="ver">versão ${VERSAO}</p><p class="rterc">${TERCEIROS()}</p><div class="marcaselo">${seloSeg()}</div></div>`, M.titulo); },
   pubtab: b => { S.pubTab = b.dataset.tab; S.pubFolder = null; pubShow(); },
   pubfolder: b => { S.pubFolder = b.dataset.f || null; pubShow(); },
   interesses: sheetInteresses,
@@ -6485,7 +6487,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:07";
+const VERSAO = "v1 registrada · 16/11 13:11";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
