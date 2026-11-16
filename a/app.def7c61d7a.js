@@ -1692,7 +1692,7 @@ function sourceBase(fl=S.filt, types=tabTypes()){
   let l = source0(fl, types, vivo).filter(it=>!it.base);
   if (S.tab==="documentos" && DOCTIPO && types===tabTypes()) l = l.filter(it=>docTipoDe(it)===DOCTIPO);
   /* filtro rápido olha tudo o que a aba e os filtros permitem, não só os temas do algoritmo */
-  if (S.rapido && types===tabTypes()){ const t = ofTab(types); return rapidoAplica(POOL.filter(it=>t(it) && passa(it, fl) && redePronta(it) && !(vivo && ehExemplo(it)))); }
+  if (S.rapido && types===tabTypes()){ const t = ofTab(types), rl = rapidoAplica(POOL.filter(it=>t(it) && passa(it, fl) && redePronta(it) && !(vivo && ehExemplo(it)))); return S.tab==="tudo" ? oficiaisNoTudo(rl) : rl; }
   if ((S.tab==="tudo" || S.tab==="publicacoes") && types===tabTypes()){
     l = l.filter(it=>!generica(it));
     if (S.ord==="padrao" && S.algo && (S.perto || (S.aprendeLugares && lugaresInteresse().length))) l = pertoPrimeiro(l);
@@ -1710,6 +1710,7 @@ function sourceBase(fl=S.filt, types=tabTypes()){
   if (S.ord==="padrao" && S.tab!=="agenda"){ const perto = [], longe = []; l.forEach(it=>(policialLonge(it) ? longe : perto).push(it)); l = perto.concat(longe); }
   if (S.ord==="padrao" && S.tab!=="agenda") l = equilibra(l);
   if (vivo && S.ord==="padrao") l = fvOrdena(l);   /* 15/11: o que você já viu em outra visita vai para o fim */
+  if (S.tab==="tudo" && types===tabTypes()) l = oficiaisNoTudo(l);   /* 16/11: dado oficial no Tudo, no máximo 1 a cada 20 */
   if (vivo && S.tab==="publicacoes") l = comExemplos(l, exemplosPorTipo(fl));
   /* arte no feed geral (decisão de 9 nov 2026): 1 peça do acervo para cada 5 de outros tipos, para todo mundo,
      com ou sem algoritmo; as mais novas primeiro. Na aba Arte, só arte. */
@@ -1735,8 +1736,8 @@ function equilibra(l){ const fila = l.slice(), out = [];
 function source0(fl, types, soReal){
   const t = ofTab(types), f = it => t(it) && passa(it, fl) && redePronta(it) && !(soReal && ehExemplo(it));
   if (!S.algo) return ordena(soReal ? amplo(POOL.filter(f)).sort((a,b)=>a.min - b.min) : amplo(POOL.filter(f)));   /* 15/11: no feed verdadeiro, o mais novo primeiro */
-  const l = POOL.filter(it=>f(it) && (inProfile(it) || it.conta || it.daRede)).sort((a,b)=>scoreAlgo(b)-scoreAlgo(a));   /* o que as contas reais publicam entra sempre */
-  return ordena(l.length >= 4 && !soReal ? l : l.concat(POOL.filter(it=>f(it) && !inProfile(it) && !it.conta && !it.daRede).sort((a,b)=>a.min - b.min)));   /* 15/11: depois do que é do seu interesse, todo o resto, do mais novo ao mais antigo */
+  const l = POOL.filter(it=>f(it) && (inProfile(it) || it.conta || it.daRede || it.oficial)).sort((a,b)=>scoreAlgo(b)-scoreAlgo(a));   /* 16/11: dado oficial vale para todo mundo (no Tudo, só destaque, 1 a cada 20) */   /* o que as contas reais publicam entra sempre */
+  return ordena(l.length >= 4 && !soReal ? l : l.concat(POOL.filter(it=>f(it) && !inProfile(it) && !it.conta && !it.daRede && !it.oficial).sort((a,b)=>a.min - b.min)));   /* 15/11: depois do que é do seu interesse, todo o resto, do mais novo ao mais antigo */
 }
 const tabLayout = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[3];
 /* Duas formas de ver o feed principal (11 nov 2026): "blocos" (mosaico, cartões juntos) e "soltos" (cartões separados).
@@ -4485,7 +4486,7 @@ async function noticiasCarrega(){ let data = null, ref = Date.now();
     const ytb = n => /youtube\.com\/watch/.test(n.url || "");
     data = COPIA.itens.filter(n=>lin(n) && !checa(n) && !ytb(n)).slice(0, 200).concat(COPIA.itens.filter(n=>lin(n) && checa(n) && !ytb(n)), COPIA.itens.filter(n=>lin(n) && ytb(n))); ref = Date.parse(COPIA.gerada); }
   if (!data) return;
-  noticiasAplica(data, ref); }
+  noticiasAplica(data, ref); oficiaisCarrega(); }
 /* 16/11 (Amanda): colunas, blogs, editoriais e análises (pelo endereço) levam a etiqueta "Opinião" e no máximo 3 a cada 20 cartões */
 const OPINIAO_URL = /\/(opini[aã]o|opiniones?|opinion|colunas?|colunistas?|columnas?|columns?|blogs?|editoriais|editorial|an[aá]lises?|an[aá]lisis|analysis|comment(ary|isfree)?|tribuna|artigos?)(\/|-|$)/i;
 function noticiasAplica(data, ref){
@@ -4741,9 +4742,40 @@ DOCBASE.docs.forEach(d=>{ const id = d.id, org = /unicef/.test(d.url) ? "onu-dud
   RESUMO[id] = d.resumo; BODY[id] = [d.resumo]; SEAL[id] = 98;
   if (!POOL.some(x=>x.id===id)) POOL.push(it); });
 let DOCCAT = 0;
+/* DADOS OFICIAIS (16/11/2026, Amanda): votações do plenário (Câmara e Senado), indicadores (IBGE e Banco Central), diários oficiais das
+   capitais (Querido Diário) e gastos acima de R$ 10 milhões (Portal da Transparência) chegam direto das interfaces oficiais (função "oficiais"
+   no servidor, de hora em hora). Todos moram na aba Documentos, com tipo próprio. No Tudo entra no máximo 1 a cada 20 cartões, e só o que é grande
+   (destaque): votação de projeto no plenário, indicador novo, gasto acima de R$ 10 milhões. Diário oficial nunca entra no Tudo. */
+const OF_TIPO = {votacao:"Votação", indicador:"Indicador", diario:"Diário oficial", gasto:"Gasto público"};
+const OF_TEMA = {votacao:"Política e governo", indicador:"Economia e trabalho", diario:"Política e governo", gasto:"Política e governo"};
+const OF_CADA = 20;
+const OF_ORG = {"Câmara dos Deputados":["camara-dep","Câmara dos Deputados","CD","#0F5132","https://www.camara.leg.br","Dados abertos da Câmara: as votações do plenário, como foram registradas."],
+  "Senado Federal":["senado-fed","Senado Federal","SF","#1E3A8A","https://www12.senado.leg.br","Dados abertos do Senado: as votações nominais do plenário, com o placar."],
+  "IBGE":["ibge","IBGE","IB","#0E7490","https://www.ibge.gov.br","Instituto Brasileiro de Geografia e Estatística: inflação (IPCA), desemprego e PIB, na data em que saem."],
+  "Banco Central do Brasil":["bcb","Banco Central do Brasil","BC","#7C2D12","https://www.bcb.gov.br","A taxa Selic definida pelo Comitê de Política Monetária, pela série oficial do Banco Central."],
+  "Querido Diário":["querido-diario","Querido Diário · diários oficiais","QD","#6B21A8","https://queridodiario.ok.org.br","Projeto aberto da Open Knowledge Brasil que reúne os diários oficiais dos municípios."],
+  "Portal da Transparência":["cgu-transparencia","Portal da Transparência","PT","#334155","https://portaldatransparencia.gov.br","Controladoria-Geral da União: os contratos do governo federal e quanto custam."]};
+Object.values(OF_ORG).forEach(([id,nome,sigla,cor,site,sobre])=>{ if (!ORG[id]) ORG[id] = {id, nome, sigla, cidade:"Nacional", natureza:"Governo e diário oficial", real:true, fonte:true, cor, membros:0, site, sobre}; });
+async function oficiaisCarrega(){ if (!SB) return;
+  try{ const r = await SB.from("dados_oficiais").select("id,tipo,fonte,titulo,resumo,valor,anterior,url,publicado_em,cidade,uf,destaque").order("publicado_em", {ascending:false}).limit(200);
+    if (r.error || !r.data) return;
+    for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].oficial) POOL.splice(i, 1);
+    r.data.forEach(d=>{ const o = OF_ORG[d.fonte]; if (!o) return; const id = "of" + d.id.replace(/-/g, "");
+      const it = {id, tipo:"documento", oficial:true, destaque:!!d.destaque, org:o[0], tema:OF_TEMA[d.tipo] || temaDe(d.titulo, d.resumo || ""), doc:OF_TIPO[d.tipo] || "Documento", docTipo:OF_TIPO[d.tipo] || "Documento",
+        titulo:d.titulo, texto:d.resumo || "", cidade:d.cidade || "", pags:null, data:dLabel(isoDia(d.publicado_em)),
+        min:Math.max(1, Math.round((Date.now() - new Date(d.publicado_em)) / 60000)),
+        ext:{url:d.url, dom:hostOf(d.url), data:isoDia(d.publicado_em), verif:[], motivo:"Dado oficial, direto da fonte.", obs:""}};
+      RESUMO[id] = d.resumo || ""; BODY[id] = [d.resumo, d.anterior && !/antes/i.test(d.resumo || "") ? "Antes: " + d.anterior + "." : ""].filter(Boolean); SEAL[id] = 95;
+      POOL.push(it); });
+    feedDadosNovos("oficiais"); }catch(e){} }
+/* no Tudo: tira os oficiais e devolve só os destaques, no máximo 1 a cada 20 cartões (o primeiro depois do 10º) */
+function oficiaisNoTudo(l){ const resto = l.filter(it=>!it.oficial), dest = l.filter(it=>it.oficial && it.destaque).sort((a,b)=>a.min - b.min);
+  if (!dest.length) return resto; const out = []; let k = 0;
+  resto.forEach((it,i)=>{ out.push(it); if ((i + 1) % OF_CADA === OF_CADA / 2 && k < dest.length) out.push(dest[k++]); });
+  return out; }
 /* DOCUMENTOS RECENTES (12 nov 2026): o bloco dos documentos que fontes e organizações publicam ganhou nome e filtro por tipo (Dados, Lei, Carta…) */
 let DOCTIPO = "";
-const docTipoDe = it => String(it.doc || kindOf(it) || "Documento").split(" ")[0];
+const docTipoDe = it => it.docTipo || String(it.doc || kindOf(it) || "Documento").split(" ")[0];
 function docRecHTML(){ const l = source0(S.filt, tabTypes()).filter(it=>!it.base), n = {}; l.forEach(it=>{ const k = docTipoDe(it); n[k] = (n[k] || 0) + 1; });
   const ks = Object.keys(n).sort((a,b)=>n[b] - n[a] || a.localeCompare(b)); if (DOCTIPO && !n[DOCTIPO]) DOCTIPO = "";
   if (!l.length) return "";
@@ -6602,7 +6634,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 14:26";
+const VERSAO = "v1 registrada · 16/11 15:13";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
