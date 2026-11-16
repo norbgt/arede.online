@@ -39,23 +39,24 @@ async function camara(): Promise<Doc[]> {
   });
 }
 
-// SENADO: votações do plenário dos últimos 3 dias (formato JSON do serviço de dados abertos).
+// SENADO: votações do plenário dos últimos 10 dias (serviço de dados abertos /votacao, que substituiu o antigo em 2026).
 async function senado(): Promise<Doc[]> {
-  const ini = iso(dias(10)).replace(/-/g, ""), fim = iso(hoje()).replace(/-/g, "");
-  const j = await getJSON(`https://legis.senado.leg.br/dadosabertos/plenario/lista/votacao/${ini}/${fim}.json`);
-  const lista = j?.ListaVotacoes?.Votacoes?.Votacao || [];
+  const j = await getJSON(`https://legis.senado.leg.br/dadosabertos/votacao?dataInicio=${iso(dias(10))}&dataFim=${iso(hoje())}`);
   const RES: Record<string, string> = { A: "Aprovado", R: "Rejeitado" };
-  return (Array.isArray(lista) ? lista : [lista]).filter((v: any) => v && v.DescricaoVotacao && !/requerimento/i.test(v.DescricaoVotacao)).map((v: any) => {
-    const res = RES[String(v.Resultado || "").trim()] || String(v.DescricaoResultado || "").trim();
-    const desc = String(v.DescricaoVotacao).replace(/\s+/g, " ").replace(/^vota[cç][aã]o nominal d[oa]s?\s+/i, "").replace(/,?\s*nos termos do parecer\.?$/i, "").trim();
-    const vs = v.Votos?.VotoParlamentar ? [].concat(v.Votos.VotoParlamentar) : [];
-    const sim = vs.filter((x: any) => /^sim$/i.test(x.Voto)).length, nao = vs.filter((x: any) => /^n[aã]o$/i.test(x.Voto)).length;
+  return (Array.isArray(j) ? j : []).filter((v: any) => v && v.descricaoVotacao && !/requerimento/i.test(v.descricaoVotacao)).map((v: any) => {
+    const res = RES[String(v.resultadoVotacao || "").trim()] || "";
+    const desc = String(v.descricaoVotacao).replace(/\s+/g, " ").replace(/^vota[cç][aã]o nominal d[oa]s?\s+/i, "").replace(/,?\s*nos termos d[oa]s? parecer(es)?\.?$/i, "").trim();
+    const vs = Array.isArray(v.votos) ? v.votos : [];
+    const sim = vs.filter((x: any) => /^sim$/i.test(x.siglaVotoParlamentar)).length, nao = vs.filter((x: any) => /^n[aã]o$/i.test(x.siglaVotoParlamentar)).length;
     const placar = vs.length ? `${sim} sim · ${nao} não` : null;
-    return { chave: "senado-" + (v.CodigoSessaoVotacao || v.CodigoVotacao || desc.slice(0, 60)), tipo: "votacao", fonte: "Senado Federal",
-      titulo: "Senado: " + desc.charAt(0).toUpperCase() + desc.slice(1), resumo: [res ? res + " no plenário." : "", placar ? "Placar: " + placar + "." : ""].filter(Boolean).join(" ") || null, valor: placar,
-      url: v.CodigoMateria ? `https://www25.senado.leg.br/web/atividade/materias/-/materia/${v.CodigoMateria}` : "https://www25.senado.leg.br/web/atividade/plenario",
-      publicado_em: new Date((v.DataSessao || iso(hoje())) + "T" + (v.HoraInicio || "12:00") + ":00-03:00").toISOString(),
-      destaque: /aprovad|rejeitad/i.test(res) && /\b(projeto|pec|proposta de emenda|medida provis|plp|pl)\b/i.test(desc) && !/emenda n[ºo°]|destaque/i.test(desc), dados: { codigo: v.CodigoSessaoVotacao, materia: v.CodigoMateria } };
+    const ementa = String(v.ementa || "").replace(/\s+/g, " ").trim();
+    return { chave: "senado-" + (v.codigoSessaoVotacao || v.sequencialVotacao || desc.slice(0, 60)), tipo: "votacao", fonte: "Senado Federal",
+      titulo: "Senado: " + desc.charAt(0).toUpperCase() + desc.slice(1),
+      resumo: [res ? res + " no plenário." : "", placar ? "Placar: " + placar + "." : "", ementa].filter(Boolean).join(" ") || null, valor: placar,
+      url: v.codigoMateria ? `https://www25.senado.leg.br/web/atividade/materias/-/materia/${v.codigoMateria}` : "https://www25.senado.leg.br/web/atividade/plenario",
+      publicado_em: new Date((v.dataSessao || iso(hoje())) + "T18:00:00-03:00").toISOString(),
+      destaque: /aprovad|rejeitad/i.test(res) && /\b(projeto|pec|proposta de emenda|medida provis|plp|pl)\b/i.test(desc) && !/emenda n[ºo°]|destaque/i.test(desc),
+      dados: { codigo: v.codigoSessaoVotacao, materia: v.codigoMateria, identificacao: v.identificacao || null } };
   });
 }
 
