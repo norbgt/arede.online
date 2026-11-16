@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-GN8qrFPtzGmv8KhkbJf1/+UJ49UOHuKGuUxOR1dD0hQ=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-bEVSjFFPaed5ItOSnEQAgctqymM53z08V0ONd/EQL/Q=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1320,8 +1320,29 @@ html.snapvid #aovivo{scroll-snap-align:start;scroll-margin-top:var(--vtop,72px)}
 .lvcred a,.lvcred button{display:inline-flex;align-items:center;min-height:36px;padding:0;border:0;background:none;font:inherit;font-weight:600;color:var(--accent);text-decoration:none;cursor:pointer}
 .lvcred .lvsp{flex:1}
 .lvnota{margin:6px 0 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
+/* CANAIS (16 nov 2026): três partes bem separadas. Ao vivo e Rádio são quadros; os vídeos começam depois de um título próprio. */
+.canaistopo{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:6px 0 4px}
+.canaistopo .aovivo{margin:0}
+.cmod{min-width:0;padding:12px 14px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.cmod .lvlist{margin:0 -14px;padding:0 14px 2px;mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 22px),transparent)}
+.cmod .lvch{min-height:40px;font-size:13.5px;background:var(--bg)}
+.cmod .lvch[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.cmh{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0}
+.cmh h2{margin:0;font-size:16px;line-height:1.2;letter-spacing:-.01em;white-space:nowrap}
+.cmsub{min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:var(--accent)}
+.cmic .icon{width:18px;height:18px}
+.cmic.vivo::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--line)}
+.cmic.vivo.on::before{background:#D92D20;box-shadow:0 0 0 4px color-mix(in srgb,#D92D20 22%,transparent)}
+.cmod .rdbar{box-shadow:none;border:1px solid var(--line);background:var(--bg)}
+.cmod .lvnota{margin-top:8px}
+.rdg{border-left:1px solid var(--line);padding-left:10px;margin-left:2px}
+.rdg:first-child{border-left:0;padding-left:0;margin-left:0}
+.vidhead{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px;margin:20px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+.vidhead[hidden]{display:none}.canaistopo[hidden]{display:none}
+.vidhead h2{margin:0;font-size:18px;line-height:1.2;letter-spacing:-.01em}
+.vidhead p{margin:0;font-size:13px;color:var(--muted)}
 /* RÁDIO (16 nov 2026): abaixo do Ao vivo, na aba Canais */
-.radio{margin-top:-4px}
 .rdlist{align-items:center}
 .rdg{flex:none;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 2px 0 6px}
 .rdg:first-child{padding-left:0}
@@ -5684,7 +5705,7 @@ function screenHome(){
         <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
         <div class="status tools" id="status">${statusLine()}</div></div>
       ${rapidosHTML()}</div></div>`)
-  + `<div class="container"><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="aovivo" class="aovivo" aria-label="Transmissões ao vivo de canais oficiais" hidden></section><section id="radio" class="aovivo radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
+  + `<div class="container"><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><h2>Vídeos</h2><p>Das fontes e dos canais que a rede acompanha</p></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
   return `<button class="rowitem" type="button" data-act="openorg" data-org="${o.id}">${avatar(o)}<span class="t"><b>${o.nome}${ficTag(o)}${ofTag(o)}</b><small>${o.cidade} · ${orgMeta(o)}${f?(o.real?" · você segue":" · você participa"):""}</small></span></button>`; }
@@ -8450,7 +8471,8 @@ function aoVivoHTML(){ const l = lvLista(), c = l.find(x=>x.k===LV_ON), e = c &&
   const src = c && (c.video && e && e!=="fora" ? "https://www.youtube-nocookie.com/embed/" + c.video + "?autoplay=1&playsinline=1&rel=0"
     : !e && c.direto ? "https://www.youtube-nocookie.com/embed/live_stream?channel=" + c.canal + "&autoplay=1&playsinline=1&rel=0" : "");
   const rot = x => ({aovivo:"ao vivo agora", agendado:"transmissão agendada", fora:"sem transmissão agora"})[lvEstado(x)] || "";
-  return `<div class="dbh"><span class="dbk">Ao vivo</span><h2>Canais oficiais</h2><p>Toque para assistir aqui, no player do próprio canal.</p></div>
+  const nv = l.filter(x=>lvEstado(x)==="aovivo").length;
+  return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true"></span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais${nv ? ` · ${nv} no ar agora` : ""}</span></div>
     <div class="lvlist">${l.map(x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}</button>`).join("")}</div>
     ${!c ? "" : src ? `<div class="lvbox"><iframe class="lvframe" src="${src}" title="Transmissão ao vivo: ${esc(c.nome)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
       <p class="lvcred"><span>Transmissão oficial: <b>${esc(c.nome)}</b> · YouTube</span><span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><button type="button" data-act="vivofecha">Fechar</button></p>
@@ -8458,10 +8480,11 @@ function aoVivoHTML(){ const l = lvLista(), c = l.find(x=>x.k===LV_ON), e = c &&
     : `<div class="note lvfora">${ic("info")}<span><b>${e==="fora" ? esc(c.nome) + " está sem transmissão neste momento." : "A transmissão de " + esc(c.nome) + " abre no canal oficial."}</b> ${e==="fora" ? "As próximas aparecem no canal oficial." : ""}</span></div>
       <p class="lvcred"><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><span class="lvsp"></span><button type="button" data-act="vivofecha">Fechar</button></p>`}`; }
 function aoVivoPinta(){ const box = $("#aovivo"); if (!box || box.hidden) return; if (LV_IO){ LV_IO.disconnect(); LV_IO = null; }
-  box.innerHTML = aoVivoHTML();
+  box.innerHTML = aoVivoHTML(); box.classList.toggle("aberto", !!LV_ON);
   const fr = box.querySelector(".lvbox"); if (fr){ let visto = false;   /* rolou para longe: a transmissão para */
     LV_IO = new IntersectionObserver(es=>es.forEach(e=>{ if (e.isIntersecting && e.intersectionRatio >= .25) visto = true; else if (visto) vivoFecha(); }), {threshold:[0,.25]}); LV_IO.observe(fr); } }
-function aoVivo(){ radioBox(); const box = $("#aovivo"); if (!box) return;
+function aoVivo(){ const on = S.tab==="videos" && !S.rapido && route()==="inicio", tp = $("#canaistopo"), vh = $("#vidhead"); if (tp) tp.hidden = !on; if (vh) vh.hidden = !on;
+  radioBox(); const box = $("#aovivo"); if (!box) return;
   if (S.tab!=="videos" || S.rapido || route()!=="inicio"){ if (LV_IO){ LV_IO.disconnect(); LV_IO = null; } LV_ON = null; box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false; aoVivoPinta(); aoVivoCarrega(); }
 function vivoFecha(){ if (!LV_ON) return; LV_ON = null; aoVivoPinta(); }
@@ -8486,7 +8509,7 @@ async function radioCarrega(){ if (!SB){ if ((RD.t = (RD.t || 0) + 1) <= 8) setT
 const radioLista = () => RD.lista || RADIO_PADRAO;
 function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g));
   const est = {conecta:"Conectando…", toca:"No ar", erro:"Esta rádio não respondeu agora. Tente outra ou abra o site dela."}[RD_EST] || "";
-  return `<div class="dbh"><span class="dbk">Rádio</span><h2>Emissoras públicas e universitárias</h2><p>Toque para ouvir. O som vem direto da emissora.</p></div>
+  return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas e universitárias</span></div>
     <div class="lvlist rdlist">${gs.map(g=>l.filter(x=>x.grupo===g).map((x, i)=>`${i ? "" : `<span class="rdg">${RD_GRUPO[g]}</span>`}<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc([x.cidade, x.uf].filter(Boolean).join(", "))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}</button>`).join("")).join("")}</div>
     ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([[c.cidade, c.uf].filter(Boolean).join(", "), est].filter(Boolean).join(" · "))}</small></span>
       ${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
@@ -10180,7 +10203,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 08:26";
+const VERSAO = "v1 registrada · 16/11 08:34";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
