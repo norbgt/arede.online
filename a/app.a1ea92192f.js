@@ -505,18 +505,50 @@ const LUG_PESO = {open:1, like:2, save:3, share:3, follow:3}, LUG_MEIA = 30 * 86
 let LUG_TOP = null;
 function lugarDe(it){ if (!it || it.daArte || it.anuncio) return ""; const L = docLocal(it); return L.k==="mun" || L.k==="est" ? L.lugar : ""; }
 const lugarValor = v => v ? v.n * Math.pow(.5, (Date.now() - v.t) / LUG_MEIA) : 0;
-function lugarSinal(it, tipo){ if (!S.algo || !S.aprendeLugares) return; const k = typeof it==="string" ? it : lugarDe(it); if (!k || S.lugaresFora.includes(k)) return;
+/* 16/11 (Amanda): O ALGORITMO APRENDE COM SEU USO. Além dos lugares, aprende temas e fontes do que a pessoa abre, curte, salva,
+   compartilha e segue. Guarda só um resumo (uma nota por tema, fonte e lugar, que cai pela metade a cada 30 dias), nunca a lista do que leu.
+   Com conta, o resumo vai para a conta (chave "aprendido", ~2 KB); sem conta, fica no aparelho. A pessoa vê, tira e apaga em Algoritmo. */
+const AP_TOPO = 5;
+function apGuarda(){ ["lugares","lugaresFora","apTemas","apFontes","aprendeLugares"].forEach(k=>store.set(k, S[k])); LUG_TOP = null; AP_TOP = null; contaDadosAgenda("aprendido"); }
+const apResumo = () => ({on:S.aprendeLugares, l:S.lugares, t:S.apTemas, f:S.apFontes, fora:S.lugaresFora});
+function apAplica(v){ if (!v || typeof v!=="object") return; const ob = x => x && typeof x==="object" && !Array.isArray(x) ? x : {};
+  /* junta o da conta com o do aparelho: de cada item fica o mais recente; o que foi tirado em qualquer um continua tirado */
+  const junta = (loc, sv) => { const o = {...loc}; Object.entries(ob(sv)).forEach(([k, x])=>{ if (x && typeof x.n==="number" && typeof x.t==="number" && (!o[k] || x.t > o[k].t)) o[k] = {n:Math.min(40, x.n), t:x.t}; }); return o; };
+  S.aprendeLugares = v.on !== false; S.lugares = junta(S.lugares, v.l); S.apTemas = junta(S.apTemas, v.t); S.apFontes = junta(S.apFontes, v.f);
+  S.lugaresFora = [...new Set([...S.lugaresFora, ...(Array.isArray(v.fora) ? v.fora.filter(x=>typeof x==="string") : [])])].slice(0, 200);
+  S.lugaresFora.forEach(k=>{ if (k.startsWith("t:")) delete S.apTemas[k.slice(2)]; else if (k.startsWith("f:")) delete S.apFontes[k.slice(2)]; else delete S.lugares[k]; });
+  ["lugares","lugaresFora","apTemas","apFontes","aprendeLugares"].forEach(k=>store.set(k, S[k])); LUG_TOP = null; AP_TOP = null; CD_FILA.add("aprendido"); }
+function apSoma(obj, k, peso, max){ obj[k] = {n:Math.min(40, +(lugarValor(obj[k]) + peso).toFixed(2)), t:Date.now()};
+  const ks = Object.keys(obj); if (ks.length > max) ks.sort((a, b)=>lugarValor(obj[a]) - lugarValor(obj[b])).slice(0, ks.length - max).forEach(x=>delete obj[x]); }
+const fonteDoItem = it => it && it.org && ORG[it.org] && ORG[it.org].fonte ? it.org : "";
+function apSinal(it, tipo){ if (!S.algo || !S.aprendeLugares || !it || typeof it==="string" || it.anuncio || it.daArte) return; const p = LUG_PESO[tipo] || 1;
+  if (it.tema && TEMAS.includes(it.tema) && !S.lugaresFora.includes("t:" + it.tema)) apSoma(S.apTemas, it.tema, p, 20);
+  const fo = fonteDoItem(it); if (fo && !S.lugaresFora.includes("f:" + fo)) apSoma(S.apFontes, fo, p, 30);
+  apGuarda(); apAviso(); }
+let AP_TOP = null;
+const apTopo = (obj, pre) => Object.entries(obj).map(([k, v])=>[k, lugarValor(v)]).filter(x=>x[1] >= LUG_MIN && !S.lugaresFora.includes(pre + x[0])).sort((a, b)=>b[1] - a[1]).slice(0, AP_TOPO).map(x=>x[0]);
+function apAprendidos(){ return AP_TOP || (AP_TOP = {t:apTopo(S.apTemas, "t:"), f:apTopo(S.apFontes, "f:")}); }
+/* peso no feed: menor que o dos temas escolhidos e das comunidades, para o que a pessoa escolhe continuar mandando */
+function apPeso(it){ if (!S.algo || !S.aprendeLugares) return 0; const a = apAprendidos(); return (a.t.includes(it.tema) ? .25 : 0) + (a.f.includes(it.org) ? .15 : 0); }
+/* aviso uma vez: o aprendizado começa ligado, e a pessoa fica sabendo onde ver, tirar e desligar */
+function apAviso(){ if (store.get("apAvisado", false)) return; store.set("apAvisado", true);
+  setTimeout(()=>toast("O Algoritmo aprende com seu uso. Veja, tire ou desligue em Perfil › Algoritmo."), 1800); }
+function lugarSinal(it, tipo){ apSinal(it, tipo); if (!S.algo || !S.aprendeLugares) return; const k = typeof it==="string" ? it : lugarDe(it); if (!k || S.lugaresFora.includes(k)) return;
   S.lugares[k] = {n:Math.min(40, +(lugarValor(S.lugares[k]) + (LUG_PESO[tipo] || 1)).toFixed(2)), t:Date.now()};
   const ks = Object.keys(S.lugares); if (ks.length > 60) ks.sort((a, b)=>lugarValor(S.lugares[a]) - lugarValor(S.lugares[b])).slice(0, ks.length - 60).forEach(x=>delete S.lugares[x]);
-  persist("lugares"); LUG_TOP = null; }
+  apGuarda(); }
 function lugaresInteresse(){ return LUG_TOP || (LUG_TOP = Object.entries(S.lugares).map(([k, v])=>[k, lugarValor(v)]).filter(x=>x[1] >= LUG_MIN && !S.lugaresFora.includes(x[0])).sort((a, b)=>b[1] - a[1]).slice(0, 6).map(x=>x[0])); }
 function lugarInteresse(it){ if (!S.algo || !S.aprendeLugares) return 0; const top = lugaresInteresse(); if (!top.length) return 0; const k = lugarDe(it); if (!k) return 0;
   if (top.includes(k)) return 1.5; const uf = (k.match(/,\s*([A-Z]{2})$/) || [])[1]; return uf && top.includes(UF_NOME[uf]) ? 1 : 0; }
-function lugaresBloco(){ const top = lugaresInteresse(), fora = S.lugaresFora.length;
-  return `<div class="orow"><span class="ot"><b>Lugares do seu interesse</b><small>Pelo que você abre, curte, salva, compartilha e segue, o site percebe de quais lugares você quer saber mais e sobe um pouco as notícias de lá. Fica só neste aparelho. Vale com o algoritmo ligado.</small></span>
-      <button class="switch" type="button" role="switch" data-act="aprendelugares" aria-checked="${S.aprendeLugares}" aria-label="Aprender lugares do meu interesse"></button></div>
-    ${S.aprendeLugares ? `<div class="orow col lugs">${top.length ? `<div class="lchips">${top.map(k=>`<span class="lchip">${ic("heart","sm")}${esc(k)}<button type="button" data-act="lugartira" data-k="${esc(k)}" aria-label="Tirar ${esc(k)} dos lugares de interesse">${ic("close","sm")}</button></span>`).join("")}</div>` : `<small class="ohint">Ainda não há lugares. Eles aparecem aqui conforme você usa o site.</small>`}
-      ${top.length || fora || Object.keys(S.lugares).length ? `<span class="lacts">${fora ? `<button class="linkbtn" type="button" data-act="lugaresvolta">Voltar a aprender ${fora} ${fora===1 ? "lugar tirado" : "lugares tirados"}</button>` : ""}<button class="linkbtn" type="button" data-act="lugareslimpa">Apagar o que foi aprendido</button></span>` : ""}</div>` : ""}`; }
+function lugaresBloco(){ const top = lugaresInteresse(), a = apAprendidos(), fora = S.lugaresFora.length, nada = !top.length && !a.t.length && !a.f.length;
+  const chip = (k, nome, pre) => `<span class="lchip">${ic("heart","sm")}${esc(nome)}<button type="button" data-act="lugartira" data-k="${esc(pre + k)}" data-n="${esc(nome)}" aria-label="Tirar ${esc(nome)} do que o Algoritmo aprendeu">${ic("close","sm")}</button></span>`;
+  const grupo = (rot, l) => l.length ? `<small class="ohint" style="margin-top:6px">${rot}</small><div class="lchips">${l.join("")}</div>` : "";
+  return `<div class="orow apbloco"><span class="ot"><b>Aprende com seu uso</b><small>Pelo que você abre, curte, salva, compartilha e segue, o Algoritmo percebe temas, fontes e lugares do seu interesse e sobe um pouco o que é deles. Guarda só um resumo, nunca a lista do que você leu. ${ME.user ? "Fica na sua conta." : "Fica neste aparelho."} Vale com o algoritmo ligado.</small></span>
+      <button class="switch" type="button" role="switch" data-act="aprendelugares" aria-checked="${S.aprendeLugares}" aria-label="Aprender com o meu uso"></button></div>
+    ${S.aprendeLugares ? `<div class="orow col lugs">${nada ? `<small class="ohint">Ainda não aprendeu nada. Aparece aqui conforme você usa o site.</small>` :
+      grupo("Temas", a.t.map(t=>chip(t, t, "t:"))) + grupo("Fontes", a.f.map(k=>chip(k, (ORG[k] && ORG[k].nome) || k, "f:"))) + grupo("Lugares", top.map(k=>chip(k, k, "")))}
+      ${!nada || fora || Object.keys(S.lugares).length ? `<span class="lacts">${fora ? `<button class="linkbtn" type="button" data-act="lugaresvolta">Voltar a aprender ${fora} ${fora===1 ? "item tirado" : "itens tirados"}</button>` : ""}<button class="linkbtn" type="button" data-act="lugareslimpa">Apagar o que foi aprendido</button></span>` : ""}</div>` : ""}`; }
+const apRefaz = () => { try{ document.querySelectorAll(".apbloco").forEach(()=>{}); const x = document.getElementById("apalgo"); if (x && x.isConnected) x.innerHTML = lugaresBloco(); }catch(e){} };
 const origensRefaz = () => { try{ const o = $("#origordem"); if (o && o.isConnected) o.outerHTML = origensOrdem(); }catch(e){} };
 /* 15/11: os campos de segundo nível acompanham o primeiro (obra autoral e tema) */
 document.addEventListener("change", e=>{ const t = e.target; if (!t) return;
@@ -591,7 +623,7 @@ const S = {
   pausas: store.get("pausas", true), orgsVisiveis: store.get("orgsVisiveis", false), publico: store.get("publico", false), assinou: store.get("assinou", false), interesses: temaListaNova(store.get("interesses", ["Mobilidade","Alimentação e campo","Meio ambiente e clima"])), intDraft:null, profTab:"publicacoes", pubTab:"publicacoes", pubFolder:null, profQ:"", profFolder:null, usarOrgs: store.get("usarOrgs", true),
   follow: new Set(store.get("follow", ["bairro-vivo","hortas-leste","pedala-cwb"])), saved: new Set(store.get("saved", [])), savedIn: store.get("savedIn", {}), liked: new Set(store.get("liked", ["13-0","27-0","16-0"])), shared: new Set(store.get("shared", ["4-0","15-0","6-0"])),
   autoplay: store.get("autoplay", true),
-  localAuto: store.get("localAuto", false), localQuando: store.get("localQuando", 0), aprendeLugares: store.get("aprendeLugares", true), lugares: store.get("lugares", {}), lugaresFora: store.get("lugaresFora", []),
+  localAuto: store.get("localAuto", false), localQuando: store.get("localQuando", 0), aprendeLugares: store.get("aprendeLugares", true), lugares: store.get("lugares", {}), lugaresFora: store.get("lugaresFora", []), apTemas: store.get("apTemas", {}), apFontes: store.get("apFontes", {}),
   filt: {temas:[], cidades:[], minhas:false, conf:0}, fdraft:null, ord:"padrao",
   pollVote:store.get("pollVote", {}), rsvp:store.get("rsvp", {}), support:store.get("support", {}), reports:{}, help:store.get("help", {}), inscr:store.get("inscr", {}), formalDone:store.get("formalDone", {}), created:[], vid:{},
   rapido:null, adOculta:new Set(), orgTab:"mural", exploreTema:null, exploreQ:"", pinMode:{}, textOpen:{}
@@ -599,7 +631,7 @@ const S = {
 if (!FTABS.some(t=>t[0]===S.tab)) S.tab = "tudo";
 /* DADOS DA CONTA NO SERVIDOR (11 nov 2026): curtidas, salvos, pastas, votos, apoios, presenças e afins seguem a conta entre aparelhos.
    Quem está fora da conta continua só com o aparelho. Ao entrar, o que já está no servidor vale; o que ainda não está sobe do aparelho. */
-const CONTA_SYNC = ["liked","saved","savedIn","pastas","secoes","shared","follow","pollVote","support","formalDone","rsvp","help","inscr","canaisSalvos"];
+const CONTA_SYNC = ["liked","saved","savedIn","pastas","secoes","shared","follow","pollVote","support","formalDone","rsvp","help","inscr","canaisSalvos","aprendido"];
 let CD_FILA = new Set(), CD_T = null, CD_DE = null;
 /* SEÇÕES DO PERFIL (14/11, referência Pinterest): até 3 seções, até 5 pastas em cada, com salvos e publicações.
    O cadeado da seção vale para as pastas dela; uma pasta pode ficar secreta dentro de uma seção aberta, nunca o contrário.
@@ -629,7 +661,7 @@ function vitrineAgenda(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return; c
 async function vitrineEnvia(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return;
   try{ await SB.from("conta_dados").upsert({user_id:ME.user.id, chave:"vitrine", valor:vitrineMonta(), atualizada_em:new Date().toISOString()}); }catch(e){} }
 const persist = k => { store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); if (CONTA_SYNC.includes(k)) contaDadosAgenda(k); if (k === "publico") vitrineAgenda(); };
-const cdValor = k => k==="pastas" ? (store.get("pastas", []) || []) : (S[k] instanceof Set ? [...S[k]] : (S[k] || {}));
+const cdValor = k => k==="pastas" ? (store.get("pastas", []) || []) : k==="aprendido" ? apResumo() : (S[k] instanceof Set ? [...S[k]] : (S[k] || {}));
 function contaDadosAgenda(k){ if (!SB || !ME.user || CD_DE!==ME.user.id) return; CD_FILA.add(k); if (["saved","savedIn","secoes","pastas"].includes(k)) vitrineAgenda(); clearTimeout(CD_T); CD_T = setTimeout(contaDadosEnvia, 1200); }
 async function contaDadosEnvia(){ if (!SB || !ME.user || CD_DE!==ME.user.id || !CD_FILA.size) return; const ks = [...CD_FILA], uid = ME.user.id; CD_FILA = new Set();
   try{ const {error} = await SB.from("conta_dados").upsert(ks.map(k=>({user_id:uid, chave:k, valor:cdValor(k), atualizada_em:new Date().toISOString()})));
@@ -643,6 +675,7 @@ async function contaDadosCarrega(){ if (!SB || !ME.user || CD_DE===ME.user.id) r
     if (k==="pastas"){ const ps = Array.isArray(v) ? v.filter(f=>Array.isArray(f)) : []; store.set("pastas", ps);
       ps.forEach(f=>{ if (!FOLDERS.some(x=>x[0]===f[0])){ FOLDERS.push([f[0], f[1], [], !!f[3]]); mudou = true; } }); return; }
     if (k==="secoes"){ if (Array.isArray(v)){ S.secoes = v.filter(x=>x && Array.isArray(x.pastas)).slice(0, MAX_SEC); store.set("secoes", S.secoes); mudou = true; } return; }
+    if (k==="aprendido"){ apAplica(v); return; }
     if (S[k] instanceof Set) S[k] = new Set(Array.isArray(v) ? v : []); else S[k] = (v && typeof v==="object" && !Array.isArray(v)) ? v : {};
     store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); mudou = true; });
   CD_DE = uid; contaDadosEnvia(); vitrineAgenda(); if (mudou) render(); }
@@ -1287,7 +1320,7 @@ const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, k
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
 const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
-const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) - it.min/20000;
+const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) - it.min/20000;
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
 function amplo(list){
   const by = {}; list.slice().sort((a,b)=>a.min-b.min).forEach(it=>{ (by[it.tema]=by[it.tema]||[]).push(it); });
@@ -2377,9 +2410,11 @@ function tatReputacaoHTML(p){ const r = tatRep(p), l = TAT.aval[p.id], eu = ME.u
     <h3 class="psec">Selos</h3><div class="list">${selosDe(p).map(x=>{ const v = x.tem(r, p); return `<div class="setting l1 selolin${v ? "" : " nao"}"><span class="selo ${x.fam}">${ic(x.ic,"sm")}${esc(v ? x.nome(v) : x.titulo)}</span><span class="t"><small>${esc(x.como)}</small></span></div>`; }).join("")}</div>
     ${(r.referendos || []).length ? `<h3 class="psec">Quem referenda</h3><div class="tatref">${r.referendos.map(y=>`<a href="#pg-${y.por}">${avatar(ORG["pg-" + y.por] || {nome:y.nome})}<span>${esc(limpo(y.nome))}</span></a>`).join("")}</div>` : ""}
     ${eqp.length && !ja ? `<button class="btn" type="button" data-act="tatreferenda" data-p="${p.id}" style="margin-top:10px">${ic("people","sm")} Referendar este trabalho</button>` : ""}
-    <h3 class="psec">Avaliações</h3>${!l ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.slice(0, S.tatMais ? 40 : 8).map(a=>`<div class="setting l1 aval"><span class="t"><b><span class="tstar">${"★".repeat(a.nota)}</span> ${esc(limpo(a.autor_nome || "Pessoa tatuada"))}</b><small>${a.texto ? esc(a.texto) : ""}</small><small class="muted">${ic("check","sm")} sessão verificada · ${a.pos ? "saiu sabendo cuidar" : "saiu sem saber cuidar"} · dor ${a.dor === "igual" ? "como foi preparada" : a.dor === "mais" ? "maior que o preparado" : "menor que o preparado"} · ${quando(a.criado_em)}</small></span></div>`).join("")}</div>${l.length > 8 && !S.tatMais ? `<button class="btn ghost" type="button" data-act="tatmais" style="margin-top:10px">Ver mais avaliações</button>` : ""}` : `<p class="empty">Ainda sem avaliações.</p>`}`; }
+    <h3 class="psec">Avaliações</h3>${!l ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.slice(0, S.tatMais ? 40 : 8).map(a=>`<div class="setting l1 aval"><span class="t"><b><span class="tstar">${"★".repeat(a.nota)}</span> ${a.autor ? `<a href="#org-u-${esc(a.autor)}">${esc(limpo(a.autor_nome || "Pessoa atendida"))}</a>` : esc(limpo(a.autor_nome || "Pessoa atendida"))}</b><small>${a.texto ? esc(a.texto) : ""}</small><small class="muted">${ic("check","sm")} sessão verificada · ${a.pos ? "saiu sabendo cuidar" : "saiu sem saber cuidar"} · dor ${a.dor === "igual" ? "como foi preparada" : a.dor === "mais" ? "maior que o preparado" : "menor que o preparado"} · ${quando(a.criado_em)}</small></span></div>`).join("")}</div>${l.length > 8 && !S.tatMais ? `<button class="btn ghost" type="button" data-act="tatmais" style="margin-top:10px">Ver mais avaliações</button>` : ""}` : `<p class="empty">Ainda sem avaliações.</p>`}`; }
 async function tatAvalCarrega(pid){ if (!SB || TAT.aval[pid]) return; TAT.aval[pid] = null;
-  try{ const {data} = await sbP(pid).from("pagina_avaliacoes").select("id,nota,pos,dor,texto,autor_nome,criado_em").eq("pagina_id", pid).order("criado_em", {ascending:false}).limit(40); TAT.aval[pid] = data || []; }catch(e){ TAT.aval[pid] = []; }
+  /* 16/11 (Amanda): avaliação com o nome de quem avaliou e link para o perfil; o código da pessoa só vai para quem tem conta */
+  try{ const {data} = await sbP(pid).from("pagina_avaliacoes").select("id,nota,pos,dor,texto,autor_nome,criado_em" + (ME.user && !exPagId(pid) ? ",autor" : "")).eq("pagina_id", pid).order("criado_em", {ascending:false}).limit(40);
+    TAT.aval[pid] = data || []; TAT.aval[pid].forEach(a=>{ if (a.autor) orgDaPessoa({id:a.autor, nome:a.autor_nome || "Pessoa", cidade:"", bio:"", verificado:null}); }); }catch(e){ TAT.aval[pid] = []; }
   if (route() === "pg-" + pid && S.pgTab === "reputacao"){ const b = $("#pgbody"); if (b) b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], PAGS.lista.find(x=>x.id === pid), "reputacao"); } }
 function tatEquipeHTML(p){ const l = tatEquipe(p), meu = pgMeu(p), pend = TAT.equipe.filter(x=>x.estudio_id === p.id && !(x.aceito_estudio && x.aceito_tatuador));
   return `${l.length ? `<div class="cmngrid orgblocos">${l.map(pgOrgCard).join("")}</div>` : `<p class="empty">${meu ? "Convide as páginas de quem tatua no estúdio." : "Ninguém na equipe ainda."}</p>`}
@@ -2525,7 +2560,7 @@ function sheetCheckin(y){ openSheet(shead("Fazer check-in") + `<p class="lnote o
 async function sesCheckin(id, cod){ const {data:aviso, error} = await SB.rpc("tat_checkin", {p_sessao:id, p_codigo:String(cod).replace(/\D/g, "")}); if (!error && aviso) return capFirst(String(aviso));
   if (error) return erroAuth(error).replace(/^valor: /, ""); await tatCarrega(); return null; }
 function sheetAvaliar(y){ const p = PAGS.lista.find(x=>x.id === y.pagina_id) || {}, tat = modeloDe(p) === "tatuagem"; S.avNota = 5;
-  openSheet(shead("Avaliar") + `<p class="lnote osub">Sua avaliação de ${esc(limpo(p.nome || ""))} fica pública, com seu primeiro nome, e conta para a reputação da página.</p>
+  openSheet(shead("Avaliar") + `<p class="lnote osub">Sua avaliação de ${esc(limpo(p.nome || ""))} fica pública, com seu nome e um link para o seu perfil, e conta para a reputação da página.</p>
     <p class="olbl">Nota</p><div class="estrelas" role="radiogroup" aria-label="Nota">${[1,2,3,4,5].map(n=>`<button class="estrela on" type="button" role="radio" aria-checked="${n === 5}" data-act="avnota" data-n="${n}" aria-label="${n} ${n === 1 ? "estrela" : "estrelas"}">${ic("star")}</button>`).join("")}</div>
     ${tat ? `<p class="olbl">Você saiu sabendo cuidar da tatuagem?</p><div class="seg" role="radiogroup"><label><input type="radio" name="avpos" value="1" checked><span>Sim</span></label><label><input type="radio" name="avpos" value="0"><span>Não</span></label></div>
     <p class="olbl">A dor foi como foi preparada?</p><div class="seg" role="radiogroup"><label><input type="radio" name="avdor" value="igual" checked><span>Como falaram</span></label><label><input type="radio" name="avdor" value="mais"><span>Mais</span></label><label><input type="radio" name="avdor" value="menos"><span>Menos</span></label></div>` : ""}
@@ -2879,7 +2914,7 @@ function orgMembrosHTML(o){ return mandatoNote(o, true) + `<div class="list two"
   return "";
 }
 function screenOrg(id){
-  const o = ORG[id]; if (!o) return screenOrgs(); if (o.comunidade) return screenCmn(o); if (o.pessoa && ehPessoaReal(id)) return screenPessoa(o, id); const f = S.follow.has(id);
+  const o = ORG[id]; if (!o) return screenOrgs(); if (o.comunidade) return screenCmn(o); if (o.pessoa && ehPessoaReal(id)) return ME.user ? screenPessoa(o, id) : `<div class="empty-state" style="padding:48px 16px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">Perfis são vistos por quem tem conta</h1><p class="lnote" style="margin:0 0 16px">Entre ou crie sua conta para ver o perfil de ${esc(o.nome || "quem publica")}. Leva menos de um minuto.</p><button class="btn primary" type="button" data-act="cnconta">Entrar ou criar conta</button></div>`; const f = S.follow.has(id);
   const tabs = [["mural","Mural"],["nucleos","Núcleos"],["eventos","Movimentos"],["votacoes","Votações"],["documentos","Documentos"],["sobre","Sobre"]].filter(([k])=>o.fonte || o.pessoa ? k==="mural" : !(o.real && k==="nucleos"));   /* 15/11: membros e detalhes vão para Sobre, como na página */
   if (!tabs.some(t=>t[0]===S.orgTab)) S.orgTab = "mural";
   const eu0 = ehPessoaReal(id) && ME.user && id === "u-" + ME.user.id, rot = o.real ? "Seguir" : "Participar", rot2 = o.real ? "Seguindo" : "Participando";
@@ -3060,13 +3095,14 @@ function algoPanel(){
   const mixO = S.usarOrgs ? S.mix : 0;
   return `<div class="apanel">
     <section class="acard"><h3>O que alimenta o seu feed</h3>
-      <p class="anote">Só o que você escolheu. A rede.online não deduz opiniões.</p>
+      <p class="anote">Aprende com seu uso.</p>
       <div class="chips tags">${S.temas.map(t=>`<span class="chip static">${t}</span>`).join("")}</div>
       <p class="anote">${S.usarOrgs ? `E as ${ORGS.filter(o=>S.follow.has(o.id)).length} comunidades de que você participa.` : "Suas comunidades não são usadas (você desligou)."}</p>
       <div class="amix" role="img" aria-label="Equilíbrio: ${mixO}% comunidades, ${100-mixO}% temas"><i style="width:${mixO}%"></i><b style="width:${100-mixO}%"></b></div>
       <div class="alegend"><span><i class="k1"></i>Comunidades ${mixO}%</span><span><i class="k2"></i>Temas ${100-mixO}%</span></div>
       <div class="row"><button class="btn" type="button" data-act="adjust">${ic("sliders","sm")} Ajustar</button><button class="btn ghost" type="button" data-act="algo">${S.algo?"Desligar":"Ligar"}</button></div>
       ${S.algo ? "" : `<p class="anote">O algoritmo está desligado: hoje o seu feed não usa nada disto. Os números abaixo mostram como ele seria ligado.</p>`}</section>
+      <section class="acard" id="apalgo">${lugaresBloco()}</section>
     <section class="acard"><h3>Do que é feito o seu feed</h3><p class="anote">${n} conteúdos, por tema</p>
       <div class="abars">${porTema.map(([t,k])=>row(t,k,n)).join("")}</div></section>
     <section class="acard"><h3>O tamanho da sua bolha</h3><p class="anote">Quanto da rede o seu feed alcança</p>
@@ -3137,7 +3173,7 @@ function screenConfig(){
       ${ME.user ? `<button class="setting l1" type="button" data-act="pgperfilabre"><span class="t"><b>Páginas no seu perfil</b><small>${(()=>{ const l = minhasPaginas("aprovada"), n = l.filter(p=>p.no_perfil).length; return l.length ? n + " de " + l.length + " aparecem" : "Você ainda não tem página"; })()}</small></span>${ic("back","sm flip")}</button>` : ""}
       ${switchRow("usarOrgs","Usar minhas comunidades no algoritmo","Desligue quando quiser")}
       <button class="setting l1" type="button" data-act="redes"><span class="t"><b>Outras redes</b><small>${(()=>{ const m = S.redes.filter(c=>c.tipo==="minha").length, a = S.redes.length - m; return m || a ? [m ? m + " no perfil" : "", a ? a + " no feed" : ""].filter(Boolean).join(" · ") : "Traga publicações de outras redes"; })()}</small></span>${ic("back","sm flip")}</button>
-      <div class="note">${ic("lock")}<span>A rede.online não deduz suas opiniões políticas. O algoritmo usa só o que você escolhe aqui, e com o algoritmo desligado nada do seu perfil é usado.</span></div>
+      <div class="note">${ic("lock")}<span>O algoritmo usa o que você escolhe aqui e aprende com seu uso. Você vê e apaga o que ele aprendeu em Perfil › Algoritmo. Com o algoritmo desligado, nada do seu perfil é usado.</span></div>
     </div>
     <h2 class="sectitle">Seu feed</h2>
     <div class="list">
@@ -4151,7 +4187,8 @@ function mockSB(o = {}){
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
     denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
-    apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return null; } };
+    apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
+    conta_situacao:()=>({apagando:false}), conta_reativa:()=>true };
   const sb = {
     from, rpc:(nome, args={}) => Promise.resolve().then(()=>{ try{ return {data:RPC[nome] ? RPC[nome](args || {}) : null, error:null}; }catch(e){ return {data:null, error:{message:e.message || String(e)}}; } }),
     storage:{from:()=>({upload:async (nome, blob)=>{ MID[nome] = URL.createObjectURL(blob); return {data:{path:nome}, error:null}; }, getPublicUrl:nome=>({data:{publicUrl:MID[nome] || ""}}),
@@ -4235,11 +4272,18 @@ const segTexto = n => n.seguidores + (n.seguidores === 1 ? " seguidor" : " segui
 async function segNumeros(uuid, el){ if (!SB || !el || !uuid) return; try{ const {data} = await SB.rpc("perfil_seguidores", {p_id:uuid}); if (data && el.isConnected){
   el.innerHTML = `<span><b>${data.seguidores}</b> ${data.seguidores === 1 ? "seguidor" : "seguidores"}</span><span><b>${data.seguindo}</b> seguindo</span>`; el.hidden = false; } }catch(e){} }
 async function perfilCarrega(){ if (!SB || !ME.user){ ME.perfil = null; return; }
-  const {data} = await SB.from("perfis").select("id,nome,usuario,cidade,bio,criado_em,verificado,verificado_em,vista").eq("id", ME.user.id).maybeSingle(); ME.perfil = data || null;
+  let data = null; try{ const r = await SB.rpc("meu_perfil"); data = r.error ? null : r.data; }catch(e){} ME.perfil = data || null;   /* 16/11: cidade e forma de ver o feed só a própria pessoa lê */
   vistaDaConta(); seguindoCarrega(); notifVigia(); paginasCarrega();
   /* papel e nível vêm do servidor, por uma função que só responde sobre a própria conta (o papel saiu da leitura pública) */
   try{ const a = await SB.rpc("meu_acesso"); if (!a.error && a.data){ ME.acesso = a.data; if (ME.perfil) ME.perfil.papel = a.data.papel || "membro"; } }catch(e){}
-  contaDadosCarrega(); }
+  contaDadosCarrega(); contaSituacao(); }
+/* 16/11: conta pedida para apagar, dentro dos 15 dias: ao entrar, a pessoa escolhe reativar ou sair */
+async function contaSituacao(){ if (!SB || !ME.user) return; let d = null; try{ const r = await SB.rpc("conta_situacao"); d = r.data; }catch(e){ return; }
+  if (!d || !d.apagando) return;
+  const dia = new Date(d.apagar_em).toLocaleDateString("pt-BR", {day:"numeric", month:"long"});
+  openSheet(shead("Sua conta está para ser apagada") + `<div class="cform sform"><p class="lnote osub">Ela está escondida para todo mundo e será apagada de vez em ${esc(dia)}. Quer voltar?</p>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="contareativa">Reativar minha conta</button>
+    <button class="btn ghost block" type="button" data-act="contasai" style="margin-top:8px">Sair e manter o pedido</button></div>`, "Sua conta está para ser apagada"); }
 /* depois de qualquer mudança na conta: redesenha só o que mostra a conta */
 function contaAtualiza(){ navConta(); const r = route();
   if (r==="conta" || r==="nova-senha" || r==="perfil" || r==="perfil-ver" || r==="notificacoes" || r==="config" || r==="curadoria" || r==="em-alta") render(); }
@@ -4321,8 +4365,12 @@ const prioDe = it => it.conta && it.autorId ? (PRIO[it.autorId] || 0) : 0;
 async function prioridadesCarrega(ids){ const falta = [...new Set(ids)].filter(Boolean); if (!SB || !falta.length) return;
   try{ const r = await SB.rpc("prioridades", {p_autores:falta}); if (!r.error && r.data){ falta.forEach(id=>{ PRIO[id] = r.data[id] || 0; }); } }catch(e){} }
 async function publicacoesCarrega(){ if (!SB) return;
-  const {data, error} = await SB.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}).limit(200);
+  /* 16/11 (Amanda): perfis só para quem tem conta. Visitante recebe só nome e selo do autor; com conta, também o texto sobre a pessoa
+     e a cidade, se ela escolheu mostrar (cidade_publica). O servidor recusa o resto. */
+  const AUTOR = ME.user ? "perfis(id, nome, cidade_publica, bio, verificado)" : "perfis(id, nome, verificado)";
+  const {data, error} = await SB.from("publicacoes").select(`*, ${AUTOR}, paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)`).order("criada_em", {ascending:false}).limit(200);
   if (error || !data) return;
+  data.forEach(p=>{ if (p.perfis){ p.perfis.cidade = p.perfis.cidade_publica || ""; p.perfis.bio = p.perfis.bio || ""; } });
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].conta) POOL.splice(i, 1);
   let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
   data.concat(ex).slice().reverse().forEach(p=>{ const it = itemDaPublicacao(p); if (exPagId(p.pagina_id)) it.exemplo = true; POOL.unshift(it); });   /* 15/11: o que as páginas de exemplo publicam é exemplo */
@@ -4914,7 +4962,7 @@ async function curadoriaConversa(box){
 async function curadoriaVerif(box){
   const {data, error} = await SB.from("verificacao_pedidos").select("id,user_id,status,criado_em,tipo,doc_tipo,doc_path,doc_enviado_em,motivo,decidido_em").order("criado_em", {ascending:true}).limit(300);
   if (error) return box.innerHTML = `<p class="empty">${esc(erroAuth(error))}</p>`;
-  const ids = (data || []).map(p=>p.user_id), pf = ids.length ? ((await SB.from("perfis").select("id,nome,cidade,verificado").in("id", ids)).data || []) : [], P = Object.fromEntries(pf.map(x=>[x.id, x]));
+  const ids = (data || []).map(p=>p.user_id), pf = ids.length ? ((await SB.from("perfis").select("id,nome,cidade:cidade_publica,verificado").in("id", ids)).data || []) : [], P = Object.fromEntries(pf.map(x=>[x.id, x]));
   const pend = (data || []).filter(p=>p.status==="pendente"), outros = (data || []).filter(p=>p.status!=="pendente").slice(-20).reverse();
   const dt = d => d ? new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}) : "";
   box.innerHTML = `<p class="curnota">Pedidos do nível 3. Abra o documento, confira nome e foto com o perfil e decida. O arquivo é apagado assim que você aprova ou recusa.</p>`
@@ -5108,6 +5156,7 @@ function screenConta(){
       <div class="cme">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : "Ainda não verificado: a curadoria verifica pessoas com documento e fontes oficiais"}</small></span></div>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
+      <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
       <p class="ferr" role="alert" hidden></p>
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
@@ -5680,19 +5729,23 @@ const A = {
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], {type:"application/json"})); a.download = "arede.online-meus-dados.json";
     document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); ocupado(b, false); toast("Arquivo baixado."); },
   apagaconta: () => openSheet(shead("Apagar minha conta") + `<div class="cform sform">
-      <div class="note">${ic("info")}<span><b class="ntit">Isso não tem volta</b>São apagados do servidor: seu perfil, suas publicações e imagens, as contas de outras redes que você ligou, seus pedidos (inclusive de orçamento, com as conversas e os horários), suas avaliações e o histórico de leitura. Se quiser guardar uma cópia, baixe seus dados antes.</span></div>
+      <div class="note">${ic("info")}<span><b class="ntit">Você tem 15 dias para voltar atrás</b>Sua conta some na hora para todo mundo e sai de todos os aparelhos. Para reativar, entre de novo em até 15 dias. Depois disso, tudo é apagado de vez: perfil, publicações e imagens, contas de outras redes, pedidos (com conversas e horários), avaliações e histórico de leitura. Se quiser guardar uma cópia, baixe seus dados antes.</span></div>
       <div class="field"><label for="apsen">Sua senha</label><div class="pw"><input id="apsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="apsen">Mostrar</button></div></div>
       <div class="field"><label for="aptxt">Para confirmar, escreva APAGAR</label><input id="aptxt" type="text" autocomplete="off" autocapitalize="characters" maxlength="10"></div>
-      <p class="ferr" role="alert" hidden></p><button class="btn perigo block" type="button" data-act="apagacontaok">Apagar minha conta para sempre</button></div>`, "Apagar minha conta"),
+      <p class="ferr" role="alert" hidden></p><button class="btn perigo block" type="button" data-act="apagacontaok">Apagar minha conta</button></div>`, "Apagar minha conta"),
   apagacontaok: async b => { const sen = $("#apsen").value, uid = ME.user.id, dp = ((ME.acesso || {}).pedido || {}).doc_path;
     if (!sen) return sheetErro("Escreva sua senha."); if ($("#aptxt").value.trim().toUpperCase()!=="APAGAR") return sheetErro("Escreva APAGAR para confirmar.");
     sheetErro(""); ocupado(b, true, "Apagando…");
     const c = await SB.auth.signInWithPassword({email:ME.user.email, password:sen, options:{captchaToken:await capToken()}}); if (c.error){ ocupado(b, false); return sheetErro(/invalid/i.test(c.error.message) ? "A senha não confere." : erroAuth(c.error)); }
-    try{ const l = await SB.storage.from("midia").list(uid, {limit:1000}); if (l.data && l.data.length) await SB.storage.from("midia").remove(l.data.map(f=>uid + "/" + f.name)); }catch(e){}
+    /* 16/11 (15 dias para reativar): as fotos ficam até o fim do prazo e saem com a conta; o documento de verificação sai já */
     if (dp) await SB.storage.from("verificacao-docs").remove([dp]).catch(()=>{});
-    const {error} = await SB.rpc("apagar_conta"); if (error){ ocupado(b, false); return sheetErro(/admin/i.test(error.message) ? "A conta de administração não é apagada pelo site." : /reauth/i.test(error.message) ? "Confirme a senha de novo." : erroAuth(error)); }
+    const {data:fim, error} = await SB.rpc("apagar_conta"); if (error){ ocupado(b, false); return sheetErro(/admin/i.test(error.message) ? "A conta de administração não é apagada pelo site." : /reauth/i.test(error.message) ? "Confirme a senha de novo." : erroAuth(error)); }
     try{ await SB.auth.signOut({scope:"local"}); }catch(e){} try{ localStorage.removeItem("arede-acesso:" + uid); }catch(e){}
-    ME.user = null; ME.perfil = null; ME.acesso = null; closeSheet(); toast("Conta apagada. Seus dados saíram do servidor."); await publicacoesCarrega(); go("inicio"); },
+    ME.user = null; ME.perfil = null; ME.acesso = null; closeSheet();
+    toast(`Conta apagada. Para reativar, entre de novo até ${fim ? new Date(fim).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "") : "15 dias"}.`); await publicacoesCarrega(); go("inicio"); },
+  contareativa: async b => { ocupado(b, true, "Reativando…"); const {error} = await SB.rpc("conta_reativa"); ocupado(b, false);
+    if (error) return sheetErro(erroAuth(error)); closeSheet(); toast("Conta reativada. Tudo volta a aparecer."); render(); },
+  contasai: async () => { try{ await SB.auth.signOut({scope:"local"}); }catch(e){} ME.user = null; ME.perfil = null; ME.acesso = null; closeSheet(); go("inicio"); },
   versenha: b => { const i = document.getElementById(b.dataset.for); if (!i) return; const v = i.type==="password"; i.type = v ? "text" : "password"; b.textContent = v ? "Esconder" : "Mostrar"; },
   cadastrar: async b => { const nome = $("#cnome").value.trim(), mail = $("#cmail").value.trim().toLowerCase(), sen = $("#csen").value, cid = $("#ccid").value.trim();
     if (nome.length < 2) return formErro("Escreva seu nome.");
@@ -5728,7 +5781,7 @@ const A = {
   sair: async () => { await SB.auth.signOut(); ME.user = null; ME.perfil = null; ME.acesso = null; toast("Você saiu da conta."); go("conta"); },
   perfilsalva: async b => { const nome = $("#pnome").value.trim(); if (nome.length < 2) return formErro("O nome precisa de pelo menos 2 letras.");
     ocupado(b, true, "Salvando…");
-    const {error} = await SB.from("perfis").update({nome, cidade:$("#pcid").value.trim() || null, bio:$("#pbio").value.trim() || null}).eq("id", ME.user.id);
+    const {error} = await SB.from("perfis").update({nome, cidade:$("#pcid").value.trim() || null, mostra_cidade:!!($("#pcidmostra") && $("#pcidmostra").checked), bio:$("#pbio").value.trim() || null}).eq("id", ME.user.id);
     ocupado(b, false); if (error) return formErro(erroAuth(error)); formErro(""); await perfilCarrega(); await publicacoesCarrega(); toast("Perfil salvo."); render(); },
   editarpub: b => { const it = findItem(b.dataset.uid); if (!podeEditar(it)) return; sheetCriarReal(it.raw.tipo, it.raw); },
   publicarreal: async b => { const ed = b.dataset.ed, velha = ed ? (POOL.find(x=>x.uuid===ed) || {}).raw : null, k = b.dataset.k, tit = $("#rtit").value.trim(), txt = $("#rtxt").value.trim(), f = $("#rfoto").files[0];
@@ -5787,10 +5840,12 @@ const A = {
     if (txt){ S.localAuto = true; persist("localAuto"); if (!S.perto){ S.perto = true; persist("perto"); } }
     closeSheet(); if (para==="origens") sheetOrigens(); else if (para && txt && $("#" + para)) $("#" + para).value = txt; },
   localpara: () => { S.localAuto = false; persist("localAuto"); origensRefaz(); toast("A cidade não se atualiza mais sozinha."); },
-  aprendelugares: () => { S.aprendeLugares = !S.aprendeLugares; persist("aprendeLugares"); LUG_TOP = null; F.key = null; origensRefaz(); render(); },
-  lugartira: b => { const k = b.dataset.k; if (!S.lugaresFora.includes(k)) S.lugaresFora.push(k); persist("lugaresFora"); delete S.lugares[k]; persist("lugares"); LUG_TOP = null; F.key = null; origensRefaz(); render(); toast(`${k} saiu dos lugares de interesse.`); },
-  lugaresvolta: () => { S.lugaresFora = []; persist("lugaresFora"); LUG_TOP = null; origensRefaz(); },
-  lugareslimpa: () => { S.lugares = {}; persist("lugares"); S.lugaresFora = []; persist("lugaresFora"); LUG_TOP = null; F.key = null; origensRefaz(); render(); toast("Lugares de interesse apagados."); },
+  aprendelugares: () => { S.aprendeLugares = !S.aprendeLugares; apGuarda(); F.key = null; origensRefaz(); apRefaz(); render(); },
+  lugartira: b => { const k = b.dataset.k, tipo = k.slice(0, 2), nome = b.dataset.n || k; if (!S.lugaresFora.includes(k)) S.lugaresFora.push(k);
+    if (tipo==="t:") delete S.apTemas[k.slice(2)]; else if (tipo==="f:") delete S.apFontes[k.slice(2)]; else delete S.lugares[k];
+    apGuarda(); F.key = null; origensRefaz(); apRefaz(); render(); toast(`${nome} saiu do que o Algoritmo aprendeu.`); },
+  lugaresvolta: () => { S.lugaresFora = []; apGuarda(); origensRefaz(); apRefaz(); },
+  lugareslimpa: () => { S.lugares = {}; S.apTemas = {}; S.apFontes = {}; S.lugaresFora = []; apGuarda(); F.key = null; origensRefaz(); apRefaz(); render(); toast("O que o Algoritmo aprendeu foi apagado."); },
   acessomais: () => { F.gate = null; F.ended = false; renderStop(); more(10); },
   endsession: () => go("ate-depois"),
   /* mecanismo padrão: abrir = expandir no lugar, dentro da grade */
@@ -6005,7 +6060,7 @@ const A = {
   avnota: b => { S.avNota = +b.dataset.n; $$(".estrela").forEach(e=>{ const n = +e.dataset.n; e.classList.toggle("on", n <= S.avNota); e.setAttribute("aria-checked", n === S.avNota); }); },
   avenvia: async b => { const y = sesAchar(b.dataset.s); if (!y) return; const p = PAGS.lista.find(x=>x.id === y.pagina_id) || {}, tat = modeloDe(p) === "tatuagem";
     ocupado(b, true, "Publicando…");
-    const {error} = await SB.from("pagina_avaliacoes").insert({pagina_id:y.pagina_id, sessao_id:y.id, autor:ME.user.id, autor_nome:((ME.perfil && ME.perfil.nome) || "").split(" ")[0] || "Pessoa atendida", nota:S.avNota || 5,
+    const {error} = await SB.from("pagina_avaliacoes").insert({pagina_id:y.pagina_id, sessao_id:y.id, autor:ME.user.id, autor_nome:(ME.perfil && ME.perfil.nome) || "Pessoa atendida", nota:S.avNota || 5,
       pos:tat ? ($('input[name="avpos"]:checked') || {}).value === "1" : null, dor:tat ? ($('input[name="avdor"]:checked') || {}).value : null, texto:($("#avtx").value || "").trim() || null});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await SB.from("tat_sessoes").update({avaliada:true}).eq("id", y.id); await sesSistema(y.pedido_id, "A cliente avaliou o atendimento."); delete TAT.aval[y.pagina_id]; await tatCarrega();
@@ -6427,7 +6482,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 11:22";
+const VERSAO = "v1 registrada · 16/11 12:46";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
