@@ -9,6 +9,7 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none"
   },
-  "workers_dev": true,
+  // Só o endereço de verdade: arede.online/* (rota na zona, com "seguir para a origem" se falhar). Sem endereço provisório da Cloudflare.
+  "workers_dev": false,
   "preview_urls": false
 }
