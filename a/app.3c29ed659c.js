@@ -608,7 +608,7 @@ function rapidoAplica(l){
   if (S.rapido==="alta") return l.filter(it=>!it.daArte && it.min <= 4320 && calor(it) > 0).sort((a,b)=>calor(b)-calor(a) || a.min-b.min);
   return l; }
 const rapidosHTML = () => `<div class="qf" role="group" aria-label="Filtros rápidos">${RAPIDOS.map(([k,n,i])=>`<button class="qchip" type="button" data-act="rapido" data-k="${k}" aria-pressed="${S.rapido===k}">${ic(i,"sm")}${n}</button>`).join("")}</div>`;
-const kindOf = it => it.autoral ? "Autoral · " + AUTORAL[it.autoral][0] : it.base ? it.doc : desmente(it) ? "Desmentido" + (veredito(it) ? " · " + veredito(it) : "") : ehChecagem(it) && it.ext ? "Checagem" : it.arte ? "Arte · " + (CAT_ARTE[it.catArte] || "Imagem") : it.daRede ? (TIPO_REDE[it.rtipo] || "Publicação") + " · " + REDES[it.rede].nome : it.ext && it.tipo==="texto" && ORG[it.org] && ORG[it.org].fonte ? (it.lingua && it.lingua!=="pt" ? "Notícia · " + it.lingua.toUpperCase() : "Notícia") : it.tipo==="votacao" ? (it.fase==="apoios" ? "Proposta de votação" : it.critico ? "Eleição" : "Votação") : KIND[it.tipo];
+const kindOf = it => it.opiniao ? "Opinião" : it.autoral ? "Autoral · " + AUTORAL[it.autoral][0] : it.base ? it.doc : desmente(it) ? "Desmentido" + (veredito(it) ? " · " + veredito(it) : "") : ehChecagem(it) && it.ext ? "Checagem" : it.arte ? "Arte · " + (CAT_ARTE[it.catArte] || "Imagem") : it.daRede ? (TIPO_REDE[it.rtipo] || "Publicação") + " · " + REDES[it.rede].nome : it.ext && it.tipo==="texto" && ORG[it.org] && ORG[it.org].fonte ? (it.lingua && it.lingua!=="pt" ? "Notícia · " + it.lingua.toUpperCase() : "Notícia") : it.tipo==="votacao" ? (it.fase==="apoios" ? "Proposta de votação" : it.critico ? "Eleição" : "Votação") : KIND[it.tipo];
 const KIND = {video:"Vídeo", imagem:"Publicação", texto:"Publicação", evento:"Evento", enquete:"Consulta", votacao:"Votação", chamado:"Chamado", documento:"Documento"};
 /* cada aba tem o leiaute que melhor serve ao seu tipo (4º campo):
    blocos (Início misto) · video (1 coluna) · agenda (eventos e chamados, pelo que acontece ou vence primeiro) · cedula (voto no cartão) · arquivo (lista de documentos) */
@@ -1721,13 +1721,13 @@ function sourceBase(fl=S.filt, types=tabTypes()){
 }
 const POLICIAL = /\b(mort[oa]s?|mata|matou|assassin\w*|crimes?|pres[oa]s?|pris[aã]o|pol[ií]cia\w*|tiros?|baleado\w*|acidentes?|viol[eê]ncia|homic[ií]dio\w*|estupr\w*|tr[aá]fico|furto|roubo|assalt\w*|sequestr\w*|police|killed|shooting|murder\w*|arrest\w*|polic[ií]a|asesin\w*|detenid\w*|muert[eo]s?)\b/i;
 const policialLonge = it => !!it && it.coletada && POLICIAL.test(it.titulo || "") && prox(it) < 2 && !((it.ext && it.ext.verif || []).length >= 2);
-const EQ = {bloco:20, grupo:3, grande:10, olhar:40};
+const EQ = {bloco:20, grupo:3, grande:10, opiniao:3, olhar:40};
 const grupoDe = it => it.grupoMidia || it.org;
 function equilibra(l){ const fila = l.slice(), out = [];
   const ok = (x, nivel) => { if (x.conta) return true; const ult = out.slice(-2), jan = out.slice(-(EQ.bloco - 1)), g = grupoDe(x);
     if (ult.some(y=>y.org===x.org) || (out.length && grupoDe(out[out.length-1])===g)) return false;   /* nunca dois seguidos */
     if (nivel > 0) return true;
-    return jan.filter(y=>grupoDe(y)===g).length < EQ.grupo && (!x.grande || jan.filter(y=>y.grande).length < EQ.grande); };
+    return jan.filter(y=>grupoDe(y)===g).length < EQ.grupo && (!x.grande || jan.filter(y=>y.grande).length < EQ.grande) && (!x.opiniao || jan.filter(y=>y.opiniao).length < EQ.opiniao); };
   while (fila.length){ let i = fila.findIndex((x,k)=>k < EQ.olhar && ok(x, 0)); if (i < 0) i = fila.findIndex((x,k)=>k < 8 && ok(x, 1)); if (i < 0) i = 0; out.push(fila.splice(i,1)[0]); }
   return out; }
 function source0(fl, types, soReal){
@@ -4484,6 +4484,8 @@ async function noticiasCarrega(){ let data = null, ref = Date.now();
     data = COPIA.itens.filter(n=>lin(n) && !checa(n) && !ytb(n)).slice(0, 200).concat(COPIA.itens.filter(n=>lin(n) && checa(n) && !ytb(n)), COPIA.itens.filter(n=>lin(n) && ytb(n))); ref = Date.parse(COPIA.gerada); }
   if (!data) return;
   noticiasAplica(data, ref); }
+/* 16/11 (Amanda): colunas, blogs, editoriais e análises (pelo endereço) levam a etiqueta "Opinião" e no máximo 3 a cada 20 cartões */
+const OPINIAO_URL = /\/(opini[aã]o|opiniones?|opinion|colunas?|colunistas?|columnas?|columns?|blogs?|editoriais|editorial|an[aá]lises?|an[aá]lisis|analysis|comment(ary|isfree)?|tribuna|artigos?)(\/|-|$)/i;
 function noticiasAplica(data, ref){
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].coletada) POOL.splice(i, 1);
   const urls = new Set(POOL.filter(p=>p.ext).map(p=>p.ext.url)), porGrupo = {}, vistos = new Set();
@@ -4491,7 +4493,7 @@ function noticiasAplica(data, ref){
   data.forEach(n=>{ if (urls.has(n.url) || vistos.has(n.grupo)) return; vistos.add(n.grupo);
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
     const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[n.grupo].filter(x=>x.id!==n.id);
-    const it = {id, grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
+    const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
       ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
     const yt = (String(n.url).match(/youtube\.com\/watch\?v=([\w-]{11})/) || [])[1];
@@ -6598,7 +6600,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 14:15";
+const VERSAO = "v1 registrada · 16/11 14:21";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
