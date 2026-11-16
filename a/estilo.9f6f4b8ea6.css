@@ -880,7 +880,7 @@ a.lk{color:var(--ink);text-decoration:none}
 .lcard.ar .docsheet::after{display:none}
 .lcard.ar .docsheet i{display:none}
 .lcard.ar .docsheet::before{content:"";flex:none;width:9px;height:12px;border-radius:2px;border:1.5px solid var(--dc,var(--muted));border-top-right-radius:4px}
-.lcard.ar .docsheet small{max-width:none;padding:0;background:none;color:var(--ink);font-size:10px}
+.lcard.ar .docsheet small{max-width:none;padding:0;margin:0;line-height:12px;background:none;color:var(--ink);font-size:10px}   /* 16/11: sem a margem da folha grande, o texto fica no centro da etiqueta, junto do ícone */
 .lcard.ar .ltitle{font-size:15px;line-height:1.25}
 .lcard.ar .dloc time{margin-left:0}
 .docbase .dbh.dbrec{margin-top:26px}
