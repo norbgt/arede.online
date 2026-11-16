@@ -866,6 +866,11 @@ function seloMarcas(it){ const o = ORG[it.org] || {}, nat = String(o.natureza ||
   if (dn && dn.cita) m.push({k:"proprio", ic:"info", t:"Fala do próprio grupo", d:dn.d.grupo, x:`A notícia cita “${esc(dn.cita.toUpperCase()===dn.cita ? dn.cita : dn.cita.replace(/\b\w/g, c=>c.toUpperCase()))}”, do mesmo grupo da fonte. Leia sabendo do interesse. <b>Você sabia</b> que ${esc(dn.d.soube)}`});
   else if (dn) m.push({k:"dono", ic:"people", t:"Você sabia?", d:dn.d.grupo, x:"<b>Você sabia</b> que " + esc(dn.d.soube)});
   const ordem = ["checado","proprio"]; return m.filter(x=>ordem.includes(x.k)).sort((a,b)=>ordem.indexOf(a.k)-ordem.indexOf(b.k)).concat(m.filter(x=>!ordem.includes(x.k))); }   /* checagem de agência vem primeiro: é a marca de mais peso */
+/* 16 nov 2026: tipo e grupo de mídia da fonte, só ao abrir Detalhes (decisão da Amanda) */
+const TIPO_FONTE_NOME = {"Imprensa · grande":"Grande imprensa", "Imprensa · alternativa e independente":"Imprensa alternativa e independente"};
+function deOndeVem(it){ const o = ORG[it.org] || {}; if (!o.fonte || it.oficial) return ""; const tf = it.tipoFonte || o.tipoFonte; if (!tf) return "";
+  const t = TIPO_FONTE_NOME[tf] || tf, g = it.grupoNome || o.grupo || "";
+  return `<p class="sbde"><b>De onde vem</b> · ${esc(t)}${g ? " · " + esc(/^grupo/i.test(g) ? g : "grupo " + g) : ""}</p>`; }
 function sealBox(it, compacto){
   const s = sealOf(it), m = seloMarcas(it);
   const sub = s.sc!==null ? `Nota ${s.sc} de 100${it.fontePub ? " · da fonte citada" : ""}` : it.autoral ? (it.autoralSub || AUTORAL[it.autoral][0]) + " · declarada pela autora"
@@ -875,6 +880,7 @@ function sealBox(it, compacto){
     ${m.length ? `<span class="sbmarcas">${m.map(x=>`<span class="sbm" data-m="${x.k}">${ic(x.ic,"sm")}<span class="sbt">${x.t}</span>${x.d ? `<span class="sbd"> · ${esc(x.d)}</span>` : ""}</span>`).join("")}</span>` : ""}</summary>
     ${s.sc!==null?`<div class="scale" role="img" aria-label="Nota ${s.sc} de 100"><i style="left:${s.sc}%"></i></div><div class="scalelbl"><span>Baixa</span><span>Moderada</span><span>Alta</span></div>`:""}
     ${m.length ? `<ul class="sbexp">${m.map(x=>`<li data-m="${x.k}">${ic(x.ic,"sm")}<span>${x.k==="dono" ? "" : `<b>${x.t}</b> `}${x.x}</span></li>`).join("")}</ul>` : ""}
+    ${deOndeVem(it)}
     <p class="sbaviso">A nota é uma avaliação da rede.online, por critérios públicos e iguais para todas as fontes. Não é uma acusação e pode estar errada. <a href="#termos">Como funciona e como pedir revisão</a></p>
     <div class="checks">${sealChecks(it)}</div>
     <p class="note" style="margin:10px 0"><span>Verificação automática com fontes públicas. Se alguém contesta, uma segunda verificação, independente, refaz a análise. O selo avalia fatos, nunca opiniões.</span></p>
@@ -4455,7 +4461,8 @@ const CERT_INFO = {jti:["JTI", "certificada por auditoria independente na Journa
 const certOk = c => c && CERT_INFO[c.k] && /^https:\/\/(www\.|network\.)?(journalismtrustinitiative\.org|jti-app\.com|thetrustproject\.org)\//.test(c.prova || "") || (c && c.k === "ifcn" && /^https:\/\/ifcncodeofprinciples\.poynter\.org\//.test(c.prova || ""));
 function certDe(o){ return (o && Array.isArray(o.cert) ? o.cert : []).filter(certOk); }
 function certLinhas(o){ return certDe(o).map(c=>`<b>${CERT_INFO[c.k][0]}</b>${c.grupo ? ` (pelo grupo ${esc(c.grupo)})` : ""}: ${CERT_INFO[c.k][1]} <a href="${esc(c.prova)}" target="_blank" rel="noopener">Conferir na lista oficial ↗</a>`); }
-function orgDaFonte(f){ const id = orgDaFonte0(f); if (ORG[id] && Array.isArray(f.cert)) ORG[id].cert = f.cert; return id; }
+function orgDaFonte(f){ const id = orgDaFonte0(f); if (ORG[id] && Array.isArray(f.cert)) ORG[id].cert = f.cert;
+  if (ORG[id]){ if (f.tipo) ORG[id].tipoFonte = f.tipo; if (f.grupo_midia) ORG[id].grupo = f.grupo_midia; } return id; }
 function orgDaFonte0(f){ f = Object.assign({}, f, {nome:limpo(f.nome) || ""}); const dom = String(f.dominio||"").split("/")[0].replace(/^www\./,""), canal = f.feed_tipo==="youtube" || dom==="youtube.com";
   const ex = !canal && Object.values(ORG).find(o=>o.fonte && o.site && hostOf(o.site)===dom); if (ex) return ex.id;
   const id = "fx-" + f.id;
@@ -4489,7 +4496,7 @@ function noticiasAplica(data, ref){
   data.forEach(n=>{ if (urls.has(n.url) || vistos.has(n.grupo)) return; vistos.add(n.grupo);
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
     const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[n.grupo].filter(x=>x.id!==n.id);
-    const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
+    const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grupoNome:f.grupo_midia || "", grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
       ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
     const yt = (String(n.url).match(/youtube\.com\/watch\?v=([\w-]{11})/) || [])[1];
@@ -6631,7 +6638,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 17:27";
+const VERSAO = "v1 registrada · 16/11 18:38";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

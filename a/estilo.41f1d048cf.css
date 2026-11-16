@@ -810,6 +810,7 @@ h1 .fic{font-size:11px;vertical-align:4px}
 .sbm[data-m="antigo"]{color:var(--warn)}.sbm[data-m="antigo"] .icon{color:var(--warn)}
 .sbm[data-m="proprio"]{color:var(--warn);font-weight:600}.sbm[data-m="proprio"] .icon{color:var(--warn)}
 .sbexp li[data-m="proprio"] .icon{color:var(--warn)}
+.sbde{margin:10px 0 0;font-size:13px;line-height:1.45;color:var(--ink)}.sbde b{font-weight:600}
 .sbaviso{margin:10px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}.sbaviso a{color:inherit;text-decoration:underline}
 .sbm[data-m="oficial"] .icon{color:var(--ok)}
 /* checagem de agência com mais destaque: fundo verde suave, nome da marca em negrito */
