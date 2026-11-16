@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-sPrgwbmwQ0yCNZ+FmVY9Cg8Gh/1MDX8PRU3CSLibRMY=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-hDV9wo373OL+8O7vjTMb4jcoqyPKF4/8iVLWbu5Ym8o=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1767,7 +1767,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .phd .phredes{grid-column:1/-1}
 /* espaços (página, comunidade, organização): mesmo cabeçalho do perfil; muda a forma da marca e vem a capa por cima */
 .phd.esp .phav{border-radius:18px;font-size:20px;display:grid;place-items:center;color:#fff}.phd.esp.pg .phav{border-radius:50%}
-.phd .phtipo{font-weight:600;color:var(--ink)}.phd .phmeta a{color:inherit}
+.phd .phtipo{font-weight:600;color:var(--ink)}.phd .phtipo .icon{width:15px;height:15px;vertical-align:-2px;margin-right:4px}.phd .phmeta a{color:inherit}
 .phd .phchips span.chip{cursor:default}
 .phd .phnovo{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}.phd .phnovo > *{margin:0!important}
 .phd .phnovo .selos{gap:6px}.phd .phnovo .selo{min-height:30px;padding:3px 10px;font-size:12.5px}
@@ -3943,6 +3943,9 @@ const ICON = {
   plus:'<path d="M12 5v14M5 12h14"/>',
   people:'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.5" cy="8.5" r="2.5"/><path d="M16 13.6c2.4 0 4.2 1.6 4.6 4.6"/>',
   lapis:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
+  tatmaq:'<path d="M3.500 5H16a4 4 0 0 1 4 4v3.500h-6.500V9.500h-10z"/><path d="M6.500 9.500V14"/><path d="M4.500 14h4l-2 7z"/><path d="M16.800 12.500V16"/>',
+  tesoura:'<circle cx="6" cy="6.500" r="2.5"/><circle cx="6" cy="17.500" r="2.5"/><path d="M8.2 8 20 17"/><path d="M8.2 16 20 7"/>',
+  esmalte:'<path d="M10 3h4v8h-4z"/><path d="M8 11h8v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/>',
   pessoa:'<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c.8-4 3.7-6 7.5-6s6.7 2 7.5 6"/>',
   entrar:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M4 12h11M11 8l4 4-4 4"/>',
   globe:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.4 5.2 3.4 8.5s-1.1 6.1-3.4 8.5c-2.3-2.4-3.4-5.2-3.4-8.5S9.7 5.9 12 3.5z"/>',
@@ -6468,15 +6471,23 @@ async function tatFichaSalva(pid){ const m = $("#pgmod"); if (!m) return null;
 function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.papel === "tatuador" ? tatEstudio(p) : null, sl = tatSelos(p);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
   return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span><span class="cmntag">${o.ficticia ? EXTAG : ""}<span class="pgtag">${ic("doc","sm")}Página</span></span>${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
-    <span class="ktipo">${esc(papelNome(p) || tipoNome(p))}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([(MODELOS[modeloDe(p)] || {}).nome, o.cidade].filter(Boolean).join(" · "))}</span>${vincHTML(p, est)}${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
+    <span class="ktipo">${papelRot(p) || esc(tipoNome(p))}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([(MODELOS[modeloDe(p)] || {}).nome, o.cidade].filter(Boolean).join(" · "))}</span>${vincHTML(p, est)}${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
     <span class="cmnpe2"><span>${!mod(p, "reputacao") ? (mod(p, "loja") ? "Loja" : "") : r.n ? `★ ${nota(r.media)} (${r.n})` : "Sem avaliações"}${t.preco ? " · " + "$".repeat(t.preco) : ""}${mod(p, "agenda") && !agAberta(p) ? " · agenda fechada" : ""}</span>${pe}</span></a>`; }
 /* 15/11 (Amanda): profissional e estúdio convivem no mesmo feed e se diferenciam no cartão:
    o papel fica ao lado de "Página" (ícone de pessoa ou de prédio) e o vínculo aparece numa linha própria:
    o profissional mostra onde atende; o estúdio mostra a equipe. */
 /* 15/11 (Amanda): o tipo diz o papel: "Página · Tatuador" ou "Página · Estúdio de tatuagem", no cartão e no alto da página */
-const PAPEL_NEGOCIO = {tatuagem:"Estúdio de tatuagem", beleza:"Salão de beleza"};
+/* 16/11 (Amanda): o negócio diz só "Estúdio" (ou "Salão"); o ramo vem no ícone: máquina de tatuar, tesoura (cabelo) ou esmalte (unhas).
+   Quem usa leitor de tela ouve o ramo por extenso. */
+const RAMO_UNHA = ["Manicure","Pedicure","Unhas em gel"];
 function papelNome(p){ const t = tatDe(p), m = modeloDe(p), M = MODELOS[m] || {}; if (!t || !M.papeis) return "";
-  return t.papel === "estudio" ? (PAPEL_NEGOCIO[m] || M.papeis[1]) : M.papeis[0]; }
+  return t.papel === "estudio" ? M.papeis[1] : M.papeis[0]; }
+function papelRamo(p){ const t = tatDe(p), m = modeloDe(p); if (!t || t.papel !== "estudio") return null;
+  if (m === "tatuagem") return ["tatmaq", "de tatuagem"];
+  if (m === "beleza"){ const e = t.estilos || []; return e.length && e.every(x=>RAMO_UNHA.includes(x)) ? ["esmalte", "de unhas"] : ["tesoura", "de beleza"]; }
+  return null; }
+function papelRot(p){ const n = papelNome(p); if (!n) return ""; const r = papelRamo(p);
+  return r ? `${ic(r[0], "sm")}${esc(n)}<span class="sr"> ${r[1]}</span>` : esc(n); }
 const papelTag = p => { const n = papelNome(p); return n ? ` · ${esc(n)}` : ""; };
 function vincHTML(p, est){ const t = tatDe(p); if (!t) return "";
   if (t.papel === "estudio"){ const eq = tatEquipe(p); return eq.length ? `<span class="kvinc"><span class="kavs">${eq.slice(0, 4).map(x=>avatar(ORG["pg-" + x.id] || {nome:x.nome, cor:"#666", sigla:siglaDe(x.nome)}, "kav")).join("")}</span>${eq.length} na equipe</span>` : ""; }
@@ -6538,7 +6549,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
     : (p.status === "aprovada" ? qrv + orcb
       + `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo. Tocar para deixar de seguir" : "Seguir"}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>` : "") + ib("share", "share", "Compartilhar", `data-perfil="pg-${pid}"`);
   const est = tt && tt.papel === "tatuador" ? tatEstudio(p) : null;
-  const tipo = tt ? (papelNome(p) || tipoNome(p)) : tipoNome(p);   /* 16/11: o papel (Tatuador) vai para a linha do tipo; no alto fica só "Página" */
+  const tipo = tt ? (papelRot(p) || tipoNome(p)) : tipoNome(p);   /* 16/11: o papel (Tatuador) vai para a linha do tipo; no alto fica só "Página" */
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
   return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina") + (o.ficticia ? `<span class="topex">${EXTAG}</span>` : ""), acoes)
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
@@ -10296,7 +10307,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 10:29";
+const VERSAO = "v1 registrada · 16/11 10:41";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
