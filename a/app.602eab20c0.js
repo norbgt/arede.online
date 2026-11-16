@@ -3102,9 +3102,11 @@ function screenProfile(){
   if (!PTABS.some(t=>t[0]===S.profTab)) S.profTab = "publicacoes";
   const pf = ME.user && ME.perfil;
   /* 15/11: o topo do seu perfil é o mesmo da prévia e do perfil dos outros: linha do alto (tipo e ações) e, embaixo, o bloco de identidade */
-  const acoesEu = `<a class="iconbtn prim" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}" title="${ME.user ? "Sua conta" : "Acessar a rede.online"}"><span class="amark" aria-hidden="true">a<i></i></span></a>`
+  /* 16/11 (Amanda): o Perfil é um destino da barra, como Início e Organizações; o topo segue o mesmo desenho (título no tamanho da marca,
+     ação em pílula como o "Apoie", ícones soltos) e não tem "voltar". O perfil dos outros continua com o topo de página. */
+  const acoesEu = `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`
     + (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`;
-  return header(`<div class="toprow">${topoLugar(lugarTag("perfil"), acoesEu)}</div>`)
+  return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
   + `<div class="container">${pessoaHead({nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, meta:pf && pf.cidade ? esc(pf.cidade) : "", bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
@@ -6636,7 +6638,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:29";
+const VERSAO = "v1 registrada · 16/11 15:33";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
