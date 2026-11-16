@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-qoirSd/oszy9ce457SBRqlOBRSMSHU4qPaE6h/Syd0Q=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-Pw5bTcw1JiGeCdW7ORKx2MdUpHAPqD+/eTxilwahtT4=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1322,7 +1322,7 @@ html.snapvid #aovivo{scroll-snap-align:start;scroll-margin-top:var(--vtop,72px)}
 .lvnota{margin:6px 0 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
 /* 16/11: no cartão de texto, a fonte mora no pé do próprio cartão; os três pontinhos ficam no canto de baixo */
 .face.txt .fsrc{display:flex;align-items:center;gap:6px;min-width:0;margin-top:8px;padding-top:8px;padding-right:30px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent)}
-.face.txt .fsrc .capname{color:inherit;opacity:.78}
+.face.txt .fsrc .capname{flex:0 1 auto;color:inherit;opacity:.78}.face.txt .fsdt{flex:none;font-size:12px;white-space:nowrap;color:inherit;opacity:.6}
 article.card{position:relative}.card > .more.morein{position:absolute;right:4px;bottom:4px;margin:0;width:36px;height:36px;z-index:2}
 /* 16/11: o convite "Anuncie aqui" chama mais atenção (cor da marca) e nunca corta frase: o texto quebra linha e o quadro cresce */
 .adcard .adtile.faixa.casa{height:auto;min-height:88px;container-type:inline-size}
@@ -4973,7 +4973,10 @@ function face(item){
       /* foto da matéria também no cartão solto (11 nov 2026): antes só o mosaico mostrava, e a vista Cartões ficava quase toda só com texto */
       const ph = item.foto && !item.fotoFalhou ? `<span class="fph"><img src="${esc(item.foto)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">${item.credito ? `<span class="fcred">${esc(item.credito)}</span>` : ""}</span>` : "";
       const o = ORG[item.org] || {cor:"#888", sigla:"", nome:""};   /* 16/11: a fonte fica dentro do cartão, no pé, como no mosaico */
-      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${t.foot}<span class="fsrc"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span></span></span>`}; }
+      /* 16/11: em notícia e publicação de fonte, a data vai na linha da fonte (não ocupa uma linha só para ela) */
+      const simples = item.ext && !item.externo && !item.daArte && !item.daRede && ["texto","imagem","video"].includes(item.tipo), dt = simples ? dLabel(item.ext.data) : "";
+      const pe = simples ? footCtx(item) : t.foot;
+      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${pe}<span class="fsrc"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span>${dt ? `<span class="fsdt">· ${dt}</span>` : ""}</span></span>`}; }
   }
 }
 function card(item, mode){
@@ -10218,7 +10221,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 08:48";
+const VERSAO = "v1 registrada · 16/11 08:52";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
