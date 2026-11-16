@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-iZfRUzO7ZYMGNNL33Fe445+9ITDYpl5JXNUCEezsd14=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-7kwzrDVlJ3MCRjL7qS71+pN9fu9ih+YaLM+q612Hr3M=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1333,8 +1333,8 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 .adtile.faixa.casa .adnome,.adtile.faixa.casa .adtxt{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance}
 .adtile.faixa.casa .adface::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;font-weight:400;opacity:.9}
 /* SALVOS DOS CANAIS (16/11) */
-.cmod .cnsalvos{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
-.cnsalvos .rdg{display:inline-flex;align-items:center;gap:4px;border-left:0;padding-left:0;margin-left:0;color:var(--accent)}
+.cmod .lvlist.cnsalvos{margin:14px -14px 0;padding:14px 14px 2px;border-top:1px dashed var(--line);mask-image:none;-webkit-mask-image:none}
+.cnsalvos .rdg{display:inline-flex;align-items:center;gap:5px;border-left:0;padding:0 6px 0 0;margin-left:0;color:var(--accent)}
 .cnsalvos .rdg .icon{width:13px;height:13px}
 .cnsalva{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 4px;border:0;background:none;font:inherit;font-size:13.5px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap}
 .cnsalva .icon{width:16px;height:16px}
@@ -8485,8 +8485,11 @@ const LV = {lista:null, em:0}; let LV_ON = null, LV_IO = null;
 /* SALVOS DOS CANAIS (16/11): canais ao vivo e rádios salvos ficam numa linha própria, abaixo da linha com todos.
    Ficam só neste aparelho, de propósito: a Privacidade promete que a rede não sabe qual rádio a pessoa ouve. */
 const CN_SALVOS = new Set((store.get("canaisSalvos", []) || []).filter(k=>/^(tv|rd):[\w-]{1,40}$/.test(k)));
-const cnSalvo = k => CN_SALVOS.has(k);
-function cnSalva(k, nome){ if (CN_SALVOS.has(k)){ CN_SALVOS.delete(k); toast(`${nome} saiu dos salvos.`); } else { CN_SALVOS.add(k); toast(`${nome} salvo. Aparece na linha Salvos.`); }
+const cnSalvo = k => !!ME.user && CN_SALVOS.has(k);   /* 16/11: só quem tem conta salva (Amanda) */
+function cnSalva(k, nome){
+  if (!ME.user){ openSheet(shead("Salvar") + `<p style="margin:4px 2px 14px">Salvar canais e rádios é para quem tem conta na rede. Leva menos de um minuto.</p>
+    <button class="btn primary block" type="button" data-act="cnconta">Entrar ou criar conta</button><button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Agora não</button>`, "Salvar"); return; }
+  if (CN_SALVOS.has(k)){ CN_SALVOS.delete(k); toast(`${nome} saiu dos salvos.`); } else { CN_SALVOS.add(k); toast(`${nome} salvo. Aparece na linha Salvos.`); }
   store.set("canaisSalvos", [...CN_SALVOS]); if (k.startsWith("tv:")) aoVivoPinta(); else radioPinta(); }
 const cnSalvaBtn = (k, nome) => { const on = cnSalvo(k); return `<button class="cnsalva" type="button" data-act="cnsalva" data-k="${esc(k)}" data-nome="${esc(nome)}" aria-pressed="${on}" aria-label="${on ? esc(nome) + " está nos salvos. Tocar para tirar" : "Salvar " + esc(nome)}" title="${on ? "Salvo" : "Salvar"}">${icFill("bookmark", on)}<span>${on ? "Salvo" : "Salvar"}</span></button>`; };
 const LV_OK = /^https:\/\/www\.youtube\.com\/[@\w./-]+$/;
@@ -9713,6 +9716,7 @@ const A = {
     LV_ON = k; aoVivoPinta(); const x = $("#aovivo"); x && x.scrollIntoView({block:"nearest"}); },
   vivofecha: b => { vivoFecha(); },
   cnsalva: b => cnSalva(b.dataset.k, b.dataset.nome),
+  cnconta: () => { closeSheet(); A.acessar(); },
   radioabre: b => { const k = b.dataset.radio; if (RD_ON===k) return radioPara(); radioToca(k); },
   radiopara: () => radioPara(),
   vplay: b => { const v = b.closest(".facewrap").querySelector("video");
@@ -10250,7 +10254,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:04";
+const VERSAO = "v1 registrada · 16/11 09:07";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
