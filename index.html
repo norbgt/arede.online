@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-spqj3YFoE7NCyzomyzBVuR2kzAdYM8LhkAiqQKWWofQ=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-SSy9Rtfi5VAV8y9Ssf+f0vDG+nqW6pQMcVAFNZcorxw=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -224,7 +224,8 @@ span.selo{cursor:default}.selolin{align-items:flex-start;flex-direction:column;g
 .tatacoes{align-items:center;flex-wrap:nowrap!important}.tatacoes > *{flex-basis:auto!important}.tatacoes .btn{flex:1;min-width:0}.tatacoes .iconbtn{flex:none}
 .selolin .t,.aval .t{width:100%;min-width:0;white-space:normal;overflow:visible}.selolin .t small,.aval .t small,.aval .t b{display:block;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}.tatref{display:flex;flex-wrap:wrap;gap:10px}.tatref a{display:flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}.tatref .av{width:32px;height:32px;border-radius:50%;font-size:12px}
 .aval .tstar{font-size:13px}.aval small .icon{width:12px;height:12px;vertical-align:-1px}
-.tatselos{position:absolute;top:8px;right:8px;display:flex;gap:4px}.tatselos i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(15,17,16,.62);color:#fff;font-style:normal}.tatselos i .icon{width:13px;height:13px}
+.tatselos{position:absolute;top:8px;right:8px;display:flex;gap:4px}
+.cmncard.kt .tatselos{top:32px}   /* 16/11: abaixo das etiquetas (exemplo e página) */.tatselos i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(15,17,16,.62);color:#fff;font-style:normal}.tatselos i .icon{width:13px;height:13px}
 .kt .ktipo{color:var(--ok)}
 .kpapel{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px 1px 5px;border-radius:99px;font-size:10px;letter-spacing:.05em;color:var(--ink);background:var(--surface-2)}
 .kpapel.est{box-shadow:inset 0 0 0 1px var(--line)}
@@ -1351,6 +1352,18 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 .cnsalva .icon{width:16px;height:16px}
 .rdbar .cnsalva span{display:none}
 @media (min-width:480px){ .rdbar .cnsalva span{display:inline} }
+/* 16/11 (Amanda): no cartão de página, "Página" vira etiqueta no alto, junto de "exemplo"; abaixo do avatar fica só o papel (Tatuador). No cabeçalho, "exemplo" vai para a linha do alto. */
+.cmntag{display:flex;align-items:center;gap:4px}
+.pgtag{display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 7px;border-radius:99px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;white-space:nowrap}
+.pgtag .icon{width:11px;height:11px}
+.topex{display:inline-flex;align-items:center;margin-left:6px}
+.topex .extag{margin:0;vertical-align:0}
+.phcapa .phmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;margin:6px 0 0;line-height:1.35}
+.phcapa .phmeta .phcusto{display:flex;flex-wrap:wrap;align-items:center;row-gap:4px}
+.phsep{margin:0 8px;color:var(--muted)}
+.phcapa .phmeta .agtag i{vertical-align:.08em}
+.phcapa .phmeta + .phmeta{margin-top:4px}
+.phcapa .phtop h1{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 /* CANAIS (16 nov 2026): três partes bem separadas. Ao vivo e Rádio são quadros; os vídeos começam depois de um título próprio. */
 .canaistopo{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:6px 0 4px}
 .canaistopo .aovivo{margin:0}
@@ -6168,8 +6181,8 @@ function pgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, f = S.follow.has
 function pgOrgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, h = cmnHash(id), f = S.follow.has(id), meu = ME.user && p.dono === ME.user.id;
   if (tatDe(p)) return tatCard(p, o, h, f, meu);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
-  return `<a class="cmncard kp ${orgAlt(h)}" href="#${id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["arcs","circles","stripes","grid","blocks"][h % 5]}, .3, false)}</span>${o.ficticia ? `<span class="cmntag">${EXTAG}</span>` : ""}${avatar(o)}
-    <span class="ktipo">${ic("doc","sm")}Página</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([p.tipo === "empresa" ? "Comercial" : "Pessoal", o.cidade].filter(Boolean).join(" · "))}</span>${o.sobre ? `<span class="cmnsobre">${esc(o.sobre)}</span>` : ""}
+  return `<a class="cmncard kp ${orgAlt(h)}" href="#${id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["arcs","circles","stripes","grid","blocks"][h % 5]}, .3, false)}</span><span class="cmntag">${o.ficticia ? EXTAG : ""}<span class="pgtag">${ic("doc","sm")}Página</span></span>${avatar(o)}
+    <span class="ktipo">${p.tipo === "empresa" ? "Comercial" : "Pessoal"}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc(o.cidade || "")}</span>${o.sobre ? `<span class="cmnsobre">${esc(o.sobre)}</span>` : ""}
     <span class="cmnpe2"><span>${o.cnpj ? `<span class="cnpjselo cnpjp" style="margin:0 4px 0 0">${ic("predio","sm")}CNPJ</span>conferido` : "Responsável verificada"}</span>${pe}</span></a>`; }
 /* ===== TATUAGEM (14/11): primeiro nicho das Páginas. Ideias do Ink Creators, simplificadas.
    Página de tatuador ou estúdio = página comum + ficha de tatuagem (estilos, preço) + reputação que vem de fatos:
@@ -6233,7 +6246,8 @@ function tatResumo(p){ const f = tatDe(p), preco = f && f.preco ? tatPreco(f) : 
   const r = tatRep(p), est = mod(p, "reputacao") ? (r.n ? `<button class="phstar" type="button" data-act="pgtab" data-tab="reputacao" aria-label="Nota ${nota(r.media)}, ${r.n} ${r.n===1 ? "avaliação" : "avaliações"}: ver a reputação"><span class="tstar" aria-hidden="true">★</span> <b>${nota(r.media)}</b> (${r.n})</button>` : `<button class="phstar" type="button" data-act="pgtab" data-tab="reputacao">sem avaliações</button>`) : "";
   const nv = mod(p, "reputacao") ? (r.sessoes || 0) : 0, tv = modeloDe(p) === "tatuagem";
   const ver = nv ? `<button class="phstar phver" type="button" data-act="pgtab" data-tab="reputacao" aria-label="${nv} ${tv ? (nv===1 ? "sessão verificada" : "sessões verificadas") : (nv===1 ? "atendimento verificado" : "atendimentos verificados")} por QR: ver a reputação">${ic("qrselo","sm")}<b>${nv > 999 ? "999+" : nv}</b>${tv ? (nv===1 ? "sessão verificada" : "sessões verificadas") : (nv===1 ? "atendimento verificado" : "atendimentos verificados")}</button>` : "";
-  return [preco, est, ver, agTag(p)].filter(Boolean).map(x=>`<span class="phi">${x}</span>`).join("&nbsp;· "); }   /* 15/11: primeiro o custo, depois as estrelas */
+  const linha = xs => xs.filter(Boolean).map(x=>`<span class="phi">${x}</span>`).join(`<span class="phsep" aria-hidden="true">·</span>`);
+  return [linha([preco, est]), linha([ver, agTag(p)])]; }   /* 16/11 (Amanda): sessões verificadas e agenda numa linha própria */   /* 15/11: primeiro o custo, depois as estrelas */
 const tatSesIcone = p => { if (!mod(p, "reputacao")) return ""; const n = tatRep(p).sessoes || 0; if (!n) return "";
   const t = `${n} ${modeloDe(p) === "tatuagem" ? (n===1 ? "sessão verificada" : "sessões verificadas") : (n===1 ? "atendimento verificado" : "atendimentos verificados")}`;
   const fs = n >= 1000 ? 10 : n >= 100 ? 12.5 : 15, fi = (x, y) => `<rect x="${x}" y="${y}" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="${x+3}" y="${y+3}" width="3" height="3" rx=".6" fill="currentColor"/>`;
@@ -6456,8 +6470,8 @@ async function tatFichaSalva(pid){ const m = $("#pgmod"); if (!m) return null;
   return error || null; }
 function tatCard(p, o, h, f, meu){ const t = tatDe(p), r = tatRep(p), est = t.papel === "tatuador" ? tatEstudio(p) : null, sl = tatSelos(p);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
-  return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span>${o.ficticia ? `<span class="cmntag">${EXTAG}</span>` : ""}${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
-    <span class="ktipo">${ic("doc","sm")}Página${papelTag(p)}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([(MODELOS[modeloDe(p)] || {}).nome, o.cidade].filter(Boolean).join(" · "))}</span>${vincHTML(p, est)}${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
+  return `<a class="cmncard kp kt ${orgAlt(h)}" href="#pg-${p.id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["stripes","circles","grid","arcs","blocks"][h % 5]}, .3, false)}</span><span class="cmntag">${o.ficticia ? EXTAG : ""}<span class="pgtag">${ic("doc","sm")}Página</span></span>${sl.length ? `<span class="tatselos" aria-label="Selos: ${esc(sl.map(y=>y.x.titulo).join(", "))}">${sl.slice(0, 3).map(y=>`<i class="${y.x.fam}">${ic(y.x.ic,"sm")}</i>`).join("")}</span>` : ""}${avatar(o)}
+    <span class="ktipo">${esc(papelNome(p) || tipoNome(p))}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc([(MODELOS[modeloDe(p)] || {}).nome, o.cidade].filter(Boolean).join(" · "))}</span>${vincHTML(p, est)}${(t.estilos || []).length ? `<span class="cmnsobre">${esc(t.estilos.join(" · "))}</span>` : ""}
     <span class="cmnpe2"><span>${!mod(p, "reputacao") ? (mod(p, "loja") ? "Loja" : "") : r.n ? `★ ${nota(r.media)} (${r.n})` : "Sem avaliações"}${t.preco ? " · " + "$".repeat(t.preco) : ""}${mod(p, "agenda") && !agAberta(p) ? " · agenda fechada" : ""}</span>${pe}</span></a>`; }
 /* 15/11 (Amanda): profissional e estúdio convivem no mesmo feed e se diferenciam no cartão:
    o papel fica ao lado de "Página" (ícone de pessoa ou de prédio) e o vínculo aparece numa linha própria:
@@ -6527,11 +6541,11 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
     : (p.status === "aprovada" ? qrv + orcb
       + `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo. Tocar para deixar de seguir" : "Seguir"}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>` : "") + ib("share", "share", "Compartilhar", `data-perfil="pg-${pid}"`);
   const est = tt && tt.papel === "tatuador" ? tatEstudio(p) : null;
-  const tipo = tipoNome(p);
+  const tipo = tt ? (papelNome(p) || tipoNome(p)) : tipoNome(p);   /* 16/11: o papel (Tatuador) vai para a linha do tipo; no alto fica só "Página" */
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
-  return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina").replace("Página</span>", "Página" + papelTag(p) + "</span>"), acoes)
-    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:ficTag(o) + pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
-        linhas:[tt ? `<span class="phcusto">${tatResumo(p)}</span>` : "", [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
+  return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina") + (o.ficticia ? `<span class="topex">${EXTAG}</span>` : ""), acoes)
+    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
+        linhas:[...(tt ? tatResumo(p).filter(Boolean).map(l=>`<span class="phcusto">${l}</span>`) : []), [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
         extra:`<div class="phnovo">${aviso}${tt ? tatConvitesHTML(p) : ""}</div>`})}
       <div class="tabs" role="tablist" aria-label="Seções da página" style="margin-top:4px">${tabs.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pgtab" data-tab="${k}" aria-selected="${t===k}">${n}</button>`).join("")}</div>
@@ -10283,7 +10297,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:43";
+const VERSAO = "v1 registrada · 16/11 09:45";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
