@@ -640,7 +640,7 @@ let MAX_SEC = 3, MAX_PSEC = 5;   /* o painel ajusta (secoes_max, pastas_por_seca
 S.secoes = store.get("secoes", null);
 S.canaisSalvos = new Set((store.get("canaisSalvos", []) || []).filter(k=>/^(tv|rd):[\w-]{1,40}$/.test(k)));   /* 16/11: canais e rádios salvos seguem a conta (decisão da Amanda) */
 if (!Array.isArray(S.secoes)) S.secoes = [{id:"s1", nome:"Ideias e leituras", aberta:true, pastas:FOLDERS.filter(f=>f[0]!=="salvos").slice(0, MAX_PSEC).map(f=>f[0])}];
-S.orgFiltro = store.get("orgFiltro", "tudo"); S.orgAba = store.get("orgAba", "feed"); S.orgVista = store.get("orgVista", "soltos");
+S.orgFiltro = store.get("orgFiltro", "tudo"); S.orgAba = store.get("orgAba", "tudo"); S.orgVista = store.get("orgVista", "soltos");
 const secDe = k => S.secoes.find(x=>x.pastas.includes(k));
 const pastaAberta = f => { const x = secDe(f[0]); return !!(x && x.aberta && !f[3]); };
 const secLimpa = () => S.secoes.forEach(x=>{ x.pastas = x.pastas.filter(k=>FOLDERS.some(f=>f[0]===k)).slice(0, MAX_PSEC); });
@@ -2866,19 +2866,31 @@ function mercadoHTML(v){ if (!MERC.itens){ mercadoCarrega(); return `<p class="e
       <span class="mtx"><b>${esc(limpo(i.nome))}</b>${i.preco ? `<span class="mpreco">${esc(limpo(i.preco))}</span>` : ""}<span class="mquem">${avatar(o)}${esc(o.nome || "")}</span></span></a>`; };
   return `<p class="lnote">Produtos de quem tem loja na rede. A compra é combinada direto com cada pessoa, fora da rede.online.</p>
     ${l.length ? (v === "soltos" ? orgMosaico(l.map(card)) : `<div class="cmngrid orgblocos">${l.map(card).join("")}</div>`) : `<p class="empty">Nenhum produto ainda.</p>`}`; }
+/* 16/11 (Amanda): Organizações vira Páginas, nos moldes do Início. Abas: Tudo (páginas, organizações, consultas e eventos juntos),
+   Páginas, Organizações, Consultas e Eventos. Os filtros de nicho (Mercado, Tatuagem…) ficam dentro da aba Páginas. */
+const PGABAS = [["tudo","Tudo"],["paginas","Páginas"],["orgs","Organizações"],["decidir","Consultas"],["eventos","Eventos"]];
+const PGF = [["tudo","Todas"],["mercado","Mercado"],["tatuagem","Tatuagem"],["beleza","Beleza"],["artesanato","Artesanato"],["escrita","Escrita"]];
+function pgAbaAtual(){ let t = S.orgAba || "tudo"; if (t === "feed") t = "tudo"; return PGABAS.some(a=>a[0]===t) ? t : "tudo"; }
+/* Tudo: o feed de páginas e organizações, com uma consulta ou evento a cada três cartões */
+function tudoFeed(){ const base = orgFeed("tudo"), part = partDestaques().filter(it=>DECIDE.includes(it.tipo) || IRJUNTO.includes(it.tipo)).filter(it=>!partFeito(it)).map(partCard), l = [];
+  base.forEach((h, i)=>{ l.push(h); if ((i + 1) % 3 === 0 && part.length) l.push(part.shift()); }); return l.concat(part); }
 function screenOrgs(){
-  const t = S.orgAba || "feed", f = S.orgFiltro || "tudo", v = S.orgVista || "soltos";
-  const aba = (k, n) => `<button class="tab" type="button" role="tab" data-act="orgaba" data-t="${k}" aria-selected="${t===k}">${n}</button>`;
+  const t = pgAbaAtual(), v = S.orgVista || "soltos";
+  let f = S.orgFiltro || "tudo"; if (!PGF.some(x=>x[0]===f)) f = "tudo";
+  const aba = ([k, n]) => `<button class="tab" type="button" role="tab" data-act="orgaba" data-t="${k}" aria-selected="${t===k}">${n}</button>`;
   const chip = ([k, n]) => `<button class="chip" type="button" data-act="orgfiltro" data-f="${k}" aria-pressed="${f===k}">${n}</button>`;
   const vistaOrg = `<button class="iconbtn tool" type="button" data-act="orgvista" aria-label="Forma de ver: ${v==="soltos" ? "cartões soltos" : "em blocos"}. Tocar para ver ${v==="soltos" ? "em blocos" : "em cartões soltos"}" title="${v==="soltos" ? "Cartões soltos" : "Em blocos"}">${ic(v==="soltos" ? "vsoltos" : "vblocos")}</button>`;
-  const feed = t === "feed" && f !== "mercado" ? orgFeed(f) : [];
-  return header(`<div class="toprow"><h1 class="pagehead">Organizações</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
-    <div class="tabs" role="tablist" aria-label="Organizações">${aba("feed","Organizações")}${aba("decidir","Consultas")}${aba("eventos","Eventos")}</div>
-    ${t === "feed" ? `<div class="orgbar"><div class="chips umalinha" role="group" aria-label="Mostrar">${ORGF.map(chip).join("")}</div>${vistaOrg}</div>` : ""}`)
-    + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : f === "mercado" ? mercadoHTML(v) : `
-      ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${PAGS.carregou || f === "comunidades" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
-      <div class="orgfim">${orgVerTodas(f)}</div>
-      <p class="cmnpe">Comunidade é criada por qualquer conta, em torno de qualquer tema; organização com selo “oficial” passa pela curadoria. Página é de uma pessoa verificada, que responde pelo que ela publica. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
+  const lista = ["tudo","paginas","orgs"].includes(t), merc = t === "paginas" && f === "mercado";
+  const feed = !lista || merc ? [] : t === "tudo" ? tudoFeed() : orgFeed(t === "orgs" ? "comunidades" : f === "tudo" ? "paginas" : f);
+  const barra = t === "paginas" ? `<div class="orgbar"><div class="chips umalinha" role="group" aria-label="Mostrar">${PGF.map(chip).join("")}</div>${vistaOrg}</div>`
+    : lista ? `<div class="orgbar"><div class="spacer"></div>${vistaOrg}</div>` : "";
+  const fim = t === "tudo" ? orgVerTodas("tudo") : t === "orgs" ? orgVerTodas("comunidades") : orgVerTodas(f === "tudo" ? "paginas" : f);
+  return header(`<div class="toprow"><h1 class="pagehead">Páginas</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="orgcria">${ic("plus","sm")} Criar</button></div>
+    <div class="tabs" role="tablist" aria-label="Páginas">${PGABAS.map(aba).join("")}</div>${barra}`)
+    + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : merc ? mercadoHTML(v) : `
+      ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${PAGS.carregou || t === "orgs" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
+      <div class="orgfim">${fim}</div>
+      <p class="cmnpe">Página é de uma pessoa verificada, que responde pelo que ela publica. Organização é criada por qualquer conta, em torno de qualquer tema; a que tem selo “oficial” passa pela curadoria. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
 }
 function screenPgTodas(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Todas as páginas</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="paginova">${ic("plus","sm")} Criar</button></div>`)
   + `<div class="container">${paginasCorpo()}</div>`; }
@@ -5699,7 +5711,7 @@ const A = {
   orgrevisa: async b => { const id = b.dataset.id, st = b.dataset.s, mot = (($("#mot-" + id) || {}).value || "").trim();
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Organizações." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
+    if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Páginas › Organizações." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
   curar: async b => { const id = b.dataset.id, st = b.dataset.s, row = b.closest(".curitem"); ocupado(b, true, "…");
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
@@ -6049,7 +6061,7 @@ const A = {
   testenivel: b => { SB._teste.nivel(b.dataset.n); closeSheet(); toast("Testando como " + TESTE_NIVEIS[b.dataset.n][0] + "."); setTimeout(()=>location.reload(), 350); },
   testeaprova: () => { const n = SB._teste.aprova(); closeSheet(); toast(n ? n + (n === 1 ? " pedido aprovado." : " pedidos aprovados.") : "Nada esperando a curadoria."); if (n) setTimeout(()=>location.reload(), 500); },
   testezera: b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.querySelector("b").textContent = "Recomeçar mesmo?"; return; } SB._teste.zera(); location.reload(); },
-  cmnmodo: b => { S.orgFiltro = b.dataset.m === "paginas" ? "paginas" : "comunidades"; render(); },
+  cmnmodo: b => { S.orgAba = b.dataset.m === "paginas" ? "paginas" : "orgs"; S.orgFiltro = "tudo"; store.set("orgAba", S.orgAba); render(); },
   orgfiltro: b => { S.orgFiltro = b.dataset.f; if (S.orgFiltro === "mercado") MERC.itens = null; store.set("orgFiltro", S.orgFiltro); const y = window.scrollY; render(); window.scrollTo(0, Math.min(y, 0)); if (S.orgFiltro !== "comunidades" && !PAGS.carregou) paginasCarrega(); },
   orgvista: () => { S.orgVista = (S.orgVista || "soltos") === "soltos" ? "blocos" : "soltos"; store.set("orgVista", S.orgVista); const y = window.scrollY; render(); window.scrollTo(0, y); const n = $('[data-act="orgvista"]'); n && n.focus({preventScroll:true}); },
   histtipo: b => { S.histTipo = b.dataset.t; S.histN = 10; const y = scrollY; profShow(); scrollTo(0, y); },
@@ -6444,8 +6456,8 @@ const START = "";
 /* ENDEREÇOS DIRETOS (16/11): arede.online/<nome> é uma página mínima no GitHub Pages que leva a #<nome>; aqui cada nome vira a tela certa,
    e o endereço volta para a rota de verdade sem recarregar. Rotas que já são endereços (#em-alta, #manifesto, #termos, #privacidade) não precisam de atalho. */
 const ATALHOS = {tudo:{tab:"tudo"}, publicacoes:{tab:"publicacoes"}, canais:{tab:"videos"}, documentos:{tab:"documentos"},
-  buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, comunidades:{r:"comunidades-todas"}, paginas:{r:"paginas-todas"},
-  orgs:{r:"organizacoes", org:"feed"}, consultas:{r:"organizacoes", org:"decidir"}, eventos:{r:"organizacoes", org:"eventos"}, apoie:{acao:"apoie"}};
+  buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, comunidades:{r:"comunidades-todas"}, paginas:{r:"organizacoes", org:"tudo"},
+  orgs:{r:"organizacoes", org:"orgs"}, consultas:{r:"organizacoes", org:"decidir"}, eventos:{r:"organizacoes", org:"eventos"}, apoie:{acao:"apoie"}};
 function abaPorEndereco(){ const a = ATALHOS[location.hash.slice(1)]; if (!a) return;
   if (a.tab){ S.tab = a.tab; S.rapido = null; persist("tab"); }
   if (a.org){ S.orgAba = a.org; S.decTipo = "todos"; store.set("orgAba", a.org); }
@@ -6527,7 +6539,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:26";
+const VERSAO = "v1 registrada · 16/11 13:28";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
