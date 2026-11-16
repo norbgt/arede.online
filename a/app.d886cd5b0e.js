@@ -1866,7 +1866,7 @@ function renderStop(){
    A versão pública (GitHub, link, artefato) sai sem ele. */
 const LOCAL = !!document.getElementById("copia-local");
 /* REVISÃO DA V1 (16/11): o painel antigo (dentro deste arquivo, com chave) foi aposentado. O painel é um só: painel.arede.online, com login. */
-const painelRow = () => LOCAL ? `<a class="setting painel" href="https://painel.arede.online/" target="_blank" rel="noopener"><span class="t"><b>Painel de controle <span class="plock" title="Abre com o seu login" aria-label="Abre com o seu login">${ic("lock","sm")}</span></b><small>painel.arede.online</small></span>${ic("ext","sm")}</a>` : "";
+const painelRow = () => nivel()==="admin" && !DEMO ? `<a class="setting painel" href="https://painel.arede.online/" target="_blank" rel="noopener"><span class="t"><b>Painel de controle <span class="plock" title="Abre com o seu login" aria-label="Abre com o seu login">${ic("lock","sm")}</span></b><small>painel.arede.online</small></span>${ic("ext","sm")}</a>` : "";
 /* o logo da barra superior abre "Sobre arede.online": Manifesto e Como arede.online funciona */
 /* 14 nov 2026 (pedido da Amanda): a marca volta a abrir o menu, com a setinha, em todo lugar. Nele ficam Contato, Termos de uso,
    Privacidade e o que antes era rodapé (contato, direitos, terceiros e versão). Manifesto e Como funciona só aparecem quando o
@@ -3672,7 +3672,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   document.body.classList.toggle("envmode", r==="manifesto" || r==="funciona");
   if (pr==="painel"){ location.replace("#inicio"); return; }   /* painel antigo aposentado */
   document.body.classList.toggle("pmode", false);
-  if (!MANIF_ON && (r==="manifesto" || r==="funciona")){ location.replace("#inicio"); return; }
+  if (r==="manifesto" && nivel()!=="admin"){ location.replace("#inicio"); return; }   /* 16/11: Manifesto só para a administração; Como funciona, para todos */
   if (lastRoute !== null) SCROLL[lastRoute] = window.scrollY;
   const same = lastRoute === r; lastRoute = r;
   if (NAV[NAV.length-1] !== r){ NAV.push(r); if (NAV.length > 40) NAV.shift(); }
@@ -4188,7 +4188,8 @@ function mockSB(o = {}){
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
     denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
-    conta_situacao:()=>({apagando:false}), conta_reativa:()=>true };
+    conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
+    meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
   const sb = {
     from, rpc:(nome, args={}) => Promise.resolve().then(()=>{ try{ return {data:RPC[nome] ? RPC[nome](args || {}) : null, error:null}; }catch(e){ return {data:null, error:{message:e.message || String(e)}}; } }),
     storage:{from:()=>({upload:async (nome, blob)=>{ MID[nome] = URL.createObjectURL(blob); return {data:{path:nome}, error:null}; }, getPublicUrl:nome=>({data:{publicUrl:MID[nome] || ""}}),
@@ -5970,14 +5971,15 @@ const A = {
   contestar: b => sheetContesta(b.dataset.uid),
   assinar: () => { S.assinou = !S.assinou; persist("assinou"); const y = window.scrollY; render(); window.scrollTo(0,y); if (S.assinou) toast("Obrigada por assinar o manifesto."); },
   toid: (b, e) => { e.preventDefault(); const el = document.getElementById(b.dataset.id); el && scrollToEl(el); },
-  sobre: () => { const M = MARCA, L = M.links, seta = ic("back","sm flip");
+  /* 16/11 (Amanda): quem acessa vê "Como a rede.online funciona" e "Termos e privacidade". Experimentar a rede, Manifesto e Painel
+     de controle aparecem só para a administração. Rodapé: e-mail, direitos, versão, selo de segurança e, por fim, o aviso de terceiros. */
+  sobre: () => { const M = MARCA, L = M.links, seta = ic("back","sm flip"), adm = nivel()==="admin";
     openSheet(shead(M.titulo) + `<div class="list">
-      ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>`}
-      ${/* 16/11 (Amanda): sem o item Contato; o e-mail já está escrito no menu */""}
+      ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : adm ? `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>` : ""}
+      <button class="setting" type="button" data-nav-to="funciona"><span class="t"><b>${L.funciona || "Como a rede.online funciona"}</b></span>${seta}</button>
       <button class="setting" type="button" data-nav-to="termos"><span class="t"><b>${L.legal || "Termos e privacidade"}</b></span>${seta}</button>
-      ${MANIF_ON ? `<button class="setting" type="button" data-nav-to="manifesto"><span class="t"><b>${L.manifesto}</b></span>${seta}</button>
-      <button class="setting" type="button" data-nav-to="funciona"><span class="t"><b>${L.funciona}</b></span>${seta}</button>` : ""}${painelRow()}</div>
-      <div class="marcape"><div class="marcaselo">${seloSeg()}</div><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="rterc">${TERCEIROS()}</p><p class="ver">versão ${VERSAO}</p></div>`, M.titulo); },
+      ${adm ? `<button class="setting" type="button" data-nav-to="manifesto"><span class="t"><b>${L.manifesto}</b></span>${seta}</button>${painelRow()}` : ""}</div>
+      <div class="marcape"><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="ver">versão ${VERSAO}</p><div class="marcaselo">${seloSeg()}</div><p class="rterc">${TERCEIROS()}</p></div>`, M.titulo); },
   pubtab: b => { S.pubTab = b.dataset.tab; S.pubFolder = null; pubShow(); },
   pubfolder: b => { S.pubFolder = b.dataset.f || null; pubShow(); },
   interesses: sheetInteresses,
@@ -6483,7 +6485,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 12:59";
+const VERSAO = "v1 registrada · 16/11 13:06";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
