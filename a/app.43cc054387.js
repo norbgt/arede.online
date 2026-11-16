@@ -2868,14 +2868,19 @@ function mercadoHTML(v){ if (!MERC.itens){ mercadoCarrega(); return `<p class="e
     ${l.length ? (v === "soltos" ? orgMosaico(l.map(card)) : `<div class="cmngrid orgblocos">${l.map(card).join("")}</div>`) : `<p class="empty">Nenhum produto ainda.</p>`}`; }
 /* 16/11 (Amanda): Organizações vira Páginas, nos moldes do Início. Abas: Tudo (páginas, organizações, consultas e eventos juntos),
    Páginas, Organizações, Consultas e Eventos. Os filtros de nicho (Mercado, Tatuagem…) ficam dentro da aba Páginas. */
-const PGABAS = [["tudo","Tudo"],["paginas","Páginas"],["orgs","Organizações"],["decidir","Consultas"],["eventos","Eventos"]];
+const PGABAS = [["tudo","Tudo"],["paginas","Páginas"],["orgs","Comunidades"],["decidir","Consultas"],["eventos","Eventos"]];
+/* 16/11 (Amanda): cada aba tem o seu endereço. arede.online/comunidades, /consultas e /eventos levam direto à aba. */
+const PGURL = {tudo:"paginas", paginas:"paginas/paginas", orgs:"paginas/comunidades", decidir:"paginas/consultas", eventos:"paginas/eventos"};
+const PGURL_ABA = {"":"tudo", tudo:"tudo", paginas:"paginas", comunidades:"orgs", consultas:"decidir", eventos:"eventos"};
 const PGF = [["tudo","Todas"],["mercado","Mercado"],["tatuagem","Tatuagem"],["beleza","Beleza"],["artesanato","Artesanato"],["escrita","Escrita"]];
-function pgAbaAtual(){ let t = S.orgAba || "tudo"; if (t === "feed") t = "tudo"; return PGABAS.some(a=>a[0]===t) ? t : "tudo"; }
+function pgAbaAtual(){ const m = location.hash.slice(1).match(/^paginas(?:\/([a-z]+))?$/);
+  if (m && PGURL_ABA[m[1] || ""]){ S.orgAba = PGURL_ABA[m[1] || ""]; store.set("orgAba", S.orgAba); }
+  let t = S.orgAba || "tudo"; if (t === "feed") t = "tudo"; return PGABAS.some(a=>a[0]===t) ? t : "tudo"; }
 /* 16/11 (Amanda): Tudo, Páginas e Organizações têm a mesma barra do Início: forma de ver, filtrar e ordenar num grupo, e filtros rápidos ao lado.
    Cada cartão vira um item com cidade, tema e se a pessoa segue; filtro e ordem trabalham sobre isso. */
 const PGRAP = {tudo:[["segue","Que sigo","seguindo"],["perto","Por perto","pin"],["participar","Para participar","hand"]],
   orgs:[["segue","Que participo","seguindo"],["perto","Por perto","pin"],["oficiais","Oficiais","vfy"]]};
-const PGORDS = [["voce","Para você","Quem você segue primeiro, depois o que tem a ver com você"],["perto","Mais perto","Sua cidade, depois seu estado"],["maiores","Mais membros","Organizações maiores primeiro"],["az","De A a Z","Pelo nome"]];
+const PGORDS = [["voce","Para você","Quem você segue primeiro, depois o que tem a ver com você"],["perto","Mais perto","Sua cidade, depois seu estado"],["maiores","Mais membros","Comunidades maiores primeiro"],["az","De A a Z","Pelo nome"]];
 function pertoDe(cid){ const R = minhaRegiao(), oc = semAcento(cid || ""); if (R.cidade.length > 2 && oc.startsWith(R.cidade)) return 2; if (R.uf && oc.endsWith(", " + R.uf.toLowerCase())) return 1; return 0; }
 function pgItens(t, f){ const eu = ME.user ? ME.user.id : null, l = [];
   const comOrgs = t === "tudo" || t === "orgs", comPags = t === "tudo" || t === "paginas", nicho = t === "paginas" && MODELOS[f];
@@ -2911,6 +2916,7 @@ function sheetPgOrdem(){ const o = S.pgOrd || "voce";
   openSheet(shead("Ordenar") + `<div class="list" role="radiogroup" aria-label="Ordenar por">${PGORDS.map(([k, n, d])=>`<button class="setting" type="button" role="radio" aria-checked="${o===k}" data-act="pgordset" data-v="${k}"><span class="t"><b>${n}</b><small>${d}</small></span>${o===k ? ic("check") : ""}</button>`).join("")}</div>`, "Ordenar"); }
 function screenOrgs(){
   const t = pgAbaAtual(), v = S.orgVista || "soltos";
+  try{ if (location.hash.slice(1) !== PGURL[t]) history.replaceState(null, "", "#" + PGURL[t]); }catch(e){}
   let f = S.orgFiltro || "tudo"; if (!PGF.some(x=>x[0]===f)) f = "tudo";
   const aba = ([k, n]) => `<button class="tab" type="button" role="tab" data-act="orgaba" data-t="${k}" aria-selected="${t===k}">${n}</button>`;
   const lista = ["tudo","paginas","orgs"].includes(t), merc = t === "paginas" && f === "mercado";
@@ -2922,7 +2928,7 @@ function screenOrgs(){
     + `<div class="container">${t === "decidir" || t === "eventos" ? decidirHTML(t) : merc ? mercadoHTML(v) : `
       ${feed.length ? (v==="soltos" ? orgMosaico(feed) : `<div class="cmngrid orgblocos">${feed.join("")}</div>`) : `<p class="empty">${filtrando ? `Nada com esses filtros. <button class="linkbtn" type="button" data-act="pglimpa">Tirar filtros</button>` : PAGS.carregou || t === "orgs" ? "Nada por aqui ainda." : "Carregando…"}</p>`}
       <div class="orgfim">${fim}</div>
-      <p class="cmnpe">Página é de uma pessoa verificada, que responde pelo que ela publica. Organização é criada por qualquer conta, em torno de qualquer tema; a que tem selo “oficial” passa pela curadoria. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
+      <p class="cmnpe">Página é de uma pessoa verificada, que responde pelo que ela publica. Comunidade é criada por qualquer conta, em torno de qualquer tema; a que tem selo “oficial” passa pela curadoria. <button class="linkbtn" type="button" data-act="pgcomo">Como funcionam as páginas</button> · <button class="linkbtn" type="button" data-act="orgnova">Cadastrar organização oficial</button></p>`}</div>`;
 }
 function screenPgTodas(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Todas as páginas</h1><div class="spacer"></div><button class="btn primary" type="button" data-act="paginova">${ic("plus","sm")} Criar</button></div>`)
   + `<div class="container">${paginasCorpo()}</div>`; }
@@ -3706,7 +3712,7 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.nodeType!
    10. Rotas e navegação (pilha própria: o voltar não depende do navegador)
    ===================================================================== */
 const NAV = [], SCROLL = {}; let lastRoute = null, PENDING = null;
-const route = () => (location.hash || "#inicio").slice(1) || "inicio";
+const route = () => { const h = (location.hash || "#inicio").slice(1) || "inicio"; return /^paginas(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };   /* #paginas e #paginas/<aba> são a tela Páginas */
 const go = r => { if (route()===r) render(); else location.hash = r; };
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
@@ -5611,7 +5617,7 @@ function sheetCreate(b){ const pasta = b && b.dataset && b.dataset.pasta;
     ${pasta ? `<button class="typebtn" type="button" data-act="pastanova"><b>Pasta</b><small>Para guardar o que você salva</small></button>` : ""}</div>${criarEspacos()}`, "Criar"); }
 function sheetCreateForm(k){
   const mine = ORGS.filter(o=>isOrg(o) && S.follow.has(o.id)); const nome = k==="abaixo" ? "Abaixo-assinado" : CTYPES.find(c=>c[0]===k)[1];
-  if (!mine.length){ openSheet(shead(nome) + `<p class="empty">Participe de uma organização para publicar.</p><button class="btn primary block" type="button" data-nav-to="organizacoes">Ver organizações</button>`, nome); return; }
+  if (!mine.length){ openSheet(shead(nome) + `<p class="empty">Participe de uma comunidade para publicar.</p><button class="btn primary block" type="button" data-nav-to="paginas/comunidades">Ver comunidades</button>`, nome); return; }
   openSheet(shead(nome) + `
     <div class="field"><label for="corg">Em qual organização</label><select id="corg">${mine.map(o=>`<option value="${o.id}">${o.nome}</option>`).join("")}</select></div>
     <div class="field"><label for="ctit">Título</label><input id="ctit" type="text" enterkeyhint="next" placeholder="Ex.: Reunião da comissão de comunicação" value="${S.mobRef ? esc(({evento:"Encontro sobre: ",chamado:"Chamado: ",abaixo:"Abaixo-assinado: ",votacao:"Proposta: "}[k]||"") + (POOL.find(p=>p.id===S.mobRef)||{}).titulo) : ""}"></div>
@@ -5743,7 +5749,7 @@ const A = {
   orgrevisa: async b => { const id = b.dataset.id, st = b.dataset.s, mot = (($("#mot-" + id) || {}).value || "").trim();
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Páginas › Organizações." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
+    if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Páginas › Comunidades." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
   curar: async b => { const id = b.dataset.id, st = b.dataset.s, row = b.closest(".curitem"); ocupado(b, true, "…");
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
@@ -6093,14 +6099,14 @@ const A = {
   testenivel: b => { SB._teste.nivel(b.dataset.n); closeSheet(); toast("Testando como " + TESTE_NIVEIS[b.dataset.n][0] + "."); setTimeout(()=>location.reload(), 350); },
   testeaprova: () => { const n = SB._teste.aprova(); closeSheet(); toast(n ? n + (n === 1 ? " pedido aprovado." : " pedidos aprovados.") : "Nada esperando a curadoria."); if (n) setTimeout(()=>location.reload(), 500); },
   testezera: b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.querySelector("b").textContent = "Recomeçar mesmo?"; return; } SB._teste.zera(); location.reload(); },
-  cmnmodo: b => { S.orgAba = b.dataset.m === "paginas" ? "paginas" : "orgs"; S.orgFiltro = "tudo"; store.set("orgAba", S.orgAba); render(); },
+  cmnmodo: b => { S.orgAba = b.dataset.m === "paginas" ? "paginas" : "orgs"; S.orgFiltro = "tudo"; store.set("orgAba", S.orgAba); try{ history.replaceState(null, "", "#" + PGURL[S.orgAba]); }catch(e){} render(); },
   orgfiltro: b => { S.orgFiltro = b.dataset.f; if (S.orgFiltro === "mercado") MERC.itens = null; store.set("orgFiltro", S.orgFiltro); const y = window.scrollY; render(); window.scrollTo(0, Math.min(y, 0)); if (S.orgFiltro !== "comunidades" && !PAGS.carregou) paginasCarrega(); },
   orgvista: () => { S.orgVista = (S.orgVista || "soltos") === "soltos" ? "blocos" : "soltos"; store.set("orgVista", S.orgVista); const y = window.scrollY; render(); window.scrollTo(0, y); const n = $('[data-act="orgvista"]'); n && n.focus({preventScroll:true}); },
   histtipo: b => { S.histTipo = b.dataset.t; S.histN = 10; const y = scrollY; profShow(); scrollTo(0, y); },
   histmais: () => { S.histN = (S.histN || 10) + 20; const y = scrollY; profShow(); scrollTo(0, y); },
   pessaba: b => { S.pessAba = {u:b.dataset.u, t:b.dataset.t}; S.vPasta = null; if (b.dataset.t === "pastas") delete PESS_PASTAS[b.dataset.u]; const y = scrollY; render(); scrollTo(0, y); },
   vpasta: b => { const uid = route().slice(6); S.vPasta = b.dataset.s ? {u:uid, s:b.dataset.s, f:b.dataset.f} : null; const y = scrollY; render(); if (b.dataset.s) scrollTo(0, Math.min(y, ($("#orgbody") || {offsetTop:0}).offsetTop - 80)); else scrollTo(0, y); },
-  orgaba: b => { S.orgAba = b.dataset.t; S.decTipo = "todos"; S.pgRap = null; S.pgTema = ""; store.set("orgAba", S.orgAba); render(); },
+  orgaba: b => { S.orgAba = b.dataset.t; S.decTipo = "todos"; S.pgRap = null; S.pgTema = ""; store.set("orgAba", S.orgAba); try{ history.replaceState(null, "", "#" + PGURL[S.orgAba]); }catch(e){} render(); },
   pgrap: b => { S.pgRap = S.pgRap === b.dataset.k ? null : b.dataset.k; const y = window.scrollY; render(); window.scrollTo(0, Math.min(y, 0));
     if (S.pgRap === "perto"){ const R = minhaRegiao(); if (!R.cidade && !R.uf) toast("Escolha sua cidade em Perfil para ver o que está por perto."); } },
   pgfiltra: sheetPgFiltro, pgordem: sheetPgOrdem,
@@ -6494,8 +6500,8 @@ const START = "";
 /* ENDEREÇOS DIRETOS (16/11): arede.online/<nome> é uma página mínima no GitHub Pages que leva a #<nome>; aqui cada nome vira a tela certa,
    e o endereço volta para a rota de verdade sem recarregar. Rotas que já são endereços (#em-alta, #manifesto, #termos, #privacidade) não precisam de atalho. */
 const ATALHOS = {tudo:{tab:"tudo"}, publicacoes:{tab:"publicacoes"}, canais:{tab:"videos"}, documentos:{tab:"documentos"},
-  buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, comunidades:{r:"comunidades-todas"}, paginas:{r:"organizacoes", org:"tudo"},
-  orgs:{r:"organizacoes", org:"orgs"}, consultas:{r:"organizacoes", org:"decidir"}, eventos:{r:"organizacoes", org:"eventos"}, apoie:{acao:"apoie"}};
+  buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, comunidades:{r:"paginas/comunidades"}, orgs:{r:"paginas/comunidades"},
+  consultas:{r:"paginas/consultas"}, eventos:{r:"paginas/eventos"}, apoie:{acao:"apoie"}};
 function abaPorEndereco(){ const a = ATALHOS[location.hash.slice(1)]; if (!a) return;
   if (a.tab){ S.tab = a.tab; S.rapido = null; persist("tab"); }
   if (a.org){ S.orgAba = a.org; S.decTipo = "todos"; store.set("orgAba", a.org); }
@@ -6577,7 +6583,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 13:35";
+const VERSAO = "v1 registrada · 16/11 13:40";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
