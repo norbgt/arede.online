@@ -3229,47 +3229,44 @@ function fillProfile(){ const box = $("#pfeed"); if (!box || S.profTab === "rede
   const g = new TileGrid("pfeed", box, "none"); items.forEach(it=>g.add(it)); g.flush(true); g.render(); }
 function profShow(){ $$('[data-act="ptab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.profTab)); { const ps = profStatus(), pe = $("#pstatus"); pe.innerHTML = ps; pe.hidden = !ps; } $("#pbody").innerHTML = profBody(); fillProfile(); }
 /* CONFIGURAÇÕES — separadas do conteúdo do perfil */
+/* 16/11 (Amanda): "a" e engrenagem sem repetição.
+   "a" (Sua conta) = quem você é: seu perfil, o que ele mostra, seu acesso, segurança e sair.
+   Engrenagem (Configurações) = como a rede funciona para você: notificações, feed, aparência, ajuda e regras. */
+const PERFIL_MOSTRA = () => `<h2 class="sectitle">O que o seu perfil mostra</h2>
+    <div class="list">
+      ${switchRow("publico","Perfil público", S.publico ? "Todo mundo vê seu nome e publicações" : "Só quem participa das mesmas comunidades vê você")}
+      <button class="setting l1" type="button" data-act="interesses"><span class="t"><b>Interesses públicos</b><small>${S.interesses.length} de ${MAX_INT} · aparecem no seu perfil</small></span>${ic("back","sm flip")}</button>
+      ${switchRow("orgsVisiveis","Mostrar minhas comunidades no perfil","Filiação política é dado sensível")}
+      <button class="setting l1" type="button" data-act="pgperfilabre"><span class="t"><b>Páginas no seu perfil</b><small>${(()=>{ const l = minhasPaginas("aprovada"), n = l.filter(p=>p.no_perfil).length; return l.length ? n + " de " + l.length + " aparecem" : "Você ainda não tem página"; })()}</small></span>${ic("back","sm flip")}</button>
+      <button class="setting l1" type="button" data-act="redes"><span class="t"><b>Outras redes</b><small>${(()=>{ const m = S.redes.filter(c=>c.tipo==="minha").length, a = S.redes.length - m; return m || a ? [m ? m + " no perfil" : "", a ? a + " no feed" : ""].filter(Boolean).join(" · ") : "Traga publicações de outras redes"; })()}</small></span>${ic("back","sm flip")}</button>
+    </div>`;
 function screenConfig(){
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Configurações</h1></div>`)
   + `<div class="container">
-    <h2 class="sectitle">Conta</h2>
-    <div class="list">${ME.user
-      ? `<a class="setting l1" href="#conta"><span class="t"><b>Sua conta</b><small>Perfil, segurança, seus dados e sair</small></span>${ic("back","sm flip")}</a>
-        <button class="setting l1" type="button" data-act="notifprefs"><span class="t"><b>Notificações</b><small>Escolha o que você quer receber</small></span>${ic("back","sm flip")}</button>`
-      : `<a class="setting l1" href="#conta" data-act="acessar"><span class="t"><b>Acessar a rede.online</b><small>Entre ou crie sua conta</small></span>${ic("back","sm flip")}</a>`}</div>
-    <h2 class="sectitle">Perfil e privacidade</h2>
-    <div class="list">
-      <button class="setting l1" type="button" data-act="interesses"><span class="t"><b>Interesses públicos</b><small>${S.interesses.length} de ${MAX_INT} · aparecem no seu perfil</small></span>${ic("back","sm flip")}</button>
-      ${switchRow("publico","Perfil público", S.publico ? "Todo mundo vê seu nome e publicações" : "Só quem participa das mesmas comunidades vê você")}
-      ${switchRow("orgsVisiveis","Mostrar minhas comunidades no perfil","Filiação política é dado sensível")}
-      ${ME.user ? `<button class="setting l1" type="button" data-act="pgperfilabre"><span class="t"><b>Páginas no seu perfil</b><small>${(()=>{ const l = minhasPaginas("aprovada"), n = l.filter(p=>p.no_perfil).length; return l.length ? n + " de " + l.length + " aparecem" : "Você ainda não tem página"; })()}</small></span>${ic("back","sm flip")}</button>` : ""}
-      ${switchRow("usarOrgs","Usar minhas comunidades no algoritmo","Desligue quando quiser")}
-      <button class="setting l1" type="button" data-act="redes"><span class="t"><b>Outras redes</b><small>${(()=>{ const m = S.redes.filter(c=>c.tipo==="minha").length, a = S.redes.length - m; return m || a ? [m ? m + " no perfil" : "", a ? a + " no feed" : ""].filter(Boolean).join(" · ") : "Traga publicações de outras redes"; })()}</small></span>${ic("back","sm flip")}</button>
-      <div class="note">${ic("lock")}<span>O algoritmo usa o que você escolhe aqui e aprende com seu uso. Você vê e apaga o que ele aprendeu em Perfil › Algoritmo. Com o algoritmo desligado, nada do seu perfil é usado.</span></div>
-    </div>
+    ${ME.user ? `<h2 class="sectitle">Notificações</h2>
+    <div class="list"><button class="setting l1" type="button" data-act="notifprefs"><span class="t"><b>O que você recebe</b><small>Escolha os avisos que chegam até você</small></span>${ic("back","sm flip")}</button></div>` : ""}
     <h2 class="sectitle">Seu feed</h2>
     <div class="list">
       ${switchRow("algo","Algoritmo", (S.algo?"Ligado":"Desligado")+" · sua escolha fica salva")}
       <button class="setting l1" type="button" data-act="origens"><span class="t"><b>Sua região</b><small>${(()=>{ const R = minhaRegiao(), o = regiaoOrigem(); return R.txt ? esc(R.txt) + " · " + REG_ORIGEM[o] : "Não definida · use a localização ou escreva"; })()}</small></span>${ic("pin")}</button>
       <button class="setting l1" type="button" data-act="adjust"><span class="t"><b>Meu algoritmo</b><small>${S.temas.length} temas · ${S.mix}% comunidades</small></span>${ic("sliders")}</button>
+      ${switchRow("usarOrgs","Usar minhas comunidades no algoritmo","Desligue quando quiser")}
       ${switchRow("pausas","Pausas no feed",`Parada a cada ${PAUSE_EVERY} publicações`)}
       ${switchRow("autoplay","Reproduzir vídeos automaticamente","Sem som, com as prévias")}
+      <div class="note">${ic("lock")}<span>O algoritmo usa o que você escolhe aqui e aprende com seu uso. Você vê e apaga o que ele aprendeu em Perfil › Algoritmo. Com o algoritmo desligado, nada do seu perfil é usado.</span></div>
     </div>
     <h2 class="sectitle">Aparência</h2>
     <div class="setting stack"><span class="t"><b>Tema</b><small>Automático segue o seu aparelho</small></span>
       <div class="chips" role="radiogroup" aria-label="Tema">${[["auto","Automático"],["claro","Claro"],["escuro","Escuro"]].map(([k,t])=>`<button class="chip" type="button" role="radio" data-act="tema" data-v="${k}" aria-checked="${S.tema===k}">${t}</button>`).join("")}</div></div>
-    <h2 class="sectitle">Regras e contato</h2>
+    <h2 class="sectitle">Ajuda e regras</h2>
     <div class="list">
+      ${MANIF_ON ? `<a class="setting l1" href="#funciona"><span class="t"><b>Como a rede.online funciona</b></span>${ic("back","sm flip")}</a>
+      <a class="setting l1" href="#manifesto"><span class="t"><b>Manifesto</b></span>${ic("back","sm flip")}</a>` : ""}
       <a class="setting l1" href="#termos"><span class="t"><b>Termos de uso</b></span>${ic("back","sm flip")}</a>
       <a class="setting l1" href="#privacidade"><span class="t"><b>Privacidade</b><small>O que guardamos e os seus direitos</small></span>${ic("back","sm flip")}</a>
       <a class="setting l1" href="mailto:contato@arede.online"><span class="t"><b>Falar com a rede</b><small>contato@arede.online · pedidos sobre os seus dados, denúncias e correções</small></span>${ic("back","sm flip")}</a>
+      ${MANIF_ON ? painelRow() : ""}
     </div>
-    ${MANIF_ON ? `<h2 class="sectitle">Sobre a rede.online</h2>
-    <div class="list">
-      <a class="setting l1" href="#manifesto"><span class="t"><b>Manifesto</b></span>${ic("back","sm flip")}</a>
-      <a class="setting l1" href="#funciona"><span class="t"><b>Como a rede.online funciona</b></span>${ic("back","sm flip")}</a>
-      ${painelRow()}
-    </div>` : ""}
     </div>`;
 }
 /* VISUALIZAR PERFIL — o que as outras pessoas veem, conforme as escolhas de privacidade */
@@ -3309,7 +3306,7 @@ function visBox(){ const m = S.redes.filter(c=>c.tipo==="minha"), li = t => `<li
   /* 12 nov 2026: o detalhe saiu da página e abre numa janela própria, pelo selo "Perfil privado/público" */
   return `<div class="visbox"><div class="vcol pub"><h3>${ic("globe","sm")} Aparece</h3><ul>${sim.map(li).join("")}</ul></div>
     <div class="vcol priv"><h3>${ic("lock","sm")} Nunca aparece</h3><ul>${nao.map(li).join("")}</ul></div></div>
-<a class="vismuda" href="#config" data-act="close">Mudar nas configurações</a>`; }
+<a class="vismuda" href="#conta" data-act="close">Mudar em Sua conta</a>`; }
 /* 15/11: seguidores e seguindo saem do cabeçalho do perfil e ficam nesta janela, que abre pela etiqueta Perfil */
 const perfilNums = uid => uid ? `<p class="segnum pfnums" data-segnum="${uid}" hidden></p>` : "";
 const pfNumsPreenche = () => setTimeout(()=>$$(".sheet .pfnums").forEach(el=>segNumeros(el.dataset.segnum, el)), 0);
@@ -5304,6 +5301,7 @@ function screenConta(){
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
       <p class="ferr" role="alert" hidden></p>
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
+      ${PERFIL_MOSTRA()}
 ${/* 15/11: Sua conta fica só com os dados da conta. Publicar está no Criar; sugerir fonte, em "Origem das notícias"; a fila do coletor, no Painel (Conteúdo › Fila de notícias). */""}
       <div class="note">${ic("lock")}<span>Seu e-mail não aparece para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
       ${acessoCard()}<div id="histbox"></div><div id="adpedidos">${adPedidosHTML()}</div>${contaSeguranca()}
@@ -5502,7 +5500,7 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null; try{ const r = await SB.rpc("minha_reputacao"); if (!r.error) h = r.data; }catch(e){} if (!h || !box.isConnected) return;
   const faixa = h.nota >= REP_MUITO ? "Muito bom" : h.nota >= REP_POUCO ? "Bom" : h.nota >= CMN_MIN ? "Em formação" : "Baixo", efeito = h.nota >= REP_MUITO ? "As suas publicações sobem bastante no feed." : h.nota >= REP_POUCO ? "As suas publicações sobem um pouco no feed." : h.nota >= CMN_MIN ? "As suas publicações seguem a ordem normal do feed." : "As suas publicações descem um pouco no feed.";
-  const li = (t, d) => `<li><b>${t}</b><small>${d}</small></li>`;
+  const li = (t, d) => `<li><b>${t}</b><small>${d}</small></li>`; ["pessoas","com_fonte","dias"].forEach(k=>{ h[k] = +h[k] || 0; });   /* 16/11: número que não veio vira 0, nunca "undefined" */
   box.innerHTML = `<section class="acard" aria-labelledby="hhist"><h2 id="hhist">Seu histórico na rede</h2>
     <div class="hist"><span class="hnum" aria-label="${h.nota} de 100"><b>${h.nota}</b><small>de 100</small></span><span class="htx"><b>${faixa}</b><small>${efeito}${h.nota >= SELO_AUTO_REP ? " Seus comentários com fonte ajudam a ajustar o selo de confiança das notícias." : ""}</small></span></div>
     <div class="hbar" aria-hidden="true"><i style="width:${h.nota}%"></i></div>
@@ -6638,7 +6636,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:33";
+const VERSAO = "v1 registrada · 16/11 15:39";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

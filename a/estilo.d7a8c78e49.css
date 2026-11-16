@@ -464,7 +464,7 @@ html.snapvid #feed .v-video .face.vid .art{width:100%}
 .setting b{display:block;font-size:14.5px}
 .setting small{display:block;font-size:13px;color:var(--muted)}
 /* Configurações e Conta: a descrição de cada linha cabe em uma linha só (10 nov 2026). Os textos foram encurtados para caber; o corte com reticências é só rede de segurança */
-.setting.l1 small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setting.l1 small{white-space:normal;overflow-wrap:anywhere}   /* 16/11: texto nunca é cortado */
 button.setting{width:100%;border:0;text-align:left;color:var(--ink)}
 .stop{display:flex;flex-direction:column;gap:12px;margin:var(--gap) 0 24px;padding:20px;border-radius:var(--r-lg);background:var(--ink);color:var(--bg)}
 .stop h3{font-size:22px}
