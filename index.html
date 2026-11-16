@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-G2WZPjWgdvKXc0aRMu12/ZYgt0y6VOU768FVdfMsLXg=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-iZfRUzO7ZYMGNNL33Fe445+9ITDYpl5JXNUCEezsd14=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1332,6 +1332,14 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 @container (max-width:260px){ .adtile.faixa.casa .admk{display:none} .adtile.faixa.casa .adface{padding:14px 30px 14px 14px} .adtile.casa .cslong{display:none} .adtile.casa .csshort{display:inline} .adtile.faixa.casa .adface::after{right:10px} }
 .adtile.faixa.casa .adnome,.adtile.faixa.casa .adtxt{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance}
 .adtile.faixa.casa .adface::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;font-weight:400;opacity:.9}
+/* SALVOS DOS CANAIS (16/11) */
+.cmod .cnsalvos{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.cnsalvos .rdg{display:inline-flex;align-items:center;gap:4px;border-left:0;padding-left:0;margin-left:0;color:var(--accent)}
+.cnsalvos .rdg .icon{width:13px;height:13px}
+.cnsalva{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 4px;border:0;background:none;font:inherit;font-size:13.5px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap}
+.cnsalva .icon{width:16px;height:16px}
+.rdbar .cnsalva span{display:none}
+@media (min-width:480px){ .rdbar .cnsalva span{display:inline} }
 /* CANAIS (16 nov 2026): três partes bem separadas. Ao vivo e Rádio são quadros; os vídeos começam depois de um título próprio. */
 .canaistopo{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:6px 0 4px}
 .canaistopo .aovivo{margin:0}
@@ -8474,6 +8482,13 @@ const AOVIVO_PADRAO = [
   {k:"tvbrasil", nome:"TV Brasil",            canal:"UCSv9d0kQegylHWpP83jWSQg", url:"https://www.youtube.com/@tvbrasil/streams"},
   {k:"onu",      nome:"Nações Unidas",        canal:"UC5O114-PQNYkurlTg6hekZw", url:"https://www.youtube.com/@unitednations/streams", direto:true}];
 const LV = {lista:null, em:0}; let LV_ON = null, LV_IO = null;
+/* SALVOS DOS CANAIS (16/11): canais ao vivo e rádios salvos ficam numa linha própria, abaixo da linha com todos.
+   Ficam só neste aparelho, de propósito: a Privacidade promete que a rede não sabe qual rádio a pessoa ouve. */
+const CN_SALVOS = new Set((store.get("canaisSalvos", []) || []).filter(k=>/^(tv|rd):[\w-]{1,40}$/.test(k)));
+const cnSalvo = k => CN_SALVOS.has(k);
+function cnSalva(k, nome){ if (CN_SALVOS.has(k)){ CN_SALVOS.delete(k); toast(`${nome} saiu dos salvos.`); } else { CN_SALVOS.add(k); toast(`${nome} salvo. Aparece na linha Salvos.`); }
+  store.set("canaisSalvos", [...CN_SALVOS]); if (k.startsWith("tv:")) aoVivoPinta(); else radioPinta(); }
+const cnSalvaBtn = (k, nome) => { const on = cnSalvo(k); return `<button class="cnsalva" type="button" data-act="cnsalva" data-k="${esc(k)}" data-nome="${esc(nome)}" aria-pressed="${on}" aria-label="${on ? esc(nome) + " está nos salvos. Tocar para tirar" : "Salvar " + esc(nome)}" title="${on ? "Salvo" : "Salvar"}">${icFill("bookmark", on)}<span>${on ? "Salvo" : "Salvar"}</span></button>`; };
 const LV_OK = /^https:\/\/www\.youtube\.com\/[@\w./-]+$/;
 /* estado de um canal: "aovivo", "agendado", "fora" ou null (o servidor não conferiu na última meia hora) */
 const lvEstado = c => c.conferido_em && Date.now() - Date.parse(c.conferido_em) < 30*60e3 ? c.estado : null;
@@ -8490,12 +8505,13 @@ function aoVivoHTML(){ const l = lvLista(), c = l.find(x=>x.k===LV_ON), e = c &&
   const rot = x => ({aovivo:"ao vivo agora", agendado:"transmissão agendada", fora:"sem transmissão agora"})[lvEstado(x)] || "";
   const nv = l.filter(x=>lvEstado(x)==="aovivo").length;
   return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true">${ic("tv")}</span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais${nv ? ` · ${nv} no ar agora` : ""}</span></div>
-    <div class="lvlist">${l.map(x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}</button>`).join("")}</div>
+    ${(()=>{ const chip = x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}</button>`, sv = l.filter(x=>cnSalvo("tv:" + x.k));
+      return `<div class="lvlist">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${!c ? "" : src ? `<div class="lvbox"><iframe class="lvframe" src="${src}" title="Transmissão ao vivo: ${esc(c.nome)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
-      <p class="lvcred"><span>Transmissão oficial: <b>${esc(c.nome)}</b> · YouTube</span><span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><button type="button" data-act="vivofecha">Fechar</button></p>
+      <p class="lvcred"><span>Transmissão oficial: <b>${esc(c.nome)}</b> · YouTube</span><span class="lvsp"></span>${cnSalvaBtn("tv:" + c.k, c.nome)}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><button type="button" data-act="vivofecha">Fechar</button></p>
       <p class="lvnota">Sinal do próprio canal, sem cortes. A rede.online não exibe anúncios nesta aba.</p>`
     : `<div class="note lvfora">${ic("info")}<span><b>${e==="fora" ? esc(c.nome) + " está sem transmissão neste momento." : "A transmissão de " + esc(c.nome) + " abre no canal oficial."}</b> ${e==="fora" ? "As próximas aparecem no canal oficial." : ""}</span></div>
-      <p class="lvcred"><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><span class="lvsp"></span><button type="button" data-act="vivofecha">Fechar</button></p>`}`; }
+      <p class="lvcred"><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><span class="lvsp"></span>${cnSalvaBtn("tv:" + c.k, c.nome)}<button type="button" data-act="vivofecha">Fechar</button></p>`}`; }
 function aoVivoPinta(){ const box = $("#aovivo"); if (!box || box.hidden) return; if (LV_IO){ LV_IO.disconnect(); LV_IO = null; }
   box.innerHTML = aoVivoHTML(); box.classList.toggle("aberto", !!LV_ON);
   const fr = box.querySelector(".lvbox"); if (fr){ let visto = false;   /* rolou para longe: a transmissão para */
@@ -8528,9 +8544,10 @@ const radioLista = () => RD.lista || RADIO_PADRAO;
 function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g));
   const est = {conecta:"Conectando…", toca:"No ar", erro:"Esta rádio não respondeu agora. Tente outra ou abra o site dela."}[RD_EST] || "";
   return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas, universitárias e Mix</span></div>
-    <div class="lvlist rdlist">${gs.map(g=>l.filter(x=>x.grupo===g).map((x, i)=>`${i ? "" : `<span class="rdg">${RD_GRUPO[g]}</span>`}<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc([x.cidade, x.uf].filter(Boolean).join(", "))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}</button>`).join("")).join("")}</div>
+    ${(()=>{ const chip = x=>`<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc([x.cidade, x.uf].filter(Boolean).join(", "))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}</button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
+      return `<div class="lvlist rdlist">${gs.map(g=>l.filter(x=>x.grupo===g).map((x, i)=>`${i ? "" : `<span class="rdg">${RD_GRUPO[g]}</span>`}${chip(x)}`).join("")).join("")}</div>${sv.length ? `<div class="lvlist rdlist cnsalvos" role="group" aria-label="Rádios salvas"><span class="rdg">${icFill("bookmark", true)}Salvas</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([[c.cidade, c.uf].filter(Boolean).join(", "), est].filter(Boolean).join(" · "))}</small></span>
-      ${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
+      ${cnSalvaBtn("rd:" + c.k, c.nome)}${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
       ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal da própria emissora, ao vivo. A rede.online não exibe anúncios nesta aba.</p>` : ""}`; }
 function radioPinta(){ const box = $("#radio"); if (!box || box.hidden) return; const sx = (box.querySelector(".rdlist") || {}).scrollLeft || 0; box.innerHTML = radioHTML(); const l = box.querySelector(".rdlist"); if (l) l.scrollLeft = sx; }
 function radioBox(){ const box = $("#radio"); if (!box) return;
@@ -9695,6 +9712,7 @@ const A = {
     $$(".face.vid video, .tile video, video.pinvid").forEach(v=>{ if (!v.paused){ v.dataset.user = "paused"; v.pause(); } });
     LV_ON = k; aoVivoPinta(); const x = $("#aovivo"); x && x.scrollIntoView({block:"nearest"}); },
   vivofecha: b => { vivoFecha(); },
+  cnsalva: b => cnSalva(b.dataset.k, b.dataset.nome),
   radioabre: b => { const k = b.dataset.radio; if (RD_ON===k) return radioPara(); radioToca(k); },
   radiopara: () => radioPara(),
   vplay: b => { const v = b.closest(".facewrap").querySelector("video");
@@ -10232,7 +10250,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:00";
+const VERSAO = "v1 registrada · 16/11 09:04";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
