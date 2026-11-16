@@ -16,10 +16,12 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 async function getJSON(url: string, headers: Record<string, string> = {}, ms = 20000) {
   const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
   try {
-    const r = await fetch(url, { signal: c.signal, headers: { "user-agent": UA, accept: "application/json", ...headers } });
-    if (!r.ok) throw new Error(url + " respondeu " + r.status);
+    const r = await fetch(url, { signal: c.signal, headers: { "user-agent": UA, accept: "application/json", "cache-control": "no-cache", ...headers } });
+    if (r.status === 304) return null;   // 16/11: "nada mudou" não é erro
+    if (!r.ok) throw new Error(new URL(url).host + " respondeu " + r.status);   // 16/11: registro curto (o endereço inteiro escondia o motivo)
     return await r.json();
-  } finally { clearTimeout(t); }
+  } catch (e) { if ((e as any)?.name === "AbortError") throw new Error(new URL(url).host + " não respondeu em " + ms / 1000 + " s"); throw e; }
+  finally { clearTimeout(t); }
 }
 
 // 16/11 (Amanda): o voto do texto principal (inclusive substitutivo) é o que decide; vale igual na Câmara e no Senado.
@@ -45,7 +47,7 @@ type Doc = { chave: string; tipo: string; fonte: string; titulo: string; resumo?
 async function camara(): Promise<Doc[]> {
   const j = await getJSON(`https://dadosabertos.camara.leg.br/api/v2/votacoes?idOrgao=180&dataInicio=${iso(dias(10))}&ordem=DESC&ordenarPor=dataHoraRegistro&itens=50`);
   const PROC = /requerimento|reda[cç][aã]o final|regime de tramita|recurso|retirada de pauta|adiamento|encerramento da discuss|quebra de interst|preferência/i;
-  return (j.dados || []).filter((v: any) => v.descricao && !PROC.test(v.descricao)).map((v: any) => {
+  return ((j && j.dados) || []).filter((v: any) => v.descricao && !PROC.test(v.descricao)).map((v: any) => {
     const ev = String(v.uriEvento || "").split("/").pop();
     const d0 = v.descricao.replace(/\s+/g, " ").trim(), ress = RESSALVA.test(d0), desc = d0.replace(RESSALVA, ".").replace(/\.\.$/, ".");
     const grande = /^(aprovad|rejeitad)[ao]s?\b/i.test(desc) && merito(desc);
@@ -127,7 +129,7 @@ async function queridoDiario(): Promise<Doc[]> {
   const ids = Object.keys(CAPITAIS).map((k) => "territory_ids=" + k).join("&");
   const q = encodeURIComponent('"licitação" | "contrato" | "nomeação" | "decreto" | "orçamento" | "concurso público"');
   const j = await getJSON(`https://queridodiario.ok.org.br/api/gazettes?${ids}&since=${iso(dias(2))}&querystring=${q}&excerpt_size=280&number_of_excerpts=1&size=60&sort_by=descending_date`, {}, 55000);
-  return (j.gazettes || []).map((g: any) => {
+  return ((j && j.gazettes) || []).map((g: any) => {
     const [cid, uf] = CAPITAIS[g.territory_id] || [g.territory_name || "", g.state_code || ""];
     const tr = String((g.excerpts || [])[0] || "").replace(/\s+/g, " ").trim();
     const data = String(g.date || iso(hoje()));

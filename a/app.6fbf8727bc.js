@@ -4469,7 +4469,7 @@ const isoDia = d => { const x = new Date(d); return x.getFullYear() + "-" + Stri
 /* cópia das notícias embutida no arquivo: usada quando o servidor não responde (prévia do Claude, sem internet) */
 const COPIA = (()=>{ try{ const el = document.getElementById("noticias-copia"); const c = el ? JSON.parse(el.textContent) : null; return c && c.itens && c.itens.length ? c : null; }catch(e){ return null; } })();
 const copiaQuando = () => COPIA ? new Date(COPIA.gerada).toLocaleString("pt-BR", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) : "";
-async function noticiasCarrega(){ let data = null, ref = Date.now();
+async function noticiasCarrega(){ let data = null, ref = Date.now(); oficiaisCarrega();   /* 16/11: ao mesmo tempo que as notícias */
   /* 10 nov 2026: as notícias saem pela função "conteudo" do servidor, que entrega na medida do nível de acesso
      (visitante: 30 e 8 vídeos; conta com e-mail: até 100 novas por hora; verificada e admin: o conjunto completo).
      A leitura direta da tabela ficou só para a administração. Se o servidor não responder, vale a cópia embutida. */
@@ -4479,7 +4479,7 @@ async function noticiasCarrega(){ let data = null, ref = Date.now();
     const ytb = n => /youtube\.com\/watch/.test(n.url || "");
     data = COPIA.itens.filter(n=>lin(n) && !checa(n) && !ytb(n)).slice(0, 200).concat(COPIA.itens.filter(n=>lin(n) && checa(n) && !ytb(n)), COPIA.itens.filter(n=>lin(n) && ytb(n))); ref = Date.parse(COPIA.gerada); }
   if (!data) return;
-  noticiasAplica(data, ref); oficiaisCarrega(); }
+  noticiasAplica(data, ref); }
 /* 16/11 (Amanda): colunas, blogs, editoriais e análises (pelo endereço) levam a etiqueta "Opinião" e no máximo 3 a cada 20 cartões */
 const OPINIAO_URL = /\/(opini[aã]o|opiniones?|opinion|colunas?|colunistas?|columnas?|columns?|blogs?|editoriais|editorial|an[aá]lises?|an[aá]lisis|analysis|comment(ary|isfree)?|tribuna|artigos?)(\/|-|$)/i;
 function noticiasAplica(data, ref){
@@ -4749,7 +4749,7 @@ const OF_ORG = {"Câmara dos Deputados":["camara-dep","Câmara dos Deputados","C
   "Querido Diário":["querido-diario","Querido Diário · diários oficiais","QD","#6B21A8","https://queridodiario.ok.org.br","Projeto aberto da Open Knowledge Brasil que reúne os diários oficiais dos municípios."],
   "Portal da Transparência":["cgu-transparencia","Portal da Transparência","PT","#334155","https://portaldatransparencia.gov.br","Controladoria-Geral da União: os contratos do governo federal e quanto custam."]};
 Object.values(OF_ORG).forEach(([id,nome,sigla,cor,site,sobre])=>{ if (!ORG[id]) ORG[id] = {id, nome, sigla, cidade:"Nacional", natureza:"Governo e diário oficial", real:true, fonte:true, cor, membros:0, site, sobre}; });
-async function oficiaisCarrega(){ if (!SB) return;
+async function oficiaisCarrega(){ if (!SB){ feedFonteOk("oficiais"); return; }
   try{ const r = await SB.from("dados_oficiais").select("id,tipo,fonte,titulo,resumo,valor,anterior,url,publicado_em,cidade,uf,destaque,dados").order("publicado_em", {ascending:false}).limit(200);
     if (r.error || !r.data) return;
     for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].oficial) POOL.splice(i, 1);
@@ -4761,7 +4761,7 @@ async function oficiaisCarrega(){ if (!SB) return;
       RESUMO[id] = d.resumo || ""; const em = d.dados && d.dados.ementa;   /* 16/11: aberto em duas partes: resultado e placar; depois a ementa */
       BODY[id] = [d.resumo, em ? "Ementa: " + em : "", d.anterior && !/antes/i.test(d.resumo || "") ? "Antes: " + d.anterior + "." : ""].filter(Boolean); SEAL[id] = 95;
       POOL.push(it); });
-    feedDadosNovos("oficiais"); }catch(e){} }
+    feedDadosNovos("oficiais"); }catch(e){} finally{ feedFonteOk("oficiais"); } }
 /* no Tudo: tira os oficiais e devolve só os destaques, no máximo 1 a cada 20 cartões (o primeiro depois do 10º) */
 /* 16/11 (Amanda): um cartão por projeto. Se o mesmo projeto teve mais de um voto de mérito na mesma casa, fica o mais recente */
 function oficiaisNoTudo(l){ const resto = l.filter(it=>!it.oficial), visto = new Set();
@@ -5001,7 +5001,7 @@ function artesDaCopia(){ if (!ARTES_COPIA) return;
   F.key = null; }
 /* 16/11 (Amanda): o feed só aparece quando o conteúdo principal chegou (ou depois de 2,5 s), para não trocar na frente de quem lê.
    Enquanto isso, um esqueleto. Depois, conteúdo novo entra sem mexer no que já está na tela (F.manter). */
-var FEED_PRONTO = false, FEED_ESPERA = new Set(["noticias", "publicacoes", "artes"]);
+var FEED_PRONTO = false, FEED_ESPERA = new Set(["noticias", "publicacoes", "artes", "oficiais"]);   /* 16/11: o dado oficial entra na primeira montagem, no lugar certo (não no fim) */
 function feedLibera(){ if (FEED_PRONTO) return; FEED_PRONTO = true; const r = route(); if (r==="inicio" || r===""){ F.key = null; render(); } }
 function feedFonteOk(k){ FEED_ESPERA.delete(k); if (!FEED_ESPERA.size) feedLibera(); }
 setTimeout(feedLibera, 2500);
@@ -6631,7 +6631,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 17:05";
+const VERSAO = "v1 registrada · 16/11 17:27";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
