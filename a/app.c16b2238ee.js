@@ -3258,15 +3258,8 @@ function screenConfig(){
     <h2 class="sectitle">Aparência</h2>
     <div class="setting stack"><span class="t"><b>Tema</b><small>Automático segue o seu aparelho</small></span>
       <div class="chips" role="radiogroup" aria-label="Tema">${[["auto","Automático"],["claro","Claro"],["escuro","Escuro"]].map(([k,t])=>`<button class="chip" type="button" role="radio" data-act="tema" data-v="${k}" aria-checked="${S.tema===k}">${t}</button>`).join("")}</div></div>
-    <h2 class="sectitle">Ajuda e regras</h2>
-    <div class="list">
-      ${MANIF_ON ? `<a class="setting l1" href="#funciona"><span class="t"><b>Como a rede.online funciona</b></span>${ic("back","sm flip")}</a>
-      <a class="setting l1" href="#manifesto"><span class="t"><b>Manifesto</b></span>${ic("back","sm flip")}</a>` : ""}
-      <a class="setting l1" href="#termos"><span class="t"><b>Termos de uso</b></span>${ic("back","sm flip")}</a>
-      <a class="setting l1" href="#privacidade"><span class="t"><b>Privacidade</b><small>O que guardamos e os seus direitos</small></span>${ic("back","sm flip")}</a>
-      <a class="setting l1" href="mailto:contato@arede.online"><span class="t"><b>Falar com a rede</b><small>contato@arede.online · pedidos sobre os seus dados, denúncias e correções</small></span>${ic("back","sm flip")}</a>
-      ${MANIF_ON ? painelRow() : ""}
-    </div>
+    ${/* 16/11 (Amanda): Como funciona, Termos e privacidade, contato, Manifesto e Painel ficam num lugar só: o menu da marca (a.rede ⌄),
+       que qualquer pessoa alcança da tela inicial, com ou sem conta. O cadastro mantém o link direto para Termos e Privacidade no aceite. */""}
     </div>`;
 }
 /* VISUALIZAR PERFIL — o que as outras pessoas veem, conforme as escolhas de privacidade */
@@ -6636,7 +6629,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 15:39";
+const VERSAO = "v1 registrada · 16/11 15:41";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
