@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-u8T/NWs4B/ICnyONnMwzPZPOa3Pldj1EgNpeyb+znUg=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-sPrgwbmwQ0yCNZ+FmVY9Cg8Gh/1MDX8PRU3CSLibRMY=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -987,7 +987,6 @@ body.envmode{background:#111312}
 body.envmode .nav{display:none}
 body.pmode .nav{display:none}
 body.pmode .main{margin-left:0;padding:0}
-.pframe{display:block;width:100%;height:100vh;height:100dvh;border:0}
 body.envmode .main{margin-left:0;padding-bottom:0}
 body.envmode .toast{bottom:calc(16px + var(--safe-b))}
 .env{--e-bg:#111312;--e-ink:#F2F3EF;--e-mute:#A9AFAA;--e-line:#2B2F2D;--e-acc:var(--brand);background:var(--e-bg);color:var(--e-ink);font-family:var(--font-body)}
@@ -5715,20 +5714,9 @@ function renderStop(){
 /* PAINEL DE CONTROLE: só existe na pasta do Mac (arede.online/painel). O link aparece só quando o protótipo
    é aberto pela pasta (file://); no link público e no artefato ele não aparece. */
 /* só no Mac da administradora: o site aberto da pasta "arede.online" (index.html) (ver Permissões no painel) */
-/* PAINEL DE CONTROLE: ambiente do site que só a administradora vê.
-   A cópia dela (Mac e Claude) traz o painel embutido entre os marcadores PAINEL; a versão pública (GitHub, link) sai sem ele.
-   Abre na mesma aba, em #painel, sem sair do lugar onde se está (navegador ou console do Claude). */
-const PAINEL_SRC = document.getElementById("painel-b64");
-const LOCAL = !!PAINEL_SRC;
-/* o painel entra como srcdoc (sem endereço próprio): é o que funciona também dentro da prévia do Claude, que bloqueia endereços blob: */
-let PAINEL_HTML = null;
-function painelHTML(){ if (!PAINEL_HTML){ const bin = atob(PAINEL_SRC.textContent.trim()); PAINEL_HTML = new TextDecoder().decode(Uint8Array.from(bin, c=>c.charCodeAt(0))); } return PAINEL_HTML; }
-function screenPainel(sec){ const f = document.createElement("iframe"); f.className = "pframe"; f.name = "arede-painel|" + sec; f.title = "Painel de controle"; f.srcdoc = painelHTML(); return f; }
-window.addEventListener("message", e=>{ const d = e.data; if (!d) return;
-  if (d.arede==="go" && typeof d.to==="string") location.hash = d.to;
-  if (d.arede==="precos" && LOCAL && adPrecosAplica(d.dados)) store.set("anuncioPrecos", d.dados);   /* calibragem feita no painel, só no computador da administração */
-  if (d.arede==="sec" && typeof d.sec==="string" && route().split("/")[0]==="painel"){ const h = "painel/" + d.sec; store.set("ultima", h);
-    try{ history.replaceState(null, "", "#" + h); }catch(err){} lastRoute = route(); } });
+/* CÓPIA DA ADMINISTRADORA: a cópia do Mac traz um sinal entre os marcadores PAINEL (script vazio "copia-local"), que liga o modo de teste.
+   A versão pública (GitHub, link, artefato) sai sem ele. */
+const LOCAL = !!document.getElementById("copia-local");
 /* REVISÃO DA V1 (16/11): o painel antigo (dentro deste arquivo, com chave) foi aposentado. O painel é um só: painel.arede.online, com login. */
 const painelRow = () => LOCAL ? `<a class="setting painel" href="https://painel.arede.online/" target="_blank" rel="noopener"><span class="t"><b>Painel de controle <span class="plock" title="Abre com o seu login" aria-label="Abre com o seu login">${ic("lock","sm")}</span></b><small>painel.arede.online</small></span>${ic("ext","sm")}</a>` : "";
 /* o logo da barra superior abre "Sobre arede.online": Manifesto e Como arede.online funciona */
@@ -7520,7 +7508,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   if (r!=="inicio"){ document.documentElement.classList.remove("snapvid"); LV_ON = null; }
   document.body.classList.toggle("rota-anunciar", r==="anunciar");   /* o selo de teste sobe para não cobrir o total do anúncio */
   const pr = r.split("/")[0];
-  if (pr==="painel" && !LOCAL){ location.replace("#inicio"); return; }
+  if (pr==="painel"){ location.replace("#inicio"); return; }   /* o painel mora em painel.arede.online */
   if (!["ate-depois","conta","nova-senha"].includes(r)) store.set("ultima", r);   /* reabre onde parou */
   document.body.classList.toggle("envmode", r==="manifesto" || r==="funciona");
   if (pr==="painel"){ location.replace("#inicio"); return; }   /* painel antigo aposentado */
@@ -7558,7 +7546,6 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r==="nova-senha") main.innerHTML = screenNovaSenha();
   else if (r==="manifesto") main.innerHTML = screenManifesto();
   else if (r==="funciona") main.innerHTML = screenFunciona();
-  else if (pr==="painel"){ if (!main.querySelector(".pframe")){ main.innerHTML = ""; main.appendChild(screenPainel(r.split("/")[1] || "")); } }
   else {
     main.innerHTML = screenHome();
     const keep = !same && F.items.length && F.key===feedKey();
@@ -10309,7 +10296,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 10:22";
+const VERSAO = "v1 registrada · 16/11 10:29";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
