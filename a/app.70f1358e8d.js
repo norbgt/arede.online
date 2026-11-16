@@ -5975,10 +5975,9 @@ const A = {
       ${DEMO ? `<a class="setting" href="/"><span class="t"><b>Sair da demonstração</b><small>Voltar para a rede de verdade</small></span>${seta}</a>` : `<a class="setting" href="/?demo=1"><span class="t"><b>Experimentar a rede</b><small>Modo demonstração: faça os caminhos com uma conta de exemplo</small></span>${seta}</a>`}
       ${/* 16/11 (Amanda): sem o item Contato; o e-mail já está escrito no menu */""}
       <button class="setting" type="button" data-nav-to="termos"><span class="t"><b>${L.legal || "Termos e privacidade"}</b></span>${seta}</button>
-      ${seloSeg()}
       ${MANIF_ON ? `<button class="setting" type="button" data-nav-to="manifesto"><span class="t"><b>${L.manifesto}</b></span>${seta}</button>
       <button class="setting" type="button" data-nav-to="funciona"><span class="t"><b>${L.funciona}</b></span>${seta}</button>` : ""}${painelRow()}</div>
-      <div class="marcape"><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="rterc">${TERCEIROS()}</p><p class="ver">versão ${VERSAO}</p></div>`, M.titulo); },
+      <div class="marcape"><div class="marcaselo">${seloSeg()}</div><p class="rcontato">${M.fale} <a href="mailto:${M.email}">${M.email}</a></p><p>${DIREITOS()}</p><p class="rterc">${TERCEIROS()}</p><p class="ver">versão ${VERSAO}</p></div>`, M.titulo); },
   pubtab: b => { S.pubTab = b.dataset.tab; S.pubFolder = null; pubShow(); },
   pubfolder: b => { S.pubFolder = b.dataset.f || null; pubShow(); },
   interesses: sheetInteresses,
@@ -6484,7 +6483,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 12:57";
+const VERSAO = "v1 registrada · 16/11 12:59";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

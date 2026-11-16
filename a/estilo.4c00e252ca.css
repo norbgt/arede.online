@@ -1633,7 +1633,9 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .segt b{font-size:13px;font-weight:700}
 .segt small{color:var(--muted);font-size:11px;white-space:nowrap}
 .segselo{width:max-content;align-self:flex-start;flex:none}
-.sheet .segselo{margin:6px 0 6px 4px}
+.sheet .segselo{margin:0}
+.marcaselo{display:flex;justify-content:center;margin:0 0 14px}
+.marcape a.segselo,.marcape a.segselo:hover{text-decoration:none;color:var(--ink)}.marcape .segselo .segt{text-align:left}.marcape .segselo .segt small{color:var(--muted)}
 .list .segselo{margin:0}
 .docleg a.segselo, .docleg a.segselo:hover{color:var(--ink);text-decoration:none}
 /* 16/11: esqueleto enquanto o feed espera o conteúdo principal (no máximo 2,5 s) */
