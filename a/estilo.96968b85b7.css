@@ -280,6 +280,7 @@ span.selo{cursor:default}.selolin{align-items:flex-start;flex-direction:column;g
 .docleg{max-width:680px;padding:8px 0 40px;font-size:15px;line-height:1.55}
 .docleg h2{font-size:16px;margin:26px 0 6px}.docleg ul{margin:0;padding-left:20px;display:grid;gap:6px}.docleg p{margin:0}
 .docleg .docdata{font-size:12.5px;color:var(--muted);margin-bottom:10px}.docleg .docintro{font-size:16.5px}
+.docleg .dochead{font-family:var(--font-display);font-size:26px;line-height:1.15;letter-spacing:-.02em;margin:18px 0 6px}
 .docleg .docfim{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .docleg a{color:var(--accent)}
 .rbloco{margin:0 0 18px}
