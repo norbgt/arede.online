@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-7kwzrDVlJ3MCRjL7qS71+pN9fu9ih+YaLM+q612Hr3M=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-KmQ8g6iaGYgmhPcRretZsahHqLP303NNqinCCRqP5UM=' 'strict-dynamic' https://cdn.jsdelivr.net https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#F2F3EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1110" media="(prefers-color-scheme: dark)">
@@ -1332,6 +1332,11 @@ article.card{position:relative}.card > .more.morein{position:absolute;right:4px;
 @container (max-width:260px){ .adtile.faixa.casa .admk{display:none} .adtile.faixa.casa .adface{padding:14px 30px 14px 14px} .adtile.casa .cslong{display:none} .adtile.casa .csshort{display:inline} .adtile.faixa.casa .adface::after{right:10px} }
 .adtile.faixa.casa .adnome,.adtile.faixa.casa .adtxt{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance}
 .adtile.faixa.casa .adface::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;font-weight:400;opacity:.9}
+/* 16/11: filtro de grupos da Rádio */
+.cmod .lvlist.rdfil{margin-bottom:10px;gap:6px}
+.rdf{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.rdf .icon{width:14px;height:14px}
+.rdf[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:transparent;color:var(--accent)}
 /* SALVOS DOS CANAIS (16/11) */
 .cmod .lvlist.cnsalvos{margin:14px -14px 0;padding:14px 14px 2px;border-top:1px dashed var(--line);mask-image:none;-webkit-mask-image:none}
 .cnsalvos .rdg{display:inline-flex;align-items:center;gap:5px;border-left:0;padding:0 6px 0 0;margin-left:0;color:var(--accent)}
@@ -8535,7 +8540,12 @@ const RADIO_PADRAO = [
   {k:"mec-fm", nome:"Rádio MEC FM", grupo:"publica", cidade:"Rio de Janeiro", uf:"RJ", stream:"https://radiomecfm-stream.ebc.com.br/ebc/radiomecfm/MEC_FM-mp4a_277200_eng=20000.m3u8", site:"https://radios.ebc.com.br/radiomec"},
   {k:"senado", nome:"Rádio Senado", grupo:"poderes", cidade:"Brasília", uf:"DF", stream:"https://www12.senado.leg.br/radiosenado/fmaac/playlist.m3u8", site:"https://www12.senado.leg.br/radio"}];
 const RD_GRUPO = {publica:"Públicas", poderes:"Dos Poderes", estadual:"Estaduais", universitaria:"Universitárias", comunitaria:"Comunitárias", comercial:"Comerciais"};
-const RD = {lista:null, em:0, t:0}; let RD_ON = null, RD_EST = "", RD_AUD = null, RD_HLS = null;
+const RD = {lista:null, em:0, t:0, f:store.get("radioFiltro", "")};
+/* 16/11 (Amanda): achar a rádio pelo grupo, com "Perto de você" primeiro quando a pessoa já escolheu a região na rede */
+const rdUF = () => { const r = String(S.regiao || ""); const m = r.match(/,\s*([A-Z]{2})\b/) || r.match(/^([A-Z]{2})$/); if (m && UF_NOME[m[1]]) return m[1];
+  const n = semAcento(r).toLowerCase(), e = Object.entries(UF_NOME).find(([sg, nm])=>n && n.includes(semAcento(nm).toLowerCase())); return e ? e[0] : ""; };
+const rdPerto = l => { const uf = rdUF(), cid = semAcento(String(S.regiao || "").split(",")[0]).toLowerCase().trim();
+  return l.filter(x=>(uf && x.uf===uf) || (cid && semAcento(x.cidade || "").toLowerCase()===cid)); }; let RD_ON = null, RD_EST = "", RD_AUD = null, RD_HLS = null;
 const RD_URL = /^https:\/\/[^\s"<>]+$/;
 async function radioCarrega(){ if (!SB){ if ((RD.t = (RD.t || 0) + 1) <= 8) setTimeout(radioCarrega, 1500); return; }
   if (Date.now() - RD.em < 10*60e3) return; RD.em = Date.now();
@@ -8544,15 +8554,20 @@ async function radioCarrega(){ if (!SB){ if ((RD.t = (RD.t || 0) + 1) <= 8) setT
       .map(r=>({k:r.k, nome:String(r.nome || "").slice(0, 60), grupo:RD_GRUPO[r.grupo] ? r.grupo : "publica", cidade:String(r.cidade || "").slice(0, 40), uf:String(r.uf || "").slice(0, 2), stream:r.stream, site:r.site || "", aviso:String(r.aviso || "").slice(0, 240)}));
     if (l.length){ RD.lista = l; radioPinta(); } } catch(e){} }
 const radioLista = () => RD.lista || RADIO_PADRAO;
-function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g));
+function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g)), perto = rdPerto(l);
+  const fs = (perto.length ? [["perto", "Perto de você"]] : []).concat([["todas", "Todas"]], gs.map(g=>[g, g==="poderes" ? "Poderes" : RD_GRUPO[g]]));
+  const f = fs.some(x=>x[0]===RD.f) ? RD.f : (perto.length ? "perto" : "todas");
+  const vis = f==="perto" ? perto : f==="todas" ? gs.flatMap(g=>l.filter(x=>x.grupo===g)) : l.filter(x=>x.grupo===f);
   const est = {conecta:"Conectando…", toca:"No ar", erro:"Esta rádio não respondeu agora. Tente outra ou abra o site dela."}[RD_EST] || "";
   return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas, universitárias e Mix</span></div>
     ${(()=>{ const chip = x=>`<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc([x.cidade, x.uf].filter(Boolean).join(", "))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}</button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
-      return `<div class="lvlist rdlist">${gs.map(g=>l.filter(x=>x.grupo===g).map((x, i)=>`${i ? "" : `<span class="rdg">${RD_GRUPO[g]}</span>`}${chip(x)}`).join("")).join("")}</div>${sv.length ? `<div class="lvlist rdlist cnsalvos" role="group" aria-label="Rádios salvas"><span class="rdg">${icFill("bookmark", true)}Salvas</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
+      return `<div class="lvlist rdfil" role="group" aria-label="Mostrar rádios">${fs.map(([k, n])=>`<button class="rdf" type="button" data-act="radiofil" data-f="${k}" aria-pressed="${k===f}">${k==="perto" ? ic("pin", "sm") : ""}${n}</button>`).join("")}</div>
+      <div class="lvlist rdlist">${vis.map(chip).join("")}</div>${sv.length ? `<div class="lvlist rdlist cnsalvos" role="group" aria-label="Rádios salvas"><span class="rdg">${icFill("bookmark", true)}Salvas</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([[c.cidade, c.uf].filter(Boolean).join(", "), est].filter(Boolean).join(" · "))}</small></span>
       ${cnSalvaBtn("rd:" + c.k, c.nome)}${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
       ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal da própria emissora, ao vivo. A rede.online não exibe anúncios nesta aba.</p>` : ""}`; }
-function radioPinta(){ const box = $("#radio"); if (!box || box.hidden) return; const sx = (box.querySelector(".rdlist") || {}).scrollLeft || 0; box.innerHTML = radioHTML(); const l = box.querySelector(".rdlist"); if (l) l.scrollLeft = sx; }
+function radioPinta(){ const box = $("#radio"); if (!box || box.hidden) return; const sx = RD.zera ? 0 : (box.querySelector(".rdlist") || {}).scrollLeft || 0, fx = (box.querySelector(".rdfil") || {}).scrollLeft || 0; RD.zera = false;
+  box.innerHTML = radioHTML(); const l = box.querySelector(".rdlist"), fl = box.querySelector(".rdfil"); if (l) l.scrollLeft = sx; if (fl) fl.scrollLeft = fx; }
 function radioBox(){ const box = $("#radio"); if (!box) return;
   if (S.tab!=="videos" || S.rapido || route()!=="inicio"){ radioPara(true); box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false; radioPinta(); radioCarrega(); }
@@ -9716,6 +9731,7 @@ const A = {
     LV_ON = k; aoVivoPinta(); const x = $("#aovivo"); x && x.scrollIntoView({block:"nearest"}); },
   vivofecha: b => { vivoFecha(); },
   cnsalva: b => cnSalva(b.dataset.k, b.dataset.nome),
+  radiofil: b => { RD.f = b.dataset.f; store.set("radioFiltro", RD.f); RD.zera = true; radioPinta(); },
   cnconta: () => { closeSheet(); A.acessar(); },
   radioabre: b => { const k = b.dataset.radio; if (RD_ON===k) return radioPara(); radioToca(k); },
   radiopara: () => radioPara(),
@@ -10254,7 +10270,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 09:07";
+const VERSAO = "v1 registrada · 16/11 09:10";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
