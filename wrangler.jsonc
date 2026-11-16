@@ -1,0 +1,14 @@
+{
+  // SITE arede.online na Cloudflare (16/11/2026): arquivos estáticos, sem código rodando.
+  // Arquivos estáticos não são cobrados nem limitados na Cloudflare, em nenhum plano.
+  // O que sobe está em .assetsignore: só as páginas públicas. Código do servidor, notas e dados ficam só no GitHub.
+  "name": "arede-site",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "workers_dev": true,
+  "preview_urls": false
+}

@@ -1,0 +1,7 @@
+# Cabeçalhos de proteção do site (os mesmos que a Cloudflare já mandava na frente do GitHub Pages).
+/*
+  Content-Security-Policy: frame-ancestors 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), browsing-topics=()
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN

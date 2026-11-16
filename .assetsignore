@@ -1,0 +1,7 @@
+# Só as páginas públicas sobem para a Cloudflare. Todo o resto (código do servidor, notas, dados, modelos de e-mail) fica só no GitHub.
+*
+!*/
+!/index.html
+!/*/index.html
+!/.well-known/security.txt
+!/_headers
