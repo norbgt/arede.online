@@ -4499,10 +4499,15 @@ const OPINIAO_URL = /\/(opini[aã]o|opiniones?|opinion|colunas?|colunistas?|colu
 function noticiasAplica(data, ref){
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].coletada) POOL.splice(i, 1);
   const urls = new Set(POOL.filter(p=>p.ext).map(p=>p.ext.url)), porGrupo = {}, vistos = new Set();
-  data.forEach(n=>{ (porGrupo[n.grupo] = porGrupo[n.grupo] || []).push(n); });
-  data.forEach(n=>{ if (urls.has(n.url) || vistos.has(n.grupo)) return; vistos.add(n.grupo);
+  /* 17/11 (Amanda): a mesma notícia em várias fontes vira um cartão só, com a versão do grupo de mídia que menos aparece no feed agora.
+     Empate: a que tem foto, depois a mais nova. As outras ficam no "+N fontes". */
+  const gk = n => n.grupo || n.id, gmDe = n => (n.fontes || {}).grupo_midia || ("f" + ((n.fontes || {}).id || n.fonte_id)), cont = {}, melhor = {};
+  data.forEach(n=>{ (porGrupo[gk(n)] = porGrupo[gk(n)] || []).push(n); cont[gmDe(n)] = (cont[gmDe(n)] || 0) + 1; });
+  Object.entries(porGrupo).forEach(([g, l])=>{ const c = l.filter(n=>!urls.has(n.url)); if (c.length) melhor[g] = c.slice().sort((a,b)=>
+    cont[gmDe(a)] - cont[gmDe(b)] || (!!b.imagem_url - !!a.imagem_url) || (new Date(b.publicada_em) - new Date(a.publicada_em)))[0]; });
+  data.forEach(n=>{ if (urls.has(n.url) || vistos.has(gk(n)) || melhor[gk(n)] !== n) return; vistos.add(gk(n));
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
-    const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[n.grupo].filter(x=>x.id!==n.id);
+    const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[gk(n)].filter(x=>x.id!==n.id);
     const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grupoNome:f.grupo_midia || "", grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
       ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
@@ -6653,7 +6658,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:35";
+const VERSAO = "v1 registrada · 17/11 07:00";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
