@@ -4343,6 +4343,7 @@ async function contaInicia(){
     if (ev==="PASSWORD_RECOVERY"){ location.hash = "nova-senha"; }
     perfilCarrega().then(()=>{ contaAtualiza(); acessoMudou(); }); });
   try{ const {data} = await SB.auth.getSession(); ME.user = data.session ? data.session.user : null; }catch(e){ ME.offline = true; }
+  pinNoticiaCarrega();   /* 17/11: link direto de notícia abre na hora, sem esperar o feed */
   if (veio.has("code") || erroUrl){            /* volta do link do e-mail: limpa o endereço */
     history.replaceState(null, "", location.pathname + (!location.hash || location.hash==="#conta" ? "#perfil" : location.hash));
     if (erroUrl) toast("O link do e-mail expirou ou já foi usado. Entre com e-mail e senha ou peça outro link.");
@@ -4513,7 +4514,15 @@ async function noticiasCarrega(){ let data = null, ref = Date.now(); oficiaisCar
   noticiasAplica(data, ref); }
 /* 16/11 (Amanda): colunas, blogs, editoriais e análises (pelo endereço) levam a etiqueta "Opinião" e no máximo 3 a cada 20 cartões */
 const OPINIAO_URL = /\/(opini[aã]o|opiniones?|opinion|colunas?|colunistas?|columnas?|columns?|blogs?|editoriais|editorial|an[aá]lises?|an[aá]lisis|analysis|comment(ary|isfree)?|tribuna|artigos?)(\/|-|$)/i;
+/* 17/11 (Amanda): link direto de uma notícia (#pin-n…) busca só aquela notícia, logo na abertura e para qualquer pessoa.
+   Antes, o cartão esperava o feed inteiro; e quem não tinha conta só via a notícia se ela estivesse entre as 30 do feed de visitante. */
+let PIN_N = null, ULT_NOT = null;
+async function pinNoticiaCarrega(){ const m = route().match(/^pin-n([0-9a-f]{32})-/); if (!m || !SB) return;
+  const h = m[1], id = `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  try{ const {data} = await SB.rpc("noticia_uma", {p_id:id}); if (!data || data.erro) return;
+    PIN_N = data; noticiasAplica(ULT_NOT ? ULT_NOT.data : [], ULT_NOT ? ULT_NOT.ref : Date.now()); pinPronto(false); }catch(e){} }
 function noticiasAplica(data, ref){
+  ULT_NOT = {data, ref}; if (PIN_N && !data.some(n=>n.id===PIN_N.id)) data = data.concat([PIN_N]);
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].coletada) POOL.splice(i, 1);
   const urls = new Set(POOL.filter(p=>p.ext).map(p=>p.ext.url)), porGrupo = {}, vistos = new Set();
   /* 17/11 (Amanda): a mesma notícia em várias fontes vira um cartão só, com a versão do grupo de mídia que menos aparece no feed agora.
@@ -6675,7 +6684,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:32";
+const VERSAO = "v1 registrada · 17/11 07:39";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
