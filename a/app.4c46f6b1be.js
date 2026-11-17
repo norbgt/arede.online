@@ -666,7 +666,8 @@ function contaDadosAgenda(k){ if (!SB || !ME.user || CD_DE!==ME.user.id) return;
 async function contaDadosEnvia(){ if (!SB || !ME.user || CD_DE!==ME.user.id || !CD_FILA.size) return; const ks = [...CD_FILA], uid = ME.user.id; CD_FILA = new Set();
   try{ const {error} = await SB.from("conta_dados").upsert(ks.map(k=>({user_id:uid, chave:k, valor:cdValor(k), atualizada_em:new Date().toISOString()})));
     if (error) ks.forEach(k=>CD_FILA.add(k)); }catch(e){ ks.forEach(k=>CD_FILA.add(k)); } }
-async function contaDadosCarrega(){ if (!SB || !ME.user || CD_DE===ME.user.id) return; const uid = ME.user.id; let rows;
+async function contaDadosCarrega(){ return umaVez("contaDados", contaDadosCarrega0); }
+async function contaDadosCarrega0(){ if (!SB || !ME.user || CD_DE===ME.user.id) return; const uid = ME.user.id; let rows;
   try{ const r = await SB.from("conta_dados").select("chave,valor").eq("user_id", uid); if (r.error) return; rows = r.data || []; }catch(e){ return; }
   if (!ME.user || ME.user.id!==uid) return;
   const sv = Object.fromEntries(rows.map(r=>[r.chave, r.valor])); let mudou = false;
@@ -1094,9 +1095,12 @@ const procLine = it => it.critico ? "Processo crítico: voto secreto, apuração
 const meusInteresses = () => new Set([...(S.temas || []), ...(S.interesses || [])]);
 const TAGS_CACHE = new Map();
 function tagsDe(it){ if (TAGS_CACHE.has(it.id)) return TAGS_CACHE.get(it.id);
-  const t = semAcento(((it.titulo || "") + " " + (resumoOf(it) || "")).toLowerCase()), out = [];
+  /* 17/11: o tema principal vem sempre primeiro; tema secundário só entra se aparece no título.
+     Antes, uma palavra solta no resumo ("o professor ...") virava etiqueta e parecia o assunto da notícia. */
+  const tt = semAcento((it.titulo || "").toLowerCase()), t = semAcento(((it.titulo || "") + " " + (resumoOf(it) || "")).toLowerCase()), out = [];
   if (it.tema && TEMAS.includes(it.tema)) out.push(it.tema);
-  for (const [k, re] of TEMAS_TERMOS) { re.lastIndex = 0; if (!out.includes(k) && re.test(" " + t + " ")) out.push(k); }
+  for (const [k, re] of TEMAS_TERMOS) { re.lastIndex = 0; if (out.includes(k)) continue;
+    if (out.length ? re.test(" " + tt + " ") : re.test(" " + t + " ")) out.push(k); }
   TAGS_CACHE.set(it.id, out); return out; }
 /* RELAÇÕES COM O ALGORITMO (10 nov 2026): o pé do cartão e o "por que apareceu" dizem o que liga a notícia a você,
    das relações mais fortes para as mais fracas, e de onde vem a sua região (localização, escolhida por você ou a cidade do perfil). */
@@ -1113,7 +1117,7 @@ function relacoes(it){ if (!S.algo || it.daArte || it.anuncio) return [];
   return out.sort((a,b)=>b.f - a.f); }
 function footCtx(it){
   const L = (it.daArte || it.daRede || it.anuncio) ? null : docLocal(it), meus = meusInteresses();
-  const tags = tagsDe(it).map(t=>({t, meu:meus.has(t)})).sort((a,b)=>b.meu - a.meu);
+  const tg0 = tagsDe(it).map(t=>({t, meu:meus.has(t)})), tags = tg0.slice(0, 1).concat(tg0.slice(1).sort((a,b)=>b.meu - a.meu));   /* o principal fica em primeiro */
   const loc = L ? `<span class="tloc lv-${L.k}">${ic(L.k==="int"?"globe":"pin","sm")}<b>${L.k==="nac" ? "Nacional" : esc(L.lugar)}</b>${(()=>{ const r = (L.k==="mun" || L.k==="est") && relacoes(it).find(x=>x.loc); return r ? `<em title="${r.frase.replace(/"/g, "&quot;")}">${r.loc}</em>` : ""; })()}</span>` : "";
   const tg = tags.slice(0, 2).map(x=>`<span class="ftag${x.meu ? " meu" : ""}"${x.meu ? ' title="Está nos seus interesses"' : ""}>${x.meu ? ic("heart","sm") : "#"}${esc(x.t)}</span>`).join("");
   const extra = it.daRede ? `<span class="indtag">fonte individual</span>` : reforcoTag(it);
@@ -1126,10 +1130,14 @@ const tempoRel = min => min < 60 ? "há " + Math.max(1, min) + " min" : min < 14
    Cartão aberto: uma seção só, "Quem mais cobriu", com o título de cada fonte; sai a lista repetida do selo e de "Outras fontes sobre isto". */
 const coberturas = it => { if (!it || !it.ext) return []; const meu = (ORG[it.org] || {}).nome, vis = new Set();
   return (it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia" && v.fonte && v.fonte!==meu && !vis.has(v.fonte) && vis.add(v.fonte)); };
+/* 17/11 (Amanda): cobertura como sinal. Fato coberto por 3 ou mais fontes de grupos diferentes sobe um pouco (algoritmo: +0,15;
+   na montagem dos blocos, vai à frente entre as 4 próximas que cabem). Os tetos e a janela de 6 horas continuam valendo. */
+const cobForte = it => { const c = coberturas(it); if (c.length < 2) return false; const meu = (ORG[it.org] || {}).grupo || (ORG[it.org] || {}).nome;
+  return new Set(c.map(v=>{ const o = orgPorNome(v.fonte); return (o && o.grupo) || v.fonte; }).filter(g=>g!==meu)).size >= 2; };
 const orgPorNome = nm => Object.values(ORG).find(o=>o && o.fonte && o.nome===nm);
 const miniAv = nm => { const o = orgPorNome(nm); return `<i style="background:${o ? o.cor : "#6B7280"}">${esc(o ? o.sigla : siglaDe(nm))}</i>`; };
 function coberturaPill(it){ const c = coberturas(it); if (!c.length) return "";
-  return `<span class="cobpill" title="Também em ${esc(c.map(v=>v.fonte).join(", "))}"><span class="cobstack" aria-hidden="true">${c.slice(0,3).map(v=>miniAv(v.fonte)).join("")}</span>+${c.length}<span class="sr">${c.length===1 ? " outra fonte" : " outras fontes"}</span></span>`; }
+  return `<span class="cobpill" title="Também em ${esc(c.map(v=>v.fonte).join(", "))}"><span class="cobstack" aria-hidden="true">${c.slice(0,2).map(v=>miniAv(v.fonte)).join("")}</span>+${c.length}<span class="sr">${c.length===1 ? " outra fonte" : " outras fontes"}</span></span>`; }
 function coberturaSec(it){ const c = coberturas(it); if (!c.length) return "";
   return `<section class="cobsec"><h3 class="pinh">Quem mais cobriu · ${c.length}</h3><p class="cobnota">Cada fonte com o próprio título: compare como contaram.</p>
     ${c.map(v=>{ const o = orgPorNome(v.fonte), dono = o && o.grupo && !semAcento(o.nome).includes(semAcento(o.grupo)) ? o.grupo : "";
@@ -1345,7 +1353,7 @@ const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, k
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
 const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
-const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
+const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) + (cobForte(it) ? .15 : 0) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
 function amplo(list){
   const by = {}; list.slice().sort((a,b)=>a.min-b.min).forEach(it=>{ (by[it.tema]=by[it.tema]||[]).push(it); });
@@ -1759,7 +1767,9 @@ function equilibra(l){ const fila = l.slice(), out = [];
      puxada para cima para completar bloco, nem por ser do seu tema. */
   while (fila.length){ const novo = Math.min(...fila.map(x=>x.min || 0)), lim = novo + EQ.janela, cabe = x => x.conta || (x.min || 0) <= lim;
     const cand = []; for (let k = 0; k < fila.length && cand.length < EQ.olhar; k++) if (cabe(fila[k])) cand.push(k);
-    let i = cand.find(k=>ok(fila[k], 0)); if (i === undefined) i = cand.slice(0, 8).find(k=>ok(fila[k], 1)); if (i === undefined) i = cand[0];
+    const oks = []; for (const k of cand){ if (ok(fila[k], 0)) oks.push(k); if (oks.length === 4) break; }
+    let i = oks.find(k=>cobForte(fila[k])); if (i === undefined) i = oks[0];
+    if (i === undefined) i = cand.slice(0, 8).find(k=>ok(fila[k], 1)); if (i === undefined) i = cand[0];
     out.push(fila.splice(i,1)[0]); }
   return out; }
 function source0(fl, types, soReal){
@@ -2354,7 +2364,8 @@ function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa
     paginaTipo:p.tipo, natureza:p.tipo === "empresa" ? "página de empresa" : "página de conteúdo", cor:CORES_CONTA[(p.cor || 0) % CORES_CONTA.length], sobre:limpo(p.descricao) || "",
     site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, ficticia:exPagId(p.id)});
   return id; }
-async function paginasCarrega(){ if (!SB) return;
+async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
+async function paginasCarrega0(){ if (!SB) return;
   try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
     let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
@@ -4359,7 +4370,8 @@ function vistaDaConta(){ const v = ME.perfil && ME.perfil.vista;
 /* SEGUIR PERFIS (14 nov 2026): seguir outra conta da rede fica no servidor (tabela seguidores). Todo mundo vê só os números
    (seguidores e seguindo); quem segue quem fica só com cada pessoa. Publicações de quem você segue sobem no feed ("Você segue"). */
 const ehPessoaReal = id => /^u-[0-9a-f-]{36}$/.test(id || "");
-async function seguindoCarrega(){ if (!SB || !ME.user) return;
+async function seguindoCarrega(){ return umaVez("seguindo", seguindoCarrega0); }
+async function seguindoCarrega0(){ if (!SB || !ME.user) return;
   try{ const {data} = await SB.from("seguidores").select("seguido"); if (!data) return; let mudou = false;
     for (const r of data){ const id = "u-" + r.seguido; if (!S.follow.has(id)){ S.follow.add(id); mudou = true; } }
     for (const id of [...S.follow]) if (ehPessoaReal(id) && !data.some(r=>"u-" + r.seguido === id)){ S.follow.delete(id); mudou = true; }
@@ -4370,14 +4382,19 @@ async function seguindoCarrega(){ if (!SB || !ME.user) return;
 const segTexto = n => n.seguidores + (n.seguidores === 1 ? " seguidor" : " seguidores") + " · segue " + n.seguindo;
 async function segNumeros(uuid, el){ if (!SB || !el || !uuid) return; try{ const {data} = await SB.rpc("perfil_seguidores", {p_id:uuid}); if (data && el.isConnected){
   el.innerHTML = `<span><b>${data.seguidores}</b> ${data.seguidores === 1 ? "seguidor" : "seguidores"}</span><span><b>${data.seguindo}</b> seguindo</span>`; el.hidden = false; } }catch(e){} }
-async function perfilCarrega(){ if (!SB || !ME.user){ ME.perfil = null; return; }
+/* 17/11: na abertura, a mesma leitura era pedida até 5 vezes ao mesmo tempo (perfil, conta, páginas, seguidores, notificações).
+   umaVez junta chamadas simultâneas numa só: quem chega enquanto a leitura está em andamento recebe o mesmo resultado. */
+function umaVez(k, fn){ const m = umaVez.m || (umaVez.m = {}); if (m[k]) return m[k]; return m[k] = Promise.resolve().then(fn).finally(()=>{ delete m[k]; }); }
+async function perfilCarrega(){ return umaVez("perfil", perfilCarrega0); }
+async function perfilCarrega0(){ if (!SB || !ME.user){ ME.perfil = null; return; }
   let data = null; try{ const r = await SB.rpc("meu_perfil"); data = r.error ? null : r.data; }catch(e){} ME.perfil = data || null;   /* 16/11: cidade e forma de ver o feed só a própria pessoa lê */
   vistaDaConta(); seguindoCarrega(); notifVigia(); paginasCarrega();
   /* papel e nível vêm do servidor, por uma função que só responde sobre a própria conta (o papel saiu da leitura pública) */
   try{ const a = await SB.rpc("meu_acesso"); if (!a.error && a.data){ ME.acesso = a.data; if (ME.perfil) ME.perfil.papel = a.data.papel || "membro"; } }catch(e){}
   contaDadosCarrega(); contaSituacao(); }
 /* 16/11: conta pedida para apagar, dentro dos 15 dias: ao entrar, a pessoa escolhe reativar ou sair */
-async function contaSituacao(){ if (!SB || !ME.user) return; let d = null; try{ const r = await SB.rpc("conta_situacao"); d = r.data; }catch(e){ return; }
+async function contaSituacao(){ return umaVez("contaSituacao", contaSituacao0); }
+async function contaSituacao0(){ if (!SB || !ME.user) return; let d = null; try{ const r = await SB.rpc("conta_situacao"); d = r.data; }catch(e){ return; }
   if (!d || !d.apagando) return;
   const dia = new Date(d.apagar_em).toLocaleDateString("pt-BR", {day:"numeric", month:"long"});
   openSheet(shead("Sua conta está para ser apagada") + `<div class="cform sform"><p class="lnote osub">Ela está escondida para todo mundo e será apagada de vez em ${esc(dia)}. Quer voltar?</p>
@@ -4398,7 +4415,8 @@ const semConta = () => !ME.user && !LOCAL;
 const NOTIF = {n:0, lista:null, tipos:null, prefs:{}, t:null};
 const NOTIF_IC = {novo_seguidor:"pessoa", publicacao_seguidos:"pessoa", comentario_publicacao:"message", comentario_util:"check", verificacao:"check", colaboradora:"check",
   organizacao:"pessoa", fonte_sugerida:"info", moderacao_conteudo:"info", denuncia_analisada:"info", anuncio:"info", avisos_rede:"sino"};
-async function notifConta(){ if (!SB || !ME.user){ NOTIF.n = 0; return; }
+async function notifConta(){ return umaVez("notifConta", notifConta0); }
+async function notifConta0(){ if (!SB || !ME.user){ NOTIF.n = 0; return; }
   try{ const {data} = await SB.rpc("notif_nao_lidas"); if (typeof data === "number" && data !== NOTIF.n){ NOTIF.n = data; navConta(); } }catch(e){} }
 function notifVigia(){ clearInterval(NOTIF.t); notifConta(); NOTIF.t = setInterval(()=>{ if (document.visibilityState === "visible" && ME.user && !PREVIA) notifConta(); }, 90000); }
 async function notifCarrega(){ const box = $("#nlist"); if (!box) return;
@@ -6684,7 +6702,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:39";
+const VERSAO = "v1 registrada · 17/11 07:52";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

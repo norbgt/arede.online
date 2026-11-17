@@ -557,7 +557,7 @@ article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 .fctx .ftags > *{flex:none;white-space:nowrap}
 .cobpill{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px 1px 3px;border-radius:99px;background:var(--surface-2);color:var(--ink);font-weight:500;font-size:12px;line-height:18px;white-space:nowrap;vertical-align:middle}
 .cobstack{display:inline-flex}.cobstack i,.cobrow > i{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-style:normal;font-weight:600;color:#fff}
-.cobstack i{width:16px;height:16px;font-size:7.5px;margin-left:-5px;border:1.5px solid var(--surface)}.cobstack i:first-child{margin-left:0}
+.cobstack i{width:18px;height:18px;font-size:8px;margin-left:-4px;border:1.5px solid color-mix(in srgb,var(--ink) 55%,transparent)}.cobstack i:first-child{margin-left:0}
 .cobpill .sr,.cobsec .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .cobsec{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
 .cobnota{margin:2px 0 6px;font-size:12.5px;color:var(--muted)}
