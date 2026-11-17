@@ -869,8 +869,9 @@ function seloMarcas(it){ const o = ORG[it.org] || {}, nat = String(o.natureza ||
 /* 16 nov 2026: tipo e grupo de mídia da fonte, só ao abrir Detalhes (decisão da Amanda) */
 const TIPO_FONTE_NOME = {"Imprensa · grande":"Grande imprensa", "Imprensa · alternativa e independente":"Imprensa alternativa e independente"};
 function deOndeVem(it){ const o = ORG[it.org] || {}; if (!o.fonte || it.oficial) return ""; const tf = it.tipoFonte || o.tipoFonte; if (!tf) return "";
-  const t = TIPO_FONTE_NOME[tf] || tf, g = it.grupoNome || o.grupo || "";
-  return `<p class="sbde"><b>De onde vem</b> · ${esc(t)}${g ? " · " + esc(/^grupo/i.test(g) ? g : "grupo " + g) : ""}</p>`; }
+  const t = TIPO_FONTE_NOME[tf] || tf, g0 = it.grupoNome || o.grupo || "", nn = semAcento(o.nome || "").toLowerCase(), gg = semAcento(g0).toLowerCase();
+  const g = g0 && !nn.includes(gg) && !gg.includes(nn) ? g0 : "";   /* 17/11: dono igual ao nome da fonte (IBGE, AFP Checamos) não se repete */
+  return `<p class="sbde"><b>De onde vem</b> · ${esc(t)}${g ? " · Dono: " + esc(g) : ""}</p>`; }
 function sealBox(it, compacto){
   const s = sealOf(it), m = seloMarcas(it);
   const sub = s.sc!==null ? `Nota ${s.sc} de 100${it.fontePub ? " · da fonte citada" : ""}` : it.autoral ? (it.autoralSub || AUTORAL[it.autoral][0]) + " · declarada pela autora"
@@ -6644,7 +6645,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:10";
+const VERSAO = "v1 registrada · 17/11 06:16";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
