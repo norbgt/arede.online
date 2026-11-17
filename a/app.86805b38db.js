@@ -1708,7 +1708,7 @@ function sourceBase(fl=S.filt, types=tabTypes()){
   const reais = S.tab!=="tudo" ? l.filter(it=>it.conta) : [];   /* 15/11: em Tudo, as publicações das contas entram pela data, junto com o resto */
   if (reais.length) l = reais.sort((a,b)=>(a.min - prioDe(a) * PRIO_HORAS * 60) - (b.min - prioDe(b) * PRIO_HORAS * 60)).concat(l.filter(it=>!it.conta));
   /* variedade: a mesma fonte não aparece em sequência (olha até 8 itens à frente para trocar a ordem).
-     16/11 (Amanda): equilíbrio bloco a bloco. Em cada 20 cartões, no máximo 3 do mesmo grupo de mídia (Grupo Globo = g1, O Globo e Valor)
+     16/11 (Amanda): equilíbrio bloco a bloco. Em cada 20 cartões, no máximo 2 do mesmo grupo de mídia (Grupo Globo = g1, O Globo e Valor; era 3 até 17/11, Amanda baixou para 10%)
      e no máximo 10 da grande imprensa (50%, o mesmo limite do servidor); nunca dois do mesmo grupo seguidos.
      O que passa do teto não some: vai mais para a frente. */
   /* 16/11 (Amanda): pauta policial de longe desce. Crime, polícia, prisão, morte e acidente (pelo título) que não são da sua cidade
@@ -1730,7 +1730,7 @@ function sourceBase(fl=S.filt, types=tabTypes()){
 }
 const POLICIAL = /\b(mort[oa]s?|mata|matou|assassin\w*|crimes?|pres[oa]s?|pris[aã]o|pol[ií]cia\w*|tiros?|baleado\w*|acidentes?|viol[eê]ncia|homic[ií]dio\w*|estupr\w*|tr[aá]fico|furto|roubo|assalt\w*|sequestr\w*|police|killed|shooting|murder\w*|arrest\w*|polic[ií]a|asesin\w*|detenid\w*|muert[eo]s?)\b/i;
 const policialLonge = it => !!it && it.coletada && POLICIAL.test(it.titulo || "") && prox(it) < 2 && !((it.ext && it.ext.verif || []).length >= 2);
-const EQ = {bloco:20, grupo:3, grande:10, opiniao:3, olhar:40, janela:360};   /* 17/11 (Amanda): os limites valem dentro de uma janela de 6 horas */
+const EQ = {bloco:20, grupo:2, grande:10, opiniao:3, olhar:40, janela:360};   /* 17/11 (Amanda): os limites valem dentro de uma janela de 6 horas */
 const grupoDe = it => it.grupoMidia || it.org;
 function equilibra(l){ const fila = l.slice(), out = [];
   const ok = (x, nivel) => { if (x.conta) return true; const ult = out.slice(-2), jan = out.slice(-(EQ.bloco - 1)), g = grupoDe(x);
@@ -6644,7 +6644,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:06";
+const VERSAO = "v1 registrada · 17/11 06:10";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
