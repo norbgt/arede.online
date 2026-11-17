@@ -551,8 +551,10 @@ article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 /* pé do cartão sem peso (10 nov 2026): o lugar e a fonte ficam em peso médio; as etiquetas, em peso normal */
 .ftag{display:inline-flex;align-items:center;gap:3px;font-weight:400;color:var(--muted)}
 /* 17/11 (Amanda): temas do cartão fechado sem excesso e sem corte: no máximo 2, a linha quebra */
-.fctx{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:4px;font-size:12.5px;line-height:1.4;white-space:normal;min-width:0}
-.fctx > *{overflow:visible;text-overflow:clip}
+.fctx{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:12.5px;line-height:18px;white-space:normal;min-width:0}
+.fctx > *{overflow:visible;text-overflow:clip;max-width:100%}
+.fctx .ftags{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:0;height:18px;overflow:hidden;width:100%}
+.fctx .ftags > *{flex:none;white-space:nowrap}
 .cobpill{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px 1px 3px;border-radius:99px;background:var(--surface-2);color:var(--ink);font-weight:500;font-size:12px;line-height:18px;white-space:nowrap;vertical-align:middle}
 .cobstack{display:inline-flex}.cobstack i,.cobrow > i{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-style:normal;font-weight:600;color:#fff}
 .cobstack i{width:16px;height:16px;font-size:7.5px;margin-left:-5px;border:1.5px solid var(--surface)}.cobstack i:first-child{margin-left:0}

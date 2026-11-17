@@ -1118,7 +1118,9 @@ function footCtx(it){
   const tg = tags.slice(0, 2).map(x=>`<span class="ftag${x.meu ? " meu" : ""}"${x.meu ? ' title="Está nos seus interesses"' : ""}>${x.meu ? ic("heart","sm") : "#"}${esc(x.t)}</span>`).join("");
   const extra = it.daRede ? `<span class="indtag">fonte individual</span>` : reforcoTag(it);
   const rel = relacoes(it).filter(x=>x.tag).map(x=>`<span class="ftag meu">${ic("check","sm")}${x.tag}</span>`).join("");   /* relação mais forte vem antes dos temas */
-  return `<span class="fctx">${loc}${rel}${tg}${extra}${!loc && !tg && !extra ? `<span class="ftag">#Geral</span>` : ""}</span>`; }
+  /* 17/11 (Amanda): temas numa linha só (só os que cabem inteiros; o resto não aparece, sem corte) e a localização na linha de baixo */
+  const linha = rel + tg + extra || (!loc ? `<span class="ftag">#Geral</span>` : "");
+  return `<span class="fctx">${linha ? `<span class="ftags">${linha}</span>` : ""}${loc}</span>`; }
 const tempoRel = min => min < 60 ? "há " + Math.max(1, min) + " min" : min < 1440 ? "há " + Math.round(min/60) + " h" : min < 2880 ? "ontem" : "há " + Math.round(min/1440) + " dias";
 /* 17/11 (Amanda): o mesmo fato em outras fontes. Cartão fechado: sinal discreto (até 3 mini-logos e "+N").
    Cartão aberto: uma seção só, "Quem mais cobriu", com o título de cada fonte; sai a lista repetida do selo e de "Outras fontes sobre isto". */
@@ -6673,7 +6675,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:29";
+const VERSAO = "v1 registrada · 17/11 07:32";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
