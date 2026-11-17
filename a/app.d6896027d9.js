@@ -5242,11 +5242,10 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     if (sd.grupo_pct > sd.grupo_teto + 0.5) al.push(["err", `${esc(sd.grupo_nome)} em ${String(sd.grupo_pct).replace(".",",")}% do feed, acima do teto de ${sd.grupo_teto}% por grupo.`]);
     if (sd.sem_imagem_pct > 15) al.push(["err", `${String(sd.sem_imagem_pct).replace(".",",")}% dos cartões sem imagem.`]);
     if (sd.titulos_quebrados_24h) al.push(["none", `${sd.titulos_quebrados_24h} notícias com título quebrado foram ocultadas nas últimas 24 horas.`]);
-    (sd.fontes_paradas || []).forEach(f=>al.push(["none", `${esc(f.nome)}: feed responde, mas nenhuma notícia nova ${f.ultima ? quando(f.ultima) : "desde que foi ligada"}.`]));
+    const pr = sd.fontes_paradas || []; if (pr.length) al.push(["none", `${pr.length} ${pr.length === 1 ? "fonte responde" : "fontes respondem"}, mas sem notícia nova há mais de 14 dias: ${pr.map(f=>esc(f.nome)).join(", ")}.`]);
     (sd.fontes_erro || []).forEach(f=>al.push(["err", `${esc(f.nome)}: ${esc(f.erro)}`]));
     return `<h3 class="osec">Saúde do feed</h3>
-      <div class="facts"><div class="fact"><b>${String(sd.grande_pct).replace(".",",")}%</b>grande imprensa (teto ${sd.grande_teto}%)</div><div class="fact"><b>${String(sd.grupo_pct).replace(".",",")}%</b>maior grupo · ${esc(sd.grupo_nome)}</div><div class="fact"><b>${sd.com_cobertura}</b>cartões com outras fontes</div></div>
-      <div class="facts"><div class="fact"><b>${sd.fontes_coletando_7d} de ${sd.fontes_ativas}</b>fontes trouxeram notícia em 7 dias</div><div class="fact"><b>${String(sd.sem_imagem_pct).replace(".",",")}%</b>cartões sem imagem</div><div class="fact"><b>há ${sd.ultima_coleta_min} min</b>última notícia</div></div>
+      <div class="facts"><div class="fact"><b>${String(sd.grande_pct).replace(".",",")}%</b>grande imprensa (teto ${sd.grande_teto}%)</div><div class="fact"><b>${String(sd.grupo_pct).replace(".",",")}%</b>maior grupo · ${esc(sd.grupo_nome)}</div><div class="fact"><b>${sd.com_cobertura}</b>cartões com outras fontes</div><div class="fact"><b>${sd.fontes_coletando_7d} de ${sd.fontes_ativas}</b>fontes trouxeram notícia em 7 dias</div><div class="fact"><b>${String(sd.sem_imagem_pct).replace(".",",")}%</b>cartões sem imagem</div><div class="fact"><b>há ${sd.ultima_coleta_min} min</b>última notícia</div></div>
       ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}
       <h3 class="osec">Fontes</h3>`; })();
   box.innerHTML = saude + `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
@@ -6727,7 +6726,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 08:19";
+const VERSAO = "v1 registrada · 17/11 08:24";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
