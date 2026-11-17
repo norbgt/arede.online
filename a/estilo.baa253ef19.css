@@ -2138,7 +2138,7 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .cfrow{display:flex;gap:10px;align-items:center;padding:10px 12px}.cfrow + .cfrow{border-top:1px solid var(--line)}
 .cfdot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--line)}
 .cfrow.ok .cfdot{background:var(--ok)} .cfrow.err .cfdot{background:var(--bad)} .cfrow.none .cfdot{background:var(--warn-dot)} .cfrow.off{opacity:.55}
-.cft{flex:1;min-width:0;display:flex;flex-direction:column}.cft b{font-size:14px;font-weight:600}.cft small{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cft{flex:1;min-width:0;display:flex;flex-direction:column}.cft b{font-size:14px;font-weight:600}.cft small{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}   /* 17/11: texto nunca cortado no painel */ .cfrow.al .cft small{font-size:12.5px;color:var(--text)}
 .cfn{flex:none;text-align:right;font-size:12.5px;display:flex;flex-direction:column}.cfn small{color:var(--muted);font-size:11px}
 .note.okn{background:color-mix(in srgb,var(--ok) 12%,var(--surface));color:var(--ink)}
 /* cadastro (chamado e evento) */

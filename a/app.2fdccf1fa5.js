@@ -5246,7 +5246,7 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     (sd.fontes_erro || []).forEach(f=>al.push(["err", `${esc(f.nome)}: ${esc(f.erro)}`]));
     return `<h3 class="osec">Saúde do feed</h3>
       <div class="facts"><div class="fact"><b>${String(sd.grande_pct).replace(".",",")}%</b>grande imprensa (teto ${sd.grande_teto}%)</div><div class="fact"><b>${String(sd.grupo_pct).replace(".",",")}%</b>maior grupo · ${esc(sd.grupo_nome)}</div><div class="fact"><b>${sd.com_cobertura}</b>cartões com outras fontes</div><div class="fact"><b>${sd.fontes_coletando_7d} de ${sd.fontes_ativas}</b>fontes trouxeram notícia em 7 dias</div><div class="fact"><b>${String(sd.sem_imagem_pct).replace(".",",")}%</b>cartões sem imagem</div><div class="fact"><b>há ${sd.ultima_coleta_min} min</b>última notícia</div></div>
-      ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}
+      ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow al ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}
       <h3 class="osec">Fontes</h3>`; })();
   box.innerHTML = saude + `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
     <p class="curnota">Fontes sem feed (dados públicos, tribunais, portais sem RSS) ficam de fora da coleta automática; seguem na curadoria manual.</p>
@@ -6726,7 +6726,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 08:24";
+const VERSAO = "v1 registrada · 17/11 08:27";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
