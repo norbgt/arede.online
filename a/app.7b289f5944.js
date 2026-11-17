@@ -1924,6 +1924,7 @@ function renderStop(){
   if (RQ && F.ended){ const R = minhaRegiao(), tab = S.tab!=="tudo" ? " em " + nome : "";
     const msg = S.rapido==="perto" && !R.cidade && !R.uf ? `<b>Diga sua cidade.</b> Assim aparece o que acontece perto de você.`
       : S.rapido==="desmentidos" ? (F.cursor ? `<b>Esses são os desmentidos${tab}.</b> Vêm das agências de checagem da base, como Aos Fatos, Projeto Comprova e AFP Checamos, nas línguas que você escolheu em Origens.` : `<b>Nenhum desmentido${tab} agora.</b> Eles vêm das agências de checagem da base, nas línguas que você escolheu em Origens.`)
+      : S.rapido==="analise" ? (F.cursor ? `<b>Essas são as divergências em análise${tab}.</b>` : `<b>Nada em análise${tab} agora.</b>`)
       : S.rapido==="alta" ? (F.cursor ? `<b>Isso é o que está em alta${tab}.</b> Últimas 72 horas, pela repercussão.` : `<b>Nada em alta${tab} nas últimas 72 horas.</b>`)
       : (F.cursor ? `<b>Isso é o que acontece perto de você${tab}.</b> ${esc(R.txt || "")}` : `<b>Nada perto de você${tab} agora.</b> ${esc(R.txt || "")}`);
     const extra = S.rapido==="perto" ? `${R.cidade || R.uf ? "" : `<button class="linkbtn" type="button" data-act="localpede">Usar minha localização</button>`}<button class="linkbtn" type="button" data-act="origens">${R.cidade || R.uf ? "Mudar a cidade" : "Definir a cidade"}</button>` : S.rapido==="desmentidos" ? `<button class="linkbtn" type="button" data-act="origens">Origens</button>` : "";
@@ -6786,7 +6787,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:45";
+const VERSAO = "v1 registrada · 17/11 09:47";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
