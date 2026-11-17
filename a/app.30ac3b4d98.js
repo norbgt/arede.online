@@ -1120,6 +1120,8 @@ function footCtx(it){
   const rel = relacoes(it).filter(x=>x.tag).map(x=>`<span class="ftag meu">${ic("check","sm")}${x.tag}</span>`).join("");   /* relação mais forte vem antes dos temas */
   return `<span class="fctx">${loc}${rel}${tg}${extra}${!loc && !tg && !extra ? `<span class="ftag">#Geral</span>` : ""}</span>`; }
 const tempoRel = min => min < 60 ? "há " + Math.max(1, min) + " min" : min < 1440 ? "há " + Math.round(min/60) + " h" : min < 2880 ? "ontem" : "há " + Math.round(min/1440) + " dias";
+/* 17/11: quantas outras fontes cobriram o mesmo fato */
+const maisFontes = it => !it || !it.ext ? 0 : new Set((it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia").map(v=>v.fonte).filter(f=>f && f!==(ORG[it.org] || {}).nome)).size;
 function footInfo(it){
   const o = ORG[it.org], I = (...xs) => `<span class="finfo">${xs.filter(Boolean).map(x=>`<span>${x}</span>`).join("")}</span>`;
   if (it.externo || (it.ext && it.tipo==="chamado" && !it.meta)){
@@ -1129,7 +1131,7 @@ function footInfo(it){
   if (it.daArte) return I(esc(it.artista || "Autoria não informada"), "Design Ativista ↗");
   if (it.daRede) return I(`<b>${esc(o.nome)}</b>`, (it.notaFilme ? `<span class="rstars" aria-label="nota ${String(it.notaFilme).replace(".",",")} de 5">${estrelas(it.notaFilme)}</span> ` : "") + REDES[it.rede].nome + " ↗", dLabel(it.ext.data));
   /* 16/11 (Amanda): a mesma notícia em outras fontes aparece como "+N fontes" ao lado do nome; os detalhes seguem no selo */
-  if (it.ext && (it.tipo==="texto" || it.tipo==="imagem" || it.tipo==="video")){ const nm = new Set((it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia").map(v=>v.fonte).filter(f=>f && f!==o.nome)).size;
+  if (it.ext && (it.tipo==="texto" || it.tipo==="imagem" || it.tipo==="video")){ const nm = maisFontes(it);
     return I(`<b>${esc(o.nome)}</b> ↗`, nm ? `<span class="fmais">+${nm} ${nm===1 ? "fonte" : "fontes"}</span>` : "", dLabel(it.ext.data)); }
   switch(it.tipo){
     case "evento": return I(esc(it.hora), esc(it.local), `${vaoOf(it)} vão${S.rsvp[it.uid]==="vou" ? " · você vai" : ""}`);
@@ -4507,7 +4509,7 @@ function noticiasAplica(data, ref){
     cont[gmDe(a)] - cont[gmDe(b)] || (!!b.imagem_url - !!a.imagem_url) || (new Date(b.publicada_em) - new Date(a.publicada_em)))[0]; });
   data.forEach(n=>{ if (urls.has(n.url) || vistos.has(gk(n)) || melhor[gk(n)] !== n) return; vistos.add(gk(n));
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
-    const id = "n" + n.id.replace(/-/g,""), outras = porGrupo[gk(n)].filter(x=>x.id!==n.id);
+    const id = "n" + n.id.replace(/-/g,""), outras = Array.isArray(n.outras) ? n.outras.map(x=>({url:x.url, titulo:x.titulo, fontes:{nome:x.fonte}})) : porGrupo[gk(n)].filter(x=>x.id!==n.id);   /* 17/11: o servidor manda as outras versões do mesmo fato (fonte, título e link) */
     const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grupoNome:f.grupo_midia || "", grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
       ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
@@ -6658,7 +6660,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:00";
+const VERSAO = "v1 registrada · 17/11 07:17";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
