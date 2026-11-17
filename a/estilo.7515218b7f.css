@@ -550,6 +550,20 @@ article.card .finfo > span:first-child:has(> b):not(:only-child){display:none}
 article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 /* pé do cartão sem peso (10 nov 2026): o lugar e a fonte ficam em peso médio; as etiquetas, em peso normal */
 .ftag{display:inline-flex;align-items:center;gap:3px;font-weight:400;color:var(--muted)}
+/* 17/11 (Amanda): temas do cartão fechado sem excesso e sem corte: no máximo 2, a linha quebra */
+.fctx{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:4px;font-size:12.5px;line-height:1.4;white-space:normal;min-width:0}
+.fctx > *{overflow:visible;text-overflow:clip}
+.cobpill{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px 1px 3px;border-radius:99px;background:var(--surface-2);color:var(--ink);font-weight:500;font-size:12px;line-height:18px;white-space:nowrap;vertical-align:middle}
+.cobstack{display:inline-flex}.cobstack i,.cobrow > i{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-style:normal;font-weight:600;color:#fff}
+.cobstack i{width:16px;height:16px;font-size:7.5px;margin-left:-5px;border:1.5px solid var(--surface)}.cobstack i:first-child{margin-left:0}
+.cobpill .sr,.cobsec .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.cobsec{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
+.cobnota{margin:2px 0 6px;font-size:12.5px;color:var(--muted)}
+.cobrow{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+.cobrow:first-of-type{border-top:0}
+.cobrow > i{width:24px;height:24px;font-size:9px;flex:none;margin-top:1px}
+.cobrow .t{flex:1;min-width:0}.cobrow .t b{display:block;font-size:12.5px;font-weight:500;color:var(--muted)}.cobrow .t span{display:block;font-size:14px;line-height:1.38;overflow-wrap:anywhere}
+.cobrow .icon{flex:none;width:14px;height:14px;color:var(--muted);margin-top:3px}
 .fctx .tloc b{font-weight:500}.fctx .tloc em{font-weight:500}
 .ftag.meu{color:var(--ink)}.ftag.meu .icon{color:var(--accent);fill:var(--accent)}
 .ftag .icon{width:12px;height:12px;fill:currentColor;stroke:none}
@@ -1322,7 +1336,9 @@ html.snapvid #aovivo{scroll-snap-align:start;scroll-margin-top:var(--vtop,72px)}
 .lvnota{margin:6px 0 0;font-size:12.5px;line-height:1.4;color:var(--muted)}
 /* 16/11: no cartão de texto, a fonte mora no pé do próprio cartão; os três pontinhos ficam no canto de baixo */
 .face.txt .fsrc{display:flex;align-items:center;gap:6px;min-width:0;margin-top:8px;padding-top:8px;padding-right:30px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent)}
-.face.txt .fsrc .capname{flex:0 1 auto;color:inherit;opacity:.78}.face.txt .fsdt{flex:none;font-size:12px;white-space:nowrap;color:inherit;opacity:.6}
+.face.txt .fsrc .capname{flex:0 1 auto;color:inherit;opacity:.78}
+/* 17/11: com o sinal de outras fontes, o rodapé quebra linha em vez de cortar o nome da fonte */
+.face.txt .fsrc{flex-wrap:wrap;row-gap:5px}.face.txt .fsrc .cobpill{margin-left:0}.face.txt .fsrc .capname{white-space:nowrap}.face.txt .fsdt{flex:none;font-size:12px;white-space:nowrap;color:inherit;opacity:.6}
 article.card{position:relative}.card > .more.morein{position:absolute;right:4px;bottom:4px;margin:0;width:36px;height:36px;z-index:2}
 /* 16/11: o convite "Anuncie aqui" chama mais atenção (cor da marca) e nunca corta frase: o texto quebra linha e o quadro cresce */
 .adcard .adtile.faixa.casa{height:auto;min-height:88px;container-type:inline-size}

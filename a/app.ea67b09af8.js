@@ -766,7 +766,7 @@ function sealChecksBase(it){
     /* linha editorial: a fonte é confiável nos fatos, mas tem posição declarada; vale ler junto com outras */
     if (reforco(it)) q += L("ok", "Reforço internacional", "Publicada por fontes de " + it.paises.length + " países: " + listaPaises(it.paises.map(p=>bandeira(p) + " " + p)) + ". O mesmo texto republicado conta uma vez só.");
     if (o.linha) q += L("warn", /ativista/i.test(o.linha) ? "Mídia ativista" : "Linha editorial", o.linha.replace(/^m[íi]dia ativista:\s*/i,"").replace(/^./,c=>c.toUpperCase()) + " Vale ler junto com outras fontes.");
-    q += L(it.ext.verif.length ? "ok" : "warn", o.fonte ? "Outras fontes cobriram" : "Fontes que confirmam", it.ext.verif.length ? `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"} da base: ${it.ext.verif.map(v=>v.fonte).join(", ")}.` : "Só esta fonte, por enquanto.");
+    q += L(it.ext.verif.length ? "ok" : "warn", o.fonte ? "Outras fontes cobriram" : "Fontes que confirmam", it.ext.verif.length ? (coberturas(it).length === it.ext.verif.length ? `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"}: veja em Quem mais cobriu.` : `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"} da base: ${it.ext.verif.map(v=>v.fonte).join(", ")}.`) : "Só esta fonte, por enquanto.");
     return q; }
   if (it.conta){ const quem = L("ok", o.verificado ? "Perfil verificado" : "Conta real", o.verificado ? `${o.nome}: ${VERIF[o.verificado][0].toLowerCase()}.` : `${o.nome} tem conta confirmada por e-mail.`), fp = it.fontePub;
     if (it.autoral) return quem + L("na", "Conteúdo autoral", (it.autoral==="arte" ? "Arte" : "Ficção") + ", como a autora declarou. O selo avalia fatos; obra autoral não recebe nota.");
@@ -885,7 +885,7 @@ function sealBox(it, compacto){
     <p class="sbaviso">A nota é uma avaliação da rede.online, por critérios públicos e iguais para todas as fontes. Não é uma acusação e pode estar errada. <a href="#termos">Como funciona e como pedir revisão</a></p>
     <div class="checks">${sealChecks(it)}</div>
     <p class="note" style="margin:10px 0"><span>Verificação automática com fontes públicas. Se alguém contesta, uma segunda verificação, independente, refaz a análise. O selo avalia fatos, nunca opiniões.</span></p>
-    ${it.ext && it.ext.verif.length ? `<div class="vsrc"><b>${ORG[it.org].fonte ? "A mesma notícia em outras fontes" : "Fontes que confirmam"}</b>${it.ext.verif.map(v=>`<a href="${v.url}" target="_blank" rel="noopener"><span>${esc(v.fonte)}<small>${esc(v.papel||"")}${v.o_que_confirma?" · "+esc(v.o_que_confirma):""}</small></span>${ic("ext","sm")}</a>`).join("")}</div>`
+    ${it.ext && it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).length ? `<div class="vsrc"><b>${ORG[it.org].fonte ? "A mesma notícia em outras fontes" : "Fontes que confirmam"}</b>${it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).map(v=>`<a href="${v.url}" target="_blank" rel="noopener"><span>${esc(v.fonte)}<small>${esc(v.papel||"")}${v.o_que_confirma?" · "+esc(v.o_que_confirma):""}</small></span>${ic("ext","sm")}</a>`).join("")}</div>`
       : it.ext && s.sc!==null && !it.daRede ? `<p class="note" style="margin:0 0 10px"><span>Nenhuma fonte da base confirmou este conteúdo ainda.</span></p>` : ""}
     <div class="row"><button class="btn ghost" type="button" data-act="contest">Contestar</button></div></details>`;
 }
@@ -995,7 +995,7 @@ function linksOf(it){
   const L = [];
   if (it.ext){ /* conteúdo real: mapa do local e as fontes que confirmam */
     if (it.tipo==="evento" && it.local && !/online/i.test(it.local)) L.push({k:"Mapa", t:it.local, d:"Como chegar", url:"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(it.local + (it.cidadeEv ? ", " + it.cidadeEv : ""))});
-    it.ext.verif.forEach(v=>{ if (v.url) L.push(v.titulo ? {k:v.fonte, t:v.titulo, d:hostOf(v.url), url:v.url} : {k:v.papel==="corroboração" ? "Confirma (imprensa)" : "Confirma", t:v.fonte, d:v.o_que_confirma || hostOf(v.url), url:v.url}); });
+    it.ext.verif.forEach(v=>{ if (v.url && !(v.papel==="cobertura da mesma notícia")) L.push(v.titulo ? {k:v.fonte, t:v.titulo, d:hostOf(v.url), url:v.url} : {k:v.papel==="corroboração" ? "Confirma (imprensa)" : "Confirma", t:v.fonte, d:v.o_que_confirma || hostOf(v.url), url:v.url}); });
     return L; }
   if (it.tipo==="votacao") L.push({k:"Documento", t:"Proposta completa e regras da votação", d:"Na rede · PDF, 6 pág."},{k:"Ata", t:"Ata da assembleia que abriu a votação", d:"Na rede · PDF, 2 pág."});
   if (it.tipo==="documento") L.push({k:"Documento", t:it.titulo, d:`Na rede · PDF, ${it.pags} pág.`});
@@ -1115,13 +1115,25 @@ function footCtx(it){
   const L = (it.daArte || it.daRede || it.anuncio) ? null : docLocal(it), meus = meusInteresses();
   const tags = tagsDe(it).map(t=>({t, meu:meus.has(t)})).sort((a,b)=>b.meu - a.meu);
   const loc = L ? `<span class="tloc lv-${L.k}">${ic(L.k==="int"?"globe":"pin","sm")}<b>${L.k==="nac" ? "Nacional" : esc(L.lugar)}</b>${(()=>{ const r = (L.k==="mun" || L.k==="est") && relacoes(it).find(x=>x.loc); return r ? `<em title="${r.frase.replace(/"/g, "&quot;")}">${r.loc}</em>` : ""; })()}</span>` : "";
-  const tg = tags.map(x=>`<span class="ftag${x.meu ? " meu" : ""}"${x.meu ? ' title="Está nos seus interesses"' : ""}>${x.meu ? ic("heart","sm") : "#"}${esc(x.t)}</span>`).join("");
+  const tg = tags.slice(0, 2).map(x=>`<span class="ftag${x.meu ? " meu" : ""}"${x.meu ? ' title="Está nos seus interesses"' : ""}>${x.meu ? ic("heart","sm") : "#"}${esc(x.t)}</span>`).join("");
   const extra = it.daRede ? `<span class="indtag">fonte individual</span>` : reforcoTag(it);
   const rel = relacoes(it).filter(x=>x.tag).map(x=>`<span class="ftag meu">${ic("check","sm")}${x.tag}</span>`).join("");   /* relação mais forte vem antes dos temas */
   return `<span class="fctx">${loc}${rel}${tg}${extra}${!loc && !tg && !extra ? `<span class="ftag">#Geral</span>` : ""}</span>`; }
 const tempoRel = min => min < 60 ? "há " + Math.max(1, min) + " min" : min < 1440 ? "há " + Math.round(min/60) + " h" : min < 2880 ? "ontem" : "há " + Math.round(min/1440) + " dias";
-/* 17/11: quantas outras fontes cobriram o mesmo fato */
-const maisFontes = it => !it || !it.ext ? 0 : new Set((it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia").map(v=>v.fonte).filter(f=>f && f!==(ORG[it.org] || {}).nome)).size;
+/* 17/11 (Amanda): o mesmo fato em outras fontes. Cartão fechado: sinal discreto (até 3 mini-logos e "+N").
+   Cartão aberto: uma seção só, "Quem mais cobriu", com o título de cada fonte; sai a lista repetida do selo e de "Outras fontes sobre isto". */
+const coberturas = it => { if (!it || !it.ext) return []; const meu = (ORG[it.org] || {}).nome, vis = new Set();
+  return (it.ext.verif || []).filter(v=>v.papel==="cobertura da mesma notícia" && v.fonte && v.fonte!==meu && !vis.has(v.fonte) && vis.add(v.fonte)); };
+const orgPorNome = nm => Object.values(ORG).find(o=>o && o.fonte && o.nome===nm);
+const miniAv = nm => { const o = orgPorNome(nm); return `<i style="background:${o ? o.cor : "#6B7280"}">${esc(o ? o.sigla : siglaDe(nm))}</i>`; };
+function coberturaPill(it){ const c = coberturas(it); if (!c.length) return "";
+  return `<span class="cobpill" title="Também em ${esc(c.map(v=>v.fonte).join(", "))}"><span class="cobstack" aria-hidden="true">${c.slice(0,3).map(v=>miniAv(v.fonte)).join("")}</span>+${c.length}<span class="sr">${c.length===1 ? " outra fonte" : " outras fontes"}</span></span>`; }
+function coberturaSec(it){ const c = coberturas(it); if (!c.length) return "";
+  return `<section class="cobsec"><h3 class="pinh">Quem mais cobriu · ${c.length}</h3><p class="cobnota">Cada fonte com o próprio título: compare como contaram.</p>
+    ${c.map(v=>{ const o = orgPorNome(v.fonte), dono = o && o.grupo && !semAcento(o.nome).includes(semAcento(o.grupo)) ? o.grupo : "";
+      return `<a class="cobrow" href="${esc(v.url)}" target="_blank" rel="noopener">${miniAv(v.fonte)}<span class="t"><b>${esc(v.fonte)}${dono ? ` · ${esc(dono)}` : ""}</b><span>${esc(v.titulo || "")}</span></span>${ic("ext","sm")}</a>`; }).join("")}</section>`; }
+/* quantas outras fontes cobriram o mesmo fato */
+const maisFontes = it => coberturas(it).length;
 function footInfo(it){
   const o = ORG[it.org], I = (...xs) => `<span class="finfo">${xs.filter(Boolean).map(x=>`<span>${x}</span>`).join("")}</span>`;
   if (it.externo || (it.ext && it.tipo==="chamado" && !it.meta)){
@@ -1132,7 +1144,7 @@ function footInfo(it){
   if (it.daRede) return I(`<b>${esc(o.nome)}</b>`, (it.notaFilme ? `<span class="rstars" aria-label="nota ${String(it.notaFilme).replace(".",",")} de 5">${estrelas(it.notaFilme)}</span> ` : "") + REDES[it.rede].nome + " ↗", dLabel(it.ext.data));
   /* 16/11 (Amanda): a mesma notícia em outras fontes aparece como "+N fontes" ao lado do nome; os detalhes seguem no selo */
   if (it.ext && (it.tipo==="texto" || it.tipo==="imagem" || it.tipo==="video")){ const nm = maisFontes(it);
-    return I(`<b>${esc(o.nome)}</b> ↗`, nm ? `<span class="fmais">+${nm} ${nm===1 ? "fonte" : "fontes"}</span>` : "", dLabel(it.ext.data)); }
+    return I(`<b>${esc(o.nome)}</b> ↗${nm ? coberturaPill(it) : ""}`, dLabel(it.ext.data)); }
   switch(it.tipo){
     case "evento": return I(esc(it.hora), esc(it.local), `${vaoOf(it)} vão${S.rsvp[it.uid]==="vou" ? " · você vai" : ""}`);
     case "enquete": { const p = pollState(it), i = p.lead;
@@ -1174,7 +1186,7 @@ function face(item){
       /* 16/11: em notícia e publicação de fonte, a data vai na linha da fonte (não ocupa uma linha só para ela) */
       const simples = item.ext && !item.externo && !item.daArte && !item.daRede && ["texto","imagem","video"].includes(item.tipo), dt = simples ? dLabel(item.ext.data) : "";
       const pe = simples ? footCtx(item) : t.foot;
-      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${pe}<span class="fsrc"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span>${dt ? `<span class="fsdt">· ${dt}</span>` : ""}</span></span>`}; }
+      return {cls:"k-"+item.tipo + (ph ? " comfoto" : ""), style:t.bg, html:`${ph}${t.head}${t.title}<span class="fread">${esc(readText(item))}</span><span class="ffoot">${pe}<span class="fsrc"><span class="capav" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span><span class="capname">${o.nome}</span>${coberturaPill(item)}${dt ? `<span class="fsdt">· ${dt}</span>` : ""}</span></span>`}; }
   }
 }
 function card(item, mode){
@@ -3535,6 +3547,7 @@ function detailHTML(it, uid, mode, inline){
       ${it.daArte ? artistaLinha(it) : ""}
       ${it.foto && !isImg ? `<figure class="dfoto"><img src="${esc(it.foto)}" alt="" loading="lazy" referrerpolicy="no-referrer">${it.credito ? `<figcaption>Foto: ${esc(it.credito)} · via ${esc(it.ext ? it.ext.dom : "fonte")}</figcaption>` : ""}</figure>` : ""}
       ${it.daArte ? `<div class="pintext" hidden></div><button class="linkbtn moretext" type="button" hidden></button>` : text}
+      ${coberturaSec(it)}
       ${pentSlot(it)}
       ${it.daArte ? `<div class="srcblock">${it.campanha ? `<span class="atag camp">Campanha · ${esc(it.campanha)}</span>` : ""}
           <a class="btn ghost srcbtn" href="${it.ext.url}" target="_blank" rel="noopener">Ver e baixar no acervo ${ic("ext","sm")}</a>
@@ -6660,7 +6673,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:17";
+const VERSAO = "v1 registrada · 17/11 07:29";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
