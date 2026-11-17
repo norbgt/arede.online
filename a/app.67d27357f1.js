@@ -4266,7 +4266,7 @@ function mockSB(o = {}){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
     conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
     meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
@@ -5172,12 +5172,14 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     return; }
   const {data, error} = await SB.from("fontes").select("*").order("ativa", {ascending:false}).order("nota", {ascending:false});
   if (error){ box.innerHTML = `<p class="empty">${esc(erroAuth(error))}</p>`; return; }
+  /* 17/11 (Amanda): fontes recusadas pela curadoria. A marca fica só aqui no painel (área privada), sem selo público */
+  const rec = new Map(); try{ const r = await SB.rpc("fontes_recusadas"); (r.data || []).forEach(x=>rec.set(x.fonte_id, x)); }catch(e){}
   const at = data.filter(f=>f.ativa), comFeed = at.filter(f=>f.feed_url), comErro = at.filter(f=>f.ultimo_erro);
   box.innerHTML = `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
     <p class="curnota">Fontes sem feed (dados públicos, tribunais, portais sem RSS) ficam de fora da coleta automática; seguem na curadoria manual.</p>
     <div class="curfontes">${data.map(f=>`<div class="cfrow ${!f.ativa ? "off" : f.ultimo_erro ? "err" : f.feed_url ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span>
       <span class="cft"><b>${esc(f.nome)}</b><small>${f.feed_url ? esc(f.feed_url.replace(/^https?:\/\//,"")) : "sem feed"}${f.ultimo_erro ? " · " + esc(f.ultimo_erro) : ""}</small></span>
-      <span class="cfn">${f.ativa ? (f.feed_url ? quando(f.ultimo_ok) + (f.itens_ultima ? " · +" + f.itens_ultima : "") : "manual") : "suspensa"}<small>selo ${f.nota}</small></span></div>`).join("")}</div>`;
+      <span class="cfn">${rec.has(f.id) ? "recusada pela curadoria" : f.ativa ? (f.feed_url ? quando(f.ultimo_ok) + (f.itens_ultima ? " · +" + f.itens_ultima : "") : "manual") : "suspensa"}<small>${rec.has(f.id) ? quando(rec.get(f.id).recusada_em) : "selo " + f.nota}</small></span></div>`).join("")}</div>`;
 }
 
 /* =====================================================================
@@ -6645,7 +6647,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:16";
+const VERSAO = "v1 registrada · 17/11 06:27";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
