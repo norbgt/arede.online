@@ -591,7 +591,7 @@ function sheetOrigens(){
 /* FILTROS RÁPIDOS (9 nov 2026): na linha do algoritmo, um toque recorta o feed da aba atual; um por vez.
    Em alta: últimas 72 horas, com mais repercussão (a mesma notícia em mais fontes da base, ou mais participação).
    Perto de você: da sua cidade ou do seu estado. Desmentidos: checagens das agências da base que desmentem algo. */
-const RAPIDOS = [["alta","Em alta","raio"],["perto","Por perto","pin"],["desmentidos","Desmentidos","desm"]];
+const RAPIDOS = [["alta","Em alta","raio"],["perto","Por perto","pin"],["desmentidos","Desmentidos","desm"],["analise","Em análise","clock"]];   /* 17/11 (Amanda): Divergências em análise */
 const ehChecagem = it => (ORG[it.org] || {}).natureza==="Checagem de fatos";
 /* TheJournal.ie FactCheck entrega o feed geral do jornal, não só as checagens: fica fora até o feed ser corrigido */
 const CHECA_MISTO = /thejournal\.ie/;
@@ -602,7 +602,8 @@ const VEREDITOS = [[/\b(engan\w+|misleading|engañ\w+)\b/i,"Enganoso"],[/\b(tir\
 const veredito = it => { const t = it.titulo + " " + (it.texto || ""), v = VEREDITOS.find(([r])=>r.test(t)); return v ? v[1] : ""; };
 const calor = it => (it.ext && it.ext.verif ? it.ext.verif.length * 12 : 0) + participacao(it) / 40;
 function rapidoAplica(l){
-  if (S.rapido==="desmentidos") return l.filter(desmente).sort((a,b)=>a.min-b.min);
+  if (S.rapido==="desmentidos") return l.filter(it=>desmente(it) || (it.diverg && it.diverg.status==="desmentida")).sort((a,b)=>a.min-b.min);
+  if (S.rapido==="analise") return l.filter(it=>it.diverg && it.diverg.status==="em_analise").sort((a,b)=>a.min-b.min);
   if (S.rapido==="perto"){ const R = minhaRegiao(); if (!R.cidade && !R.uf) return [];
     return l.map(it=>[it, prox(it)]).filter(x=>x[1]>=2).sort((a,b)=>b[1]-a[1] || a[0].min-b[0].min).map(x=>x[0]); }
   if (S.rapido==="alta") return l.filter(it=>!it.daArte && it.min <= 4320 && calor(it) > 0).sort((a,b)=>calor(b)-calor(a) || a.min-b.min);
@@ -769,6 +770,7 @@ function sealChecksBase(it){
         : ""; }
     else q += s.lv==="na" ? L("na","Afirmações checadas","Convocação ou opinião: o selo avalia fatos, não opiniões.") : L(s.lv, "Afirmações checadas", (note && note[1]) || "Confere com fontes públicas.");
     /* linha editorial: a fonte é confiável nos fatos, mas tem posição declarada; vale ler junto com outras */
+    if (it.diverg && it.diverg.status==="em_analise") q += L("warn", "Em análise", `veja em <a href="#inicio" data-act="rapido" data-k="analise">Divergências em análise</a>.`);
     if (reforco(it)) q += L("ok", "Reforço internacional", "Publicada por fontes de " + it.paises.length + " países: " + listaPaises(it.paises.map(p=>bandeira(p) + " " + p)) + ". O mesmo texto republicado conta uma vez só.");
     if (o.linha) q += L("warn", /ativista/i.test(o.linha) ? "Mídia ativista" : "Linha editorial", o.linha.replace(/^m[íi]dia ativista:\s*/i,"").replace(/^./,c=>c.toUpperCase()) + " Vale ler junto com outras fontes.");
     q += L(it.ext.verif.length ? "ok" : "warn", o.fonte ? "Outras fontes cobriram" : "Fontes que confirmam", it.ext.verif.length ? (coberturas(it).length === it.ext.verif.length ? `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"}: veja em Quem mais cobriu.` : `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"} da base: ${it.ext.verif.map(v=>v.fonte).join(", ")}.`) : "Só esta fonte, por enquanto.");
@@ -1128,7 +1130,14 @@ function footCtx(it){
   const rel = relacoes(it).filter(x=>x.tag).map(x=>`<span class="ftag meu">${ic("check","sm")}${x.tag}</span>`).join("");   /* relação mais forte vem antes dos temas */
   /* 17/11 (Amanda): temas numa linha só (só os que cabem inteiros; o resto não aparece, sem corte) e a localização na linha de baixo */
   const linha = rel + tg + extra || (!loc ? `<span class="ftag">#Geral</span>` : "");
-  return `<span class="fctx">${linha ? `<span class="ftags">${linha}</span>` : ""}${loc}</span>`; }
+  return `<span class="fctx">${linha ? `<span class="ftags">${linha}</span>` : ""}${loc}</span>` + divBloco(it); }
+/* 17/11 (Amanda): só no filtro Em análise. Contagem de contas verificadas e os dois botões, sempre com link de fonte */
+function divBloco(it){ const d = it.diverg; if (S.rapido!=="analise" || !d || d.status!=="em_analise") return "";
+  const h = Math.max(0, Math.round((new Date(d.fecha_em) - Date.now()) / 36e5));
+  return `<span class="divbloco"><span>${d.contesta} ${d.contesta===1 ? "contesta" : "contestam"} · ${d.confirma} ${d.confirma===1 ? "confirma" : "confirmam"} · fecha em ${h} h</span>
+    <span class="divbtns"><span class="btn sm" role="button" tabindex="0" data-act="divvota" data-id="${it.id}" data-t="contesta">Contestar com fonte</span><span class="btn sm" role="button" tabindex="0" data-act="divvota" data-id="${it.id}" data-t="confirma">Confirmar com fonte</span></span></span>`; }
+function divFaixa(){ const box = $("#divfaixa"); if (!box) return; if (S.rapido!=="analise"){ box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false; box.innerHTML = `<div class="afh"><b>Divergências em análise</b></div><p class="afvazio">Notícias contestadas com fonte por contas verificadas. Desmente com 10 contestações, 3x as confirmações, depois de 24 h.</p>`; }
 const tempoRel = min => min < 60 ? "há " + Math.max(1, min) + " min" : min < 1440 ? "há " + Math.round(min/60) + " h" : min < 2880 ? "ontem" : "há " + Math.round(min/1440) + " dias";
 /* 17/11 (Amanda): o mesmo fato em outras fontes. Cartão fechado: sinal discreto (até 3 mini-logos e "+N").
    Cartão aberto: uma seção só, "Quem mais cobriu", com o título de cada fonte; sai a lista repetida do selo e de "Outras fontes sobre isto". */
@@ -1891,7 +1900,7 @@ function feedCols(L){ const w = ($("#feed") || document.body).clientWidth || inn
   if (L==="arquivo") return w >= 1100 ? 4 : w >= 720 ? 3 : 2;   /* documentos: cartões compactos, mais de um por linha (12 nov 2026) */
   return w >= 720 ? 2 : 1; }
 function resetFeed(){
-  altaFaixa(); docBase(); aoVivo();
+  altaFaixa(); divFaixa(); docBase(); aoVivo();
   const manter = F.manter && F.items.length; F.manter = false;
   if (manter){ const vis = F.items.filter(i=>!i.base && !S.created.includes(i)); F.fixos = vis.map(i=>String(i.id)); F.fixosObj = Object.fromEntries(vis.map(i=>[String(i.id), i])); } else { F.fixos = null; F.fixosObj = {}; }
   const nAntes = manter ? F.fixos.length : 0;
@@ -1970,7 +1979,7 @@ function screenHome(){
         <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
         <div class="status tools" id="status">${statusLine()}</div></div>
       ${rapidosHTML()}</div></div>`)
-  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
+  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="divfaixa" class="altafaixa" aria-label="Divergências em análise" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
   return `<button class="rowitem" type="button" data-act="openorg" data-org="${o.id}">${avatar(o)}<span class="t"><b>${o.nome}${ficTag(o)}${ofTag(o)}</b><small>${o.cidade} · ${orgMeta(o)}${f?(o.real?" · você segue":" · você participa"):""}</small></span></button>`; }
@@ -3829,7 +3838,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
     main.innerHTML = screenHome();
     const keep = !same && F.items.length && F.key===feedKey();
     if (!FEED_PRONTO && !PREVIA){ const fd = $("#feed"); if (fd) fd.innerHTML = feedEsqueleto(); }
-    else if (keep){ altaFaixa(); docBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
+    else if (keep){ altaFaixa(); divFaixa(); docBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
     F.obs = new IntersectionObserver(es=>{ if (es[0].isIntersecting && FEED_PRONTO) more(10); }, {rootMargin:"800px"});
     F.obs.observe($("#sentinel"));
   }
@@ -4306,7 +4315,7 @@ function mockSB(o = {}){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], checagens_fila:()=>[], checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], checagens_fila:()=>[], divergencias_curadoria:()=>({analise:[], avisos:[]}), divergencia_vota:()=>({conta:true, contesta:1, confirma:0}), divergencia_decide:()=>true, checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
     conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
     meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
@@ -4577,8 +4586,9 @@ function noticiasAplica(data, ref){
        1 outra fonte: +3 · 2 ou mais: +6 · 3 ou mais de pelo menos 2 grupos diferentes do da fonte: +8. Checagem relacionada aparece no selo, sem mudar o número. */
     const oFont = new Set(outras.map(x=>(x.fontes||{}).nome || x.url)).size, oGrp = new Set(outras.map(x=>(x.fontes||{}).grupo_midia || (x.fontes||{}).nome).filter(g=>g && g !== f.grupo_midia && g !== f.nome)).size;
     const tri = !oFont ? 0 : oFont === 1 ? 3 : oFont >= 3 && oGrp >= 2 ? 8 : 6;
-    it.seloBase = f.nota; it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
-    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
+    it.seloBase = f.nota; it.nid = n.id; it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
+    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (n.divergencia){ it.diverg = n.divergencia; if (n.divergencia.status==="desmentida"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; } }   /* 17/11: desmentida pela regra de volume ou pela curadoria: no máximo 20 */
+    if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
     POOL.push(it); });
   feedDadosNovos("noticias"); }
 
@@ -5154,10 +5164,19 @@ function sheetEntender(id){ const x = ENT_BASE.find(y=>y.id===id) || {}, limpa =
 /* 17/11 (Amanda): checagem passa pela curadoria. O robô sugere checagens das agências da base sobre o mesmo assunto;
    só o que a curadoria decide aparece no site. "Desmente" limita a nota da notícia a 20; "Relacionada" só mostra o link no selo. */
 async function curadoriaChecagens(box){
-  const {data, error} = await SB.rpc("checagens_fila");
+  const [{data, error}, dv] = await Promise.all([SB.rpc("checagens_fila"), SB.rpc("divergencias_curadoria")]);
   if (error){ box.innerHTML = `<p class="empty">${esc(erroAuth(error))}</p>`; return; }
-  const l = data || [];
-  box.innerHTML = `<p class="curnota">Checagens das agências da base que falam do mesmo assunto de uma notícia. Abra as duas antes de decidir: a checagem pode desmentir um boato sobre o tema, e não a notícia. Só o que você decide aparece no site.</p>
+  const l = data || [], an = (dv.data || {}).analise || [], av = (dv.data || {}).avisos || [];
+  const ST = {em_analise:"em análise", desmentida:"desmentida", encerrada:"encerrada"};
+  const emAnalise = `<h2 class="curh">Em análise · ${an.filter(x=>x.status==="em_analise").length}</h2><p class="curnota">Contestadas com fonte por 3 ou mais contas verificadas. Desmente sozinha com 10 contestações, 3x as confirmações, depois de 24 h; encerra em 72 h. Você pode desmentir, encerrar ou reverter a qualquer momento.</p>`
+    + (an.length ? an.map(x=>`<article class="curitem"><div><small>${esc(x.fonte)} · ${ST[x.status]}${x.motivo ? " · " + esc(x.motivo) : ""}</small><b>${esc(x.titulo)}</b><a href="${esc(x.url)}" target="_blank" rel="noopener">Abrir a notícia ${ic("ext","sm")}</a>
+        <p>${x.contesta} contestam · ${x.confirma} confirmam (contas verificadas)</p>
+        ${(x.votos || []).map(v=>`<small>${v.tipo==="contesta" ? "Contesta" : "Confirma"}${v.verificada ? "" : " · só cadastrada"} · <a href="${esc(v.fonte_url)}" target="_blank" rel="noopener nofollow">${esc(v.fonte_url.replace(/^https?:\/\//,""))}</a></small>`).join("")}
+        <div class="row">${x.status!=="desmentida" ? `<button class="btn sm" type="button" data-act="divdecide" data-n="${x.noticia_id}" data-s="desmentida">Desmentir</button>` : ""}${x.status==="em_analise" ? `<button class="btn sm" type="button" data-act="divdecide" data-n="${x.noticia_id}" data-s="encerrada">Encerrar</button>` : `<button class="btn sm ghost" type="button" data-act="divdecide" data-n="${x.noticia_id}" data-s="em_analise">Reverter</button>`}</div></div></article>`).join("") : `<p class="empty">Nada em análise.</p>`)
+    + (av.length ? `<h2 class="curh">Contestações de contas só cadastradas · ${av.length}</h2><p class="curnota">Não contam no volume. Se fizer sentido, coloque em análise.</p>` + av.map(v=>`<article class="curitem"><div><small>${v.tipo==="contesta" ? "Contesta" : "Confirma"} · ${quando(v.em)}</small><b>${esc(v.titulo)}</b><a href="${esc(v.fonte_url)}" target="_blank" rel="noopener nofollow">Fonte colada ${ic("ext","sm")}</a>
+        <div class="row"><button class="btn sm" type="button" data-act="divdecide" data-n="${v.noticia_id}" data-s="em_analise">Colocar em análise</button></div></div></article>`).join("") : "")
+    + `<h2 class="curh">Checagens sugeridas · ${l.length}</h2>`;
+  box.innerHTML = emAnalise + `<p class="curnota">Checagens das agências da base que falam do mesmo assunto de uma notícia. Abra as duas antes de decidir: a checagem pode desmentir um boato sobre o tema, e não a notícia. Só o que você decide aparece no site.</p>
     <div class="facts"><div class="fact"><b>Desmente</b>a notícia fica com nota de no máximo 20 e o selo mostra a checagem</div><div class="fact"><b>Relacionada</b>o selo mostra o link da checagem, sem mudar a nota</div></div>`
     + (l.length ? l.map(x=>`<article class="curitem" data-id="${x.noticia_id}"><div>
         <small>${esc(x.fonte)} · ${quando(x.publicada_em)}</small><b>${esc(x.noticia_titulo)}</b><a href="${esc(x.noticia_url)}" target="_blank" rel="noopener">Abrir a notícia ${ic("ext","sm")}</a>
@@ -5265,6 +5284,7 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     if (sd.grande_pct > sd.grande_teto + 0.5) al.push(["err", `Grande imprensa em ${String(sd.grande_pct).replace(".",",")}% do feed, acima do teto de ${sd.grande_teto}%.`]);
     if (sd.grupo_pct > sd.grupo_teto + 0.5) al.push(["err", `${esc(sd.grupo_nome)} em ${String(sd.grupo_pct).replace(".",",")}% do feed, acima do teto de ${sd.grupo_teto}% por grupo.`]);
     if (sd.sem_imagem_pct > 15) al.push(["err", `${String(sd.sem_imagem_pct).replace(".",",")}% dos cartões sem imagem.`]);
+    if (sd.divergencias_analise) al.push(["none", `${sd.divergencias_analise} ${sd.divergencias_analise === 1 ? "notícia está" : "notícias estão"} em Divergências em análise.`]);
     if (sd.checagens_pendentes) al.push(["none", `${sd.checagens_pendentes} ${sd.checagens_pendentes === 1 ? "checagem espera" : "checagens esperam"} revisão em Checagens.`]);
     if (sd.titulos_quebrados_24h) al.push(["none", `${sd.titulos_quebrados_24h} notícias com título quebrado foram ocultadas nas últimas 24 horas.`]);
     const pr = sd.fontes_paradas || []; if (pr.length) al.push(["none", `${pr.length} ${pr.length === 1 ? "fonte responde" : "fontes respondem"}, mas sem notícia nova há mais de 14 dias: ${pr.map(f=>esc(f.nome)).join(", ")}.`]);
@@ -5918,6 +5938,17 @@ const A = {
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
     if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Organizações › Comunidades." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
+  divvota: b => { if (!ME.user){ S.contaTab = "entrar"; return go("conta"); }
+    const t = b.dataset.t; openSheet(shead(t==="contesta" ? "Contestar com fonte" : "Confirmar com fonte") + `<div class="cform"><label class="olbl" for="divurl">Link da fonte</label><input id="divurl" class="input" type="url" inputmode="url" placeholder="https://" maxlength="500">
+      <p class="hint">${ME.perfil && ME.perfil.verificado ? "Sua conta é verificada: conta no volume." : "Contas só cadastradas vão para a curadoria e não contam no volume. Verifique a conta para contar."}</p>
+      <button class="btn primary" type="button" data-act="divenvia" data-id="${b.dataset.id}" data-t="${t}">Enviar</button></div>`, "Divergência"); },
+  divenvia: async b => { const url = ($("#divurl") || {}).value || "", it = POOL.find(x=>x.id===b.dataset.id); if (!/^https?:\/\/\S+\.\S+/.test(url.trim())) return toast("Cole o link da fonte (começa com https://).");
+    ocupado(b, true, "…"); const {data, error} = await SB.rpc("divergencia_vota", {p_noticia:it && it.nid ? it.nid : "", p_tipo:b.dataset.t, p_fonte_url:url.trim()}); ocupado(b, false);
+    if (error) return toast(erroAuth(error)); closeSheet();
+    if (it && data && it.diverg) Object.assign(it.diverg, {contesta:data.contesta, confirma:data.confirma});
+    toast(data && data.conta ? "Registrado. Conta no volume." : "Registrado. Vai para a curadoria."); if (it) resetFeed(); },
+  divdecide: async b => { ocupado(b, true, "…"); const {error} = await SB.rpc("divergencia_decide", {p_noticia:b.dataset.n, p_status:b.dataset.s}); ocupado(b, false);
+    if (error) return toast(erroAuth(error)); toast(b.dataset.s==="desmentida" ? "Desmentida: nota de no máximo 20." : b.dataset.s==="encerrada" ? "Encerrada, sem desmentir." : "De volta para análise."); curadoriaCarrega(); },
   checdecide: async b => { const row = b.closest(".curitem"); ocupado(b, true, "…");
     const {error} = await SB.rpc("checagem_decide", {p_noticia:b.dataset.n, p_checagem:b.dataset.c, p_status:b.dataset.s});
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
@@ -6755,7 +6786,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:26";
+const VERSAO = "v1 registrada · 17/11 09:45";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
