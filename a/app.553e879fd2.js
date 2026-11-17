@@ -5177,9 +5177,15 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
   const at = data.filter(f=>f.ativa), comFeed = at.filter(f=>f.feed_url), comErro = at.filter(f=>f.ultimo_erro);
   box.innerHTML = `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
     <p class="curnota">Fontes sem feed (dados públicos, tribunais, portais sem RSS) ficam de fora da coleta automática; seguem na curadoria manual.</p>
-    <div class="curfontes">${data.map(f=>`<div class="cfrow ${!f.ativa ? "off" : f.ultimo_erro ? "err" : f.feed_url ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span>
+    <div class="curfontes">${data.filter(f=>!rec.has(f.id)).map(f=>`<div class="cfrow ${!f.ativa ? "off" : f.ultimo_erro ? "err" : f.feed_url ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span>
       <span class="cft"><b>${esc(f.nome)}</b><small>${f.feed_url ? esc(f.feed_url.replace(/^https?:\/\//,"")) : "sem feed"}${f.ultimo_erro ? " · " + esc(f.ultimo_erro) : ""}</small></span>
-      <span class="cfn">${rec.has(f.id) ? "recusada pela curadoria" : f.ativa ? (f.feed_url ? quando(f.ultimo_ok) + (f.itens_ultima ? " · +" + f.itens_ultima : "") : "manual") : "suspensa"}<small>${rec.has(f.id) ? quando(rec.get(f.id).recusada_em) : "selo " + f.nota}</small></span></div>`).join("")}</div>`;
+      <span class="cfn">${rec.has(f.id) ? "recusada pela curadoria" : f.ativa ? (f.feed_url ? quando(f.ultimo_ok) + (f.itens_ultima ? " · +" + f.itens_ultima : "") : "manual") : "suspensa"}<small>${rec.has(f.id) ? quando(rec.get(f.id).recusada_em) : "selo " + f.nota}</small></span></div>`).join("")}</div>`
+    /* 17/11 (Amanda): recusadas pela curadoria moram num espaço só, com as linhas lado a lado e o motivo */
+    + (rec.size ? (()=>{ const rf = data.filter(f=>rec.has(f.id)), lin = f => ((String(f.linha || "").match(/declarada:\s*([a-zà-ú]+)/i) || [])[1] || "sem linha").toLowerCase();
+        const mot = [...new Set([...rec.values()].map(x=>x.motivo).filter(Boolean))];
+        return `<h3 class="osec">Recusadas pela curadoria (${rf.length})</h3>${mot.map(m=>`<p class="curnota">${esc(m)} Não estão conectadas ao feed.</p>`).join("")}
+          <div class="curfontes">${rf.sort((a,b)=>lin(a).localeCompare(lin(b)) || a.nome.localeCompare(b.nome)).map(f=>`<div class="cfrow off"><span class="cfdot" aria-hidden="true"></span>
+          <span class="cft"><b>${esc(f.nome)}</b><small>linha ${esc(lin(f))} · ${esc(f.dominio || "")}</small></span><span class="cfn">recusada<small>${quando(rec.get(f.id).recusada_em)}</small></span></div>`).join("")}</div>`; })() : "");
 }
 
 /* =====================================================================
@@ -6647,7 +6653,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:27";
+const VERSAO = "v1 registrada · 17/11 06:31";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
