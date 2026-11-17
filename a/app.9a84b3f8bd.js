@@ -3951,7 +3951,7 @@ const TESTE_NIVEIS = {admin:["Administração","Tudo liberado, como a sua conta"
 function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(Date.now() - n*3600e3).toISOString();
   return {v:1, nivel:"admin", logada:true, t:{
     perfis:[{id:TESTE_EU, nome:"Amanda (teste)", usuario:"amanda_teste", cidade:"São Paulo, SP", bio:"Conta simulada para testar o HTML.", papel:"admin", criado_em:h(400), verificado:"curadoria", verificado_em:h(300), colaborador:false, vista:null},
-      {id:TESTE_M, nome:"Maria Teste", usuario:"maria_teste", cidade:"Recife, PE", bio:"Professora e horta comunitária.", papel:"membro", criado_em:h(300), verificado:"documento", verificado_em:h(200), colaborador:true, vista:null},
+      {id:TESTE_M, nome:"Jim", usuario:"maria_teste", cidade:"Recife, PE", bio:"Professora e horta comunitária.", papel:"membro", criado_em:h(300), verificado:"documento", verificado_em:h(200), colaborador:true, vista:null},
       {id:TESTE_C, nome:"Caio Teste", usuario:"caio_teste", cidade:"Curitiba, PR", bio:"", papel:"membro", criado_em:h(100), verificado:null, colaborador:false, vista:null}],
     publicacoes:[{id:"00000000-0000-4000-8000-0000000000b1", autor:TESTE_M, tipo:"texto", titulo:"Feira de trocas de sementes no sábado (teste)", texto:"Publicação simulada do modo de teste. Traga sementes crioulas e mudas; a troca começa às 9h na praça.", tema:"Alimentação e campo", cidade:"Recife, PE", imagem_url:null,
         extra:{fonte_url:"https://agenciabrasil.ebc.com.br/", fonte:{dominio:"agenciabrasil.ebc.com.br", situacao:"base", id:1, nome:"Agência Brasil", nota:86}}, publicada:true, criada_em:h(5), editada_em:null, pagina_id:null},
@@ -3961,7 +3961,7 @@ function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(D
     pagina_itens:[{id:"00000000-0000-4000-8000-0000000000c1", pagina_id:TESTE_PG, nome:"Cesta média", descricao:"12 itens da semana", preco:"R$ 89", link:null, ordem:0, criado_em:h(40)},
       {id:"00000000-0000-4000-8000-0000000000c2", pagina_id:TESTE_PG, nome:"Assinatura mensal", descricao:"Uma cesta por semana", preco:"R$ 320", link:"https://example.org", ordem:1, criado_em:h(40)}],
     seguidores:[{seguidor:TESTE_M, seguido:TESTE_EU, criado_em:h(3)}], pagina_seguidores:[],
-    notificacoes:[{id:1, user_id:TESTE_EU, tipo:"novo_seguidor", titulo:"Maria Teste começou a seguir você", texto:null, link:"#org-u-" + TESTE_M, grupo:null, n:1, criada_em:h(3), lida_em:null},
+    notificacoes:[{id:1, user_id:TESTE_EU, tipo:"novo_seguidor", titulo:"Jim começou a seguir você", texto:null, link:"#org-u-" + TESTE_M, grupo:null, n:1, criada_em:h(3), lida_em:null},
       {id:2, user_id:TESTE_EU, tipo:"avisos_rede", titulo:"Bem-vinda ao modo de teste", texto:"Tudo o que você fizer aqui fica só neste navegador. Para recomeçar, use o botão Teste.", link:null, grupo:null, n:1, criada_em:h(1), lida_em:null}],
     notif_tipos:[["novo_seguidor","Pessoas","Novos seguidores","Quando alguém começa a seguir você."],["publicacao_seguidos","Pessoas","Publicações de quem você segue","Quando uma conta ou página que você segue publica algo novo."],
       ["comentario_publicacao","Conversa","Comentários nas suas publicações","Quando alguém comenta numa publicação sua."],["comentario_util","Conversa","Comentário marcado como útil","Quando pessoas marcam um comentário seu como útil."],
@@ -4005,12 +4005,12 @@ function mockSB(o = {}){
     tab("paginas").push({id:pid("d"), dono:TESTE_EU, tipo:"empresa", nome:"Traço Fino da Amanda (teste)", descricao:"Sua página de teste, para ver o lado de quem tatua: pedidos, agenda e QR do check-in.", cidade:"São Paulo, SP", tema:"Cultura", site:null, contato:null, cor:5, status:"aprovada", motivo:null, declaracao:"Declaração de teste", declarada_em:agora(), nao_eleitoral:true, criada_em:hora(-24*400), revisada_em:agora(), cnpj_conferido:false, no_perfil:true});
     tab("pagina_tatuagem").push({pagina_id:pid("d"), modelo:"tatuagem", papel:"tatuador", modulos:["orcamento","agenda","reputacao"], estilos:["Fineline","Minimalista"], preco:2, preco_un:"sessao", orc_ref:true, orc_tabela:true, tabela:[{nome:"Fineline até 5 cm", preco:"R$ 250"}]});
     const ped = (id, pagina, cliente, cliente_nome, item, preco) => ({id, pagina_id:pid(pagina), cliente, cliente_nome, tipo:"tabela", item, preco, local:"Antebraço", status:"aberto", refs:[], criado_em:hora(-30), atualizado_em:hora(-1)});
-    tab("tat_pedidos").push(ped("00000000-0000-4000-8000-0000000000e1", "d", TESTE_M, "Maria Teste", "Fineline até 5 cm", "R$ 250"), ped("00000000-0000-4000-8000-0000000000e2", 6, TESTE_EU, "Amanda", "Flash do dia (até 8 cm)", "R$ 350"), ped("00000000-0000-4000-8000-0000000000e3", 7, TESTE_EU, "Amanda", "Fineline até 5 cm", "R$ 250"));
+    tab("tat_pedidos").push(ped("00000000-0000-4000-8000-0000000000e1", "d", TESTE_M, "Jim", "Fineline até 5 cm", "R$ 250"), ped("00000000-0000-4000-8000-0000000000e2", 6, TESTE_EU, "Amanda", "Flash do dia (até 8 cm)", "R$ 350"), ped("00000000-0000-4000-8000-0000000000e3", 7, TESTE_EU, "Amanda", "Fineline até 5 cm", "R$ 250"));
     const msg = (pedido_id, de, texto, h) => ({id:novoId(), pedido_id, de, autor:de === "cliente" ? TESTE_EU : TESTE_C, texto, criado_em:hora(h)});
-    tab("tat_mensagens").push(msg("00000000-0000-4000-8000-0000000000e1", "cliente", "Olá! Quero: Fineline até 5 cm (R$ 250). Local: antebraço.", -30), msg("00000000-0000-4000-8000-0000000000e1", "pagina", "Oi, Maria! Tenho hoje à tarde, pode ser?", -28),
+    tab("tat_mensagens").push(msg("00000000-0000-4000-8000-0000000000e1", "cliente", "Olá! Quero: Fineline até 5 cm (R$ 250). Local: antebraço.", -30), msg("00000000-0000-4000-8000-0000000000e1", "pagina", "Oi, Jim! Tenho hoje à tarde, pode ser?", -28),
       msg("00000000-0000-4000-8000-0000000000e2", "cliente", "Olá! Quero: Flash do dia (até 8 cm) (R$ 350). Local: antebraço.", -30), msg("00000000-0000-4000-8000-0000000000e2", "pagina", "Fechado! Te espero hoje no estúdio.", -26),
       msg("00000000-0000-4000-8000-0000000000e3", "cliente", "Olá! Quero: Fineline até 5 cm (R$ 250).", -240), msg("00000000-0000-4000-8000-0000000000e3", "sistema", "Horário confirmado.", -200));
-    tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f1", pagina_id:pid("d"), pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Maria Teste", quando:hora(0.5), duracao_min:60, valor:"R$ 250", status:"marcada", codigo:"271828", avaliada:false},
+    tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f1", pagina_id:pid("d"), pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Jim", quando:hora(0.5), duracao_min:60, valor:"R$ 250", status:"marcada", codigo:"271828", avaliada:false},
       {id:"00000000-0000-4000-8000-0000000000f2", pagina_id:pid(6), pedido_id:"00000000-0000-4000-8000-0000000000e2", cliente:TESTE_EU, cliente_nome:"Amanda", quando:hora(0.25), duracao_min:120, valor:"R$ 350", status:"marcada", codigo:"314159", avaliada:false},
       {id:"00000000-0000-4000-8000-0000000000f3", pagina_id:pid(7), pedido_id:"00000000-0000-4000-8000-0000000000e3", cliente:TESTE_EU, cliente_nome:"Amanda", quando:hora(-200), duracao_min:60, valor:"R$ 250", status:"verificada", codigo:"161803", checkin_em:hora(-199), avaliada:false});
     salva(); }
@@ -4046,7 +4046,7 @@ function mockSB(o = {}){
       for (let i = 0; i < ses; i++) tab("tat_sessoes").push({id:novoId(), pagina_id:pid(n), status:"verificada", quando:new Date(Date.now() - (i+1)*5*864e5).toISOString()});
       for (let i = 0; i < q; i++) tab("pagina_avaliacoes").push({id:novoId(), pagina_id:pid(n), nota:(i % 10) < Math.round((med - 4) * 10) ? 5 : 4, pos:(i % 100) < pos*100 * (i % 7 ? 1 : .9), dor:(i / q) < dor ? "igual" : (i % 2 ? "mais" : "menos"), texto:TX[i % TX.length], autor_nome:NOMES[i % NOMES.length], criado_em:new Date(Date.now() - (i+1)*6*864e5).toISOString()}); });
     salva(); }
-  { const pd = tab("paginas").find(p=>p.id === "00000000-0000-4000-8000-0000000000ad"); if (pd && pd.mei === undefined){ pd.mei = true; pd.cnpj_conferido = true; const q = new Date(Date.now() - 5*864e5).toISOString(); tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f9", pagina_id:pd.id, pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Maria Teste", quando:q, duracao_min:120, valor:"R$ 250", sinal:100, status:"verificada", checkin_em:q, avaliada:false, criado_em:q}); const pe = tab("tat_pedidos").find(x=>x.id === "00000000-0000-4000-8000-0000000000e1"); if (pe) pe.valor_combinado = 250; } }   /* 17/11: a página de teste da administração vira MEI, para ver o Financeiro */
+  { const pd = tab("paginas").find(p=>p.id === "00000000-0000-4000-8000-0000000000ad"); if (pd && pd.mei === undefined){ pd.mei = true; pd.cnpj_conferido = true; const q = new Date(Date.now() - 5*864e5).toISOString(); tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f9", pagina_id:pd.id, pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Jim", quando:q, duracao_min:120, valor:"R$ 250", sinal:100, status:"verificada", checkin_em:q, avaliada:false, criado_em:q}); const pe = tab("tat_pedidos").find(x=>x.id === "00000000-0000-4000-8000-0000000000e1"); if (pe) pe.valor_combinado = 250; } }   /* 17/11: a página de teste da administração vira MEI, para ver o Financeiro */
   if (!tab("paginas").some(p=>p.id === "00000000-0000-4000-8000-0000000000a2")){ const pg = (n, id, dono, tipo, nome, descricao, cidade, tema, cor, cnpj) => ({id:"00000000-0000-4000-8000-0000000000a" + id, dono, tipo, nome, descricao, cidade, tema, site:null, contato:null, cor, status:"aprovada", motivo:null, declaracao:"Declaração de teste", declarada_em:agora(), nao_eleitoral:true, criada_em:new Date(Date.now() - n*36e5).toISOString(), revisada_em:agora(), cnpj_conferido:cnpj, no_perfil:true});
     tab("paginas").push(pg(60, 2, TESTE_C, "criador", "Diário da Bike (teste)", "Página pessoal simulada: rotas, oficinas e mobilidade em Curitiba.", "Curitiba, PR", "Mobilidade", 3, false),
       pg(70, 3, TESTE_M, "empresa", "Ateliê Ponto a Ponto (teste)", "Página simulada: costura, reforma de roupas e oficinas no bairro.", "Recife, PE", "Cultura", 5, false),
@@ -4207,7 +4207,7 @@ function mockSB(o = {}){
   if (!db.histMig){ const outras = tab("publicacoes").filter(x=>x.autor && x.autor !== TESTE_EU).slice(0, 3), hoje = Date.now();   /* 15/11: comentários da conta de teste em publicações de outras pessoas */
     outras.forEach((x, i)=>tab("comentarios").push({id:novoId(), publicacao_id:x.id, noticia_id:null, autor:TESTE_EU, texto:["Que bom ver isso no bairro. Dá para levar sementes de casa?","Confirmo: estive lá no sábado e a troca começou no horário.","Faltou dizer o horário de encerramento."][i], marca:i === 1 ? "confirma" : null, fonte_url:null, uteis:i, status:i === 2 ? "oculto" : "publicado", criado_em:new Date(hoje - (i + 1) * 864e5).toISOString()}));
     db.histMig = 1; salva(); }
-  if (!db.vitMig){ const ids = POOL.filter(p=>!p.coletada && p.titulo).map(p=>({id:String(p.id), tipo:p.tipo, titulo:p.titulo, tema:p.tema}));   /* 15/11: pastas à mostra da Maria Teste */
+  if (!db.vitMig){ const ids = POOL.filter(p=>!p.coletada && p.titulo).map(p=>({id:String(p.id), tipo:p.tipo, titulo:p.titulo, tema:p.tema}));   /* 15/11: pastas à mostra da Jim */
     const pg = (k, nome, de, n) => ({k, nome, itens:ids.slice(de, de + n)});
     tab("conta_dados").push({user_id:TESTE_M, chave:"secoes", valor:[{id:"m1", nome:"Para a horta", aberta:true, pastas:["mh1","mh2","mh3"]}, {id:"m2", nome:"Sala de aula", aberta:true, pastas:["mh4"]}, {id:"m3", nome:"Rascunhos", aberta:false, pastas:["mh5"]}]},
       {user_id:TESTE_M, chave:"pastas", valor:[["mh1","Sementes",[],false],["mh2","Feiras e trocas",[],false],["mh3","Só minha",[],true],["mh4","Leituras com a turma",[],false],["mh5","Ideias soltas",[],false]]},
@@ -4394,6 +4394,7 @@ function mockSB(o = {}){
         tab("verificacao_pedidos").forEach(v=>{ if (v.status === "pendente"){ v.status = "aprovada"; const p = perfil(v.user_id); if (p){ p.verificado = "documento"; } n++; notifica(v.user_id, "verificacao", "Sua conta foi verificada", "Aprovada pelo atalho do modo de teste.", "#conta"); } });
         salva(); return n; },
       zera:()=>{ try{ localStorage.removeItem(K); }catch(e){} }}};
+  if (!o.mem && !db.jimOk){ db = JSON.parse(JSON.stringify(db).replace(/Maria Teste/g, "Jim").replace(/Oi, Maria!/g, "Oi, Jim!")); db.jimOk = 1; salva(); }   /* 17/11, pedido da Amanda: a cliente de teste se chama Jim */
   if (DEMO && !o.mem && !db.demoOk){ db = demoAjusta(db); db.demoOk = 1; aplicaNivel(); salva(); }   /* depois das sementes: nenhum nome de verdade na demonstração */
   return sb;
 }
@@ -6886,7 +6887,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 20:52";
+const VERSAO = "v1 registrada · 17/11 20:55";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
