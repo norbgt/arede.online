@@ -894,7 +894,7 @@ function sealBox(it, compacto){
     <p class="note" style="margin:10px 0"><span>Verificação automática com fontes públicas. Se alguém contesta, uma segunda verificação, independente, refaz a análise. O selo avalia fatos, nunca opiniões.</span></p>
     ${it.ext && it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).length ? `<div class="vsrc"><b>${ORG[it.org].fonte ? "A mesma notícia em outras fontes" : "Fontes que confirmam"}</b>${it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).map(v=>`<a href="${v.url}" target="_blank" rel="noopener"><span>${esc(v.fonte)}<small>${esc(v.papel||"")}${v.o_que_confirma?" · "+esc(v.o_que_confirma):""}</small></span>${ic("ext","sm")}</a>`).join("")}</div>`
       : it.ext && s.sc!==null && !it.daRede && !it.ext.verif.length ? `<p class="note" style="margin:0 0 10px"><span>Nenhuma fonte da base confirmou este conteúdo ainda.</span></p>` : ""}
-    <div class="row"><button class="btn ghost" type="button" data-act="contest">Contestar</button></div></details>`;
+    <div class="row"><button class="btn ghost" type="button" data-act="contest" data-id="${it.id}" data-t="contesta">Contestar</button></div></details>`;
 }
 
 /* =====================================================================
@@ -6297,7 +6297,7 @@ const A = {
     const o = ORG[b.dataset.org], n = S.created.length, vt = Math.round(o.membros*.66);
     S.created.push({id:950+n, uid:"c"+n, tipo:"votacao", fase:"apoios", org:o.id, tema:o.tema, min:0, titulo:tit, texto:$("#ptxt").value.trim() , quorum:Math.ceil(vt/2), votantes:vt, votaram:0, apoios:0, prazo:"—", opcoes:["Aprovar a proposta","Rejeitar","Abster-se"], critico:false, autor:"você"});
     S.support["c"+n] = true; closeSheet(); S.orgTab = "votacoes"; render(); toast("Proposta aberta. Seu apoio já conta."); },
-  contest: () => toast("Contestação recebida: nova verificação automática, com registro público."),
+  contest: b => { const it = POOL.find(x=>x.id===b.dataset.id); if (it && it.nid) return A.divvota(b); toast("Contestação recebida: nova verificação automática, com registro público."); },   /* 17/11: notícia coletada abre o contestar com fonte (Divergências em análise) */
   notifprefs: () => notifPrefs(),
   testemenu: () => sheetTeste(),
   testenivel: b => { SB._teste.nivel(b.dataset.n); closeSheet(); toast("Testando como " + TESTE_NIVEIS[b.dataset.n][0] + "."); setTimeout(()=>location.reload(), 350); },
@@ -6787,7 +6787,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:47";
+const VERSAO = "v1 registrada · 17/11 09:49";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
