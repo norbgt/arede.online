@@ -1134,14 +1134,19 @@ const coberturas = it => { if (!it || !it.ext) return []; const meu = (ORG[it.or
    na montagem dos blocos, vai à frente entre as 4 próximas que cabem). Os tetos e a janela de 6 horas continuam valendo. */
 const cobForte = it => { const c = coberturas(it); if (c.length < 2) return false; const meu = (ORG[it.org] || {}).grupo || (ORG[it.org] || {}).nome;
   return new Set(c.map(v=>{ const o = orgPorNome(v.fonte); return (o && o.grupo) || v.fonte; }).filter(g=>g!==meu)).size >= 2; };
-const orgPorNome = nm => Object.values(ORG).find(o=>o && o.fonte && o.nome===nm);
-const miniAv = nm => { const o = orgPorNome(nm); return `<i style="background:${o ? o.cor : "#6B7280"}">${esc(o ? o.sigla : siglaDe(nm))}</i>`; };
+const orgPorNome = (nm, dom) => { const d = String(dom || "").split("/")[0].replace(/^www\./, "");
+  return Object.values(ORG).find(o=>o && o.fonte && o.nome===nm) || (d ? Object.values(ORG).find(o=>o && o.fonte && o.site && hostOf(o.site).replace(/^www\./, "")===d) : null); };
+const miniAv = (nm, dom) => { const o = orgPorNome(nm, dom); return `<i style="background:${o ? o.cor : "#6B7280"}">${esc(o ? o.sigla : siglaDe(nm))}</i>`; };
 function coberturaPill(it){ const c = coberturas(it); if (!c.length) return "";
-  return `<span class="cobpill" title="Também em ${esc(c.map(v=>v.fonte).join(", "))}"><span class="cobstack" aria-hidden="true">${c.slice(0,2).map(v=>miniAv(v.fonte)).join("")}</span>+${c.length}<span class="sr">${c.length===1 ? " outra fonte" : " outras fontes"}</span></span>`; }
+  return `<span class="cobpill" title="Também em ${esc(c.map(v=>v.fonte).join(", "))}"><span class="cobstack" aria-hidden="true">${c.slice(0,2).map(v=>miniAv(v.fonte, v.dom)).join("")}</span>+${c.length}<span class="sr">${c.length===1 ? " outra fonte" : " outras fontes"}</span></span>`; }
+/* 17/11: título igual ao do cartão (texto republicado, de agência) não se repete: a linha mostra só a fonte */
+const tituloIgual = (a, b) => semAcento(String(a || "")).replace(/[^a-z0-9]+/g, " ").trim() === semAcento(String(b || "")).replace(/[^a-z0-9]+/g, " ").trim();
 function coberturaSec(it){ const c = coberturas(it); if (!c.length) return "";
-  return `<section class="cobsec"><h3 class="pinh">Quem mais cobriu · ${c.length}</h3><p class="cobnota">Cada fonte com o próprio título: compare como contaram.</p>
-    ${c.map(v=>{ const o = orgPorNome(v.fonte), dono = o && o.grupo && !semAcento(o.nome).includes(semAcento(o.grupo)) ? o.grupo : "";
-      return `<a class="cobrow" href="${esc(v.url)}" target="_blank" rel="noopener">${miniAv(v.fonte)}<span class="t"><b>${esc(v.fonte)}${dono ? ` · ${esc(dono)}` : ""}</b><span>${esc(v.titulo || "")}</span></span>${ic("ext","sm")}</a>`; }).join("")}</section>`; }
+  const iguais = c.filter(v=>!v.titulo || tituloIgual(v.titulo, it.titulo)).length, todos = iguais === c.length;
+  const nota = todos ? "Mesmo texto, publicado também por estas fontes." : iguais ? "Cada fonte com o próprio título: compare como contaram. Sem título, é o mesmo texto." : "Cada fonte com o próprio título: compare como contaram.";
+  return `<section class="cobsec"><h3 class="pinh">Quem mais cobriu · ${c.length}</h3><p class="cobnota">${nota}</p>
+    ${c.map(v=>{ const o = orgPorNome(v.fonte, v.dom), dono = o && o.grupo && !semAcento(o.nome).includes(semAcento(o.grupo)) ? o.grupo : "", mesmo = !v.titulo || tituloIgual(v.titulo, it.titulo);
+      return `<a class="cobrow${mesmo ? " so" : ""}" href="${esc(v.url)}" target="_blank" rel="noopener">${miniAv(v.fonte, v.dom)}<span class="t">${mesmo ? `<span>${esc(v.fonte)}${dono ? ` · ${esc(dono)}` : ""}</span>` : `<b>${esc(v.fonte)}${dono ? ` · ${esc(dono)}` : ""}</b><span>${esc(v.titulo)}</span>`}</span>${ic("ext","sm")}</a>`; }).join("")}</section>`; }
 /* quantas outras fontes cobriram o mesmo fato */
 const maisFontes = it => coberturas(it).length;
 function footInfo(it){
@@ -4553,10 +4558,10 @@ function noticiasAplica(data, ref){
     cont[gmDe(a)] - cont[gmDe(b)] || (!!b.imagem_url - !!a.imagem_url) || (new Date(b.publicada_em) - new Date(a.publicada_em)))[0]; });
   data.forEach(n=>{ if (urls.has(n.url) || vistos.has(gk(n)) || melhor[gk(n)] !== n) return; vistos.add(gk(n));
     const f = n.fontes || {id:n.fonte_id, nome:hostOf(n.url), dominio:hostOf(n.url), tipo:"", ambito:"br", nota:80};
-    const id = "n" + n.id.replace(/-/g,""), outras = Array.isArray(n.outras) ? n.outras.map(x=>({url:x.url, titulo:x.titulo, fontes:{nome:x.fonte}})) : porGrupo[gk(n)].filter(x=>x.id!==n.id);   /* 17/11: o servidor manda as outras versões do mesmo fato (fonte, título e link) */
+    const id = "n" + n.id.replace(/-/g,""), outras = Array.isArray(n.outras) ? n.outras.map(x=>({url:x.url, titulo:x.titulo, fontes:{nome:x.fonte, dominio:x.dominio}})) : porGrupo[gk(n)].filter(x=>x.id!==n.id);   /* 17/11: o servidor manda as outras versões do mesmo fato (fonte, título e link) */
     const it = {id, opiniao:OPINIAO_URL.test(n.url || ""), grupoMidia:f.grupo_midia || ("f" + (f.id || f.dominio)), grupoNome:f.grupo_midia || "", grande:f.tipo==="Imprensa · grande", tipoFonte:f.tipo || "", tipo:"texto", org:orgDaFonte(f), tema:TEMAS.includes(temaNovo(n.tema)) ? temaNovo(n.tema) : temaDe(n.titulo, n.chamada), titulo:n.titulo, texto:n.chamada || "", cidade:"", coletada:true, lingua:n.lingua || f.lingua || "pt", pais:f.pais || (f.ambito==="br" ? "Brasil" : ""), paises:Array.isArray(n.paises) ? n.paises : [],
       min:Math.max(1, Math.round((ref - new Date(n.publicada_em)) / 60000)),
-      ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
+      ext:{url:n.url, dom:(f.dominio && !/^(redir|feeds?|rss)\./.test(f.dominio) ? f.dominio.split("/")[0] : hostOf(n.url).replace(/^(redir|feeds?|rss)\./,"")), data:isoDia(n.publicada_em), verif:outras.map(x=>({fonte:(x.fontes||{}).nome || hostOf(x.url), dom:(x.fontes||{}).dominio || "", url:x.url, titulo:x.titulo, papel:"cobertura da mesma notícia"})), motivo:"", obs:""}};
     const yt = (String(n.url).match(/youtube\.com\/watch\?v=([\w-]{11})/) || [])[1];
     if (yt) Object.assign(it, {tipo:"video", yt, src:null, plat:"YouTube", dur:"", ar:16/9, ph:.75, art:"stripes", capa:n.imagem_url || ("https://i.ytimg.com/vi/" + yt + "/hqdefault.jpg")});
     else if (n.imagem_url){ it.foto = n.imagem_url; it.credito = f.nome; }
@@ -6704,7 +6709,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:55";
+const VERSAO = "v1 registrada · 17/11 08:01";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
