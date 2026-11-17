@@ -1730,14 +1730,20 @@ function sourceBase(fl=S.filt, types=tabTypes()){
 }
 const POLICIAL = /\b(mort[oa]s?|mata|matou|assassin\w*|crimes?|pres[oa]s?|pris[aã]o|pol[ií]cia\w*|tiros?|baleado\w*|acidentes?|viol[eê]ncia|homic[ií]dio\w*|estupr\w*|tr[aá]fico|furto|roubo|assalt\w*|sequestr\w*|police|killed|shooting|murder\w*|arrest\w*|polic[ií]a|asesin\w*|detenid\w*|muert[eo]s?)\b/i;
 const policialLonge = it => !!it && it.coletada && POLICIAL.test(it.titulo || "") && prox(it) < 2 && !((it.ext && it.ext.verif || []).length >= 2);
-const EQ = {bloco:20, grupo:3, grande:10, opiniao:3, olhar:40};
+const EQ = {bloco:20, grupo:3, grande:10, opiniao:3, olhar:40, janela:360};   /* 17/11 (Amanda): os limites valem dentro de uma janela de 6 horas */
 const grupoDe = it => it.grupoMidia || it.org;
 function equilibra(l){ const fila = l.slice(), out = [];
   const ok = (x, nivel) => { if (x.conta) return true; const ult = out.slice(-2), jan = out.slice(-(EQ.bloco - 1)), g = grupoDe(x);
     if (ult.some(y=>y.org===x.org) || (out.length && grupoDe(out[out.length-1])===g)) return false;   /* nunca dois seguidos */
     if (nivel > 0) return true;
     return jan.filter(y=>grupoDe(y)===g).length < EQ.grupo && (!x.grande || jan.filter(y=>y.grande).length < EQ.grande) && (!x.opiniao || jan.filter(y=>y.opiniao).length < EQ.opiniao); };
-  while (fila.length){ let i = fila.findIndex((x,k)=>k < EQ.olhar && ok(x, 0)); if (i < 0) i = fila.findIndex((x,k)=>k < 8 && ok(x, 1)); if (i < 0) i = 0; out.push(fila.splice(i,1)[0]); }
+  /* 17/11 (Amanda): equilíbrio por janela de tempo. O feed anda de 6 em 6 horas: só entra o que tem no máximo 6 horas a mais
+     que a notícia mais nova ainda não mostrada. Dentro da janela vale a ordem do algoritmo e os limites; notícia velha nunca é
+     puxada para cima para completar bloco, nem por ser do seu tema. */
+  while (fila.length){ const novo = Math.min(...fila.map(x=>x.min || 0)), lim = novo + EQ.janela, cabe = x => x.conta || (x.min || 0) <= lim;
+    const cand = []; for (let k = 0; k < fila.length && cand.length < EQ.olhar; k++) if (cabe(fila[k])) cand.push(k);
+    let i = cand.find(k=>ok(fila[k], 0)); if (i === undefined) i = cand.slice(0, 8).find(k=>ok(fila[k], 1)); if (i === undefined) i = cand[0];
+    out.push(fila.splice(i,1)[0]); }
   return out; }
 function source0(fl, types, soReal){
   const t = ofTab(types), f = it => t(it) && passa(it, fl) && redePronta(it) && !(soReal && ehExemplo(it));
@@ -6638,7 +6644,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 16/11 18:38";
+const VERSAO = "v1 registrada · 17/11 06:06";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
