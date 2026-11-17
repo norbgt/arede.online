@@ -1835,7 +1835,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .pedcard{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:var(--r-sm);background:var(--surface);box-shadow:var(--shadow)}.pedcard .ktipo{margin:0;color:var(--ok)}.pedcard small{color:var(--muted)}
 .msgs{display:flex;flex-direction:column;gap:8px}
 .bolha{max-width:82%;align-self:flex-start;padding:9px 12px;border-radius:16px 16px 16px 4px;background:var(--surface);box-shadow:var(--shadow)}.bolha p{margin:0;font-size:14.5px;line-height:1.4;white-space:pre-line}.bolha small{display:block;margin-top:3px;font-size:11px;color:var(--muted)}
-.bolha.eu{align-self:flex-end;border-radius:16px 16px 4px 16px;background:var(--brand-soft, #E5E8FD)}
+.bolha.eu{align-self:flex-end;border-radius:16px 16px 4px 16px;background:color-mix(in srgb,var(--accent) 22%,var(--surface));color:var(--ink)}
 .composer{display:flex;gap:8px;align-items:flex-end}.composer textarea{flex:1;min-height:44px;max-height:140px;padding:11px 14px;border-radius:22px;border:1px solid var(--line);background:var(--surface);font:inherit;font-size:15px;resize:none}
 .cmncapa > img{display:block;width:100%;height:100%;object-fit:cover}
 

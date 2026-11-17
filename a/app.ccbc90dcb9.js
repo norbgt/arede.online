@@ -2551,17 +2551,17 @@ function screenConversas(){ if (!ME.user) return header(`<div class="toprow"><h1
         return `<a class="setting l1 conv" href="#conversa-${x.id}">${avatar(o)}<span class="t"><b>${eu ? esc(limpo(x.cliente_nome || "Cliente")) + " → " : ""}${esc(limpo(p.nome || ""))}</b><small>${esc(pedResumo(x))}</small><small class="muted">${x.tipo === "tabela" ? "Pela tabela" : "Personalizado"} · ${quando(x.atualizado_em)}</small></span></a>`; }).join("")}</div>` : `<p class="empty">Nenhuma conversa ainda.</p>`}</div>`; }
 function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversa-" + id) render(); }); return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Conversa</h1></div>`) + `<div class="container"><p class="empty">Carregando…</p></div>`; }
   const x = PED.lista.find(y=>y.id === id); if (!x) return screenConversas();
+  if (S.convId !== id){ S.convId = id; S.convTab = "conversa"; }   /* 17/11, decisão da Amanda: Conversa e Atendimento em abas; abre sempre na conversa */
   const p = pedPagina(x), eu = pedSouPagina(x), ms = PED.msgs[id];
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
-    + `<div class="container conversa"><div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
+    + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="tabs" role="tablist" aria-label="Conversa e atendimento" style="margin-bottom:12px">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="tab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}" style="flex:1">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small></div>
-      ${sesHTML(x, eu)}
-      <div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`).join("")}</div>
+      ${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`).join("")}</div>
       <div class="composer"><textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      <p class="lnote">Combine valor, sinal e data por aqui. ${mod(p, "agenda") ? "Quando a data estiver certa, a página marca a sessão; no dia, o check-in por QR confirma que vocês estiveram juntos." : ""}</p></div>`; }
+      <p class="lnote">Combine valor, sinal e data por aqui. ${mod(p, "agenda") ? "Quando a data estiver certa, a página marca a sessão; no dia, o check-in por QR confirma que vocês estiveram juntos." : ""}</p>`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -6515,6 +6515,7 @@ const A = {
   sesfimok: async b => { const v = finValor($("#sfval").value); if (!v || v <= 0) return formErro("Informe o valor pago.");
     ocupado(b, true, "Encerrando…"); const {data, error} = await SB.rpc("tat_checkout", {p_sessao:b.dataset.s, p_valor:v}); ocupado(b, false); if (error) return formErro(erroAuth(error));
     closeSheet(); if (b.dataset.p) delete FIN[b.dataset.p]; toast(data && data.venda ? "Atendimento encerrado. A venda entrou no Financeiro." : "Atendimento encerrado."); sesRecarrega(); },
+  convtab: b => { S.convTab = b.dataset.tab; render(); },
   pgnf: b => b.setAttribute("aria-checked", b.getAttribute("aria-checked") !== "true"),
   finnova: b => sheetFinVenda(b.dataset.p),
   finconfirma: b => { const d = FIN[b.dataset.p] || {}, x = (d.pendentes || []).find(y=>y.sessao === b.dataset.s); if (x) sheetFinVenda(b.dataset.p, x); },
@@ -6887,7 +6888,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 20:55";
+const VERSAO = "v1 registrada · 17/11 20:59";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
