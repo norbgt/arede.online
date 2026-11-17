@@ -8,7 +8,7 @@
 // Idiomas: português, inglês e espanhol vão direto para o feed (selo 80+); cada notícia guarda o idioma, e quem lê escolhe as origens.
 // Sem RSS (13 nov 2026, decisão #30): a busca tenta também o mapa de notícias (sitemap de notícias, o que o site oferece ao Google Notícias).
 //   Dele vêm só título, link, data e capa; a chamada fica vazia. Sites que pedem no robots.txt para nenhum robô ler não são lidos.
-//   ?modo=descobrir&so=semfeed refaz a busca só das fontes sem feed. Fontes de referência (feed_tipo "referencia") não são buscadas nem lidas.
+//   ?modo=descobrir&so=semfeed refaz a busca só das fontes sem feed; ?modo=descobrir&ids=1,2 refaz só dessas fontes. Fontes de referência (feed_tipo "referencia") não são buscadas nem lidas.
 // Chamada (13 nov 2026): quando o feed ou o mapa não trazem chamada, ela vem do resumo que o próprio site oferece para compartilhamento
 //   (og:description), lido na página da matéria; no máximo POR_PAGINA páginas por fonte em cada coleta, inclusive para completar as que já entraram.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -50,6 +50,35 @@ const pareceFeed = (t: string) => /<rss[\s>]|<feed[\s>]|<rdf:RDF/i.test(t.slice(
 
 // endereços conhecidos (testados antes da busca automática; a busca confirma se funcionam)
 const CONHECIDOS: Record<string, string[]> = {
+  // 17/11: candidatos para fontes que ficaram sem feed na busca automática (a busca confirma e respeita o robots.txt)
+  "generonumero.media": ["https://www.generonumero.media/feed/", "https://generonumero.media/feed/"],
+  "imazon.org.br": ["https://imazon.org.br/feed/"],
+  "forumseguranca.org.br": ["https://forumseguranca.org.br/feed/", "https://forumseguranca.org.br/noticias/feed/"],
+  "gauchazh.clicrbs.com.br": ["https://gauchazh.clicrbs.com.br/ultimas-noticias/rss/", "https://gauchazh.clicrbs.com.br/rss/"],
+  "abraji.org.br": ["https://abraji.org.br/rss", "https://abraji.org.br/feed"],
+  "transparencia.org.br": ["https://www.transparencia.org.br/blog/feed/", "https://blog.transparencia.org.br/feed/"],
+  "anistia.org.br": ["https://anistia.org.br/feed/", "https://anistia.org.br/noticias/feed/"],
+  "cnj.jus.br": ["https://www.cnj.jus.br/feed/"],
+  "lupa.com.ec": ["https://lupa.com.ec/feed/"],
+  "agenciasinc.es": ["https://www.agenciasinc.es/rss", "https://www.agenciasinc.es/Noticias/rss"],
+  "aap.com.au/factcheck": ["https://www.aap.com.au/factcheck/feed/", "https://www.aap.com.au/feed/"],
+  "animalpolitico.com/verificacion-de-hechos": ["https://www.animalpolitico.com/verificacion-de-hechos/feed", "https://www.animalpolitico.com/feed/"],
+  "doblecheck.cr": ["https://doblecheck.cr/feed/"],
+  "verificado.com.mx": ["https://verificado.com.mx/feed/"],
+  "dieese.org.br": ["https://www.dieese.org.br/rss.xml"],
+  "embrapa.br": ["https://www.embrapa.br/rss/noticias"],
+  "intercept.com.br": ["https://www.intercept.com.br/feed/", "https://theintercept.com/brasil/feed/"],
+  "factcheck.afp.com": ["https://checamos.afp.com/rss", "https://factcheck.afp.com/rss"],
+  "africacheck.org": ["https://africacheck.org/rss.xml", "https://africacheck.org/feed"],
+  "agenciadenoticias.ibge.gov.br": ["https://agenciadenoticias.ibge.gov.br/agencia-noticias.feed?type=rss", "https://agenciadenoticias.ibge.gov.br/rss"],
+  "butantan.gov.br": ["https://butantan.gov.br/noticias/rss"],
+  "polis.org.br": ["https://polis.org.br/feed/"],
+  "fundacaofhc.org.br": ["https://fundacaofhc.org.br/feed/"],
+  "cbc.ca/news": ["https://www.cbc.ca/webfeed/rss/rss-topstories", "https://www.cbc.ca/webfeed/rss/rss-world"],
+  "mpf.mp.br": ["https://www.mpf.mp.br/rss/noticias", "https://www.mpf.mp.br/pgr/noticias-pgr/RSS"],
+  "cotejo.info": ["https://cotejo.info/feed/"],
+  "abc.net.au/news/verify": ["https://www.abc.net.au/news/feed/51120/rss.xml"],
+  "tse.jus.br": ["https://www.tse.jus.br/comunicacao/noticias/RSS"],
   "g1.globo.com": ["https://g1.globo.com/rss/g1/"],
   "folha.uol.com.br": ["https://feeds.folha.uol.com.br/emcimadahora/rss091.xml", "https://feeds.folha.uol.com.br/poder/rss091.xml"],
   "agenciabrasil.ebc.com.br": ["https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml"],
@@ -81,7 +110,6 @@ const CONHECIDOS: Record<string, string[]> = {
   "telegraph.co.uk": ["https://www.telegraph.co.uk/news/rss.xml"],
   "smh.com.au": ["https://www.smh.com.au/rss/feed.xml"],
   "pbs.org/newshour": ["https://www.pbs.org/newshour/feeds/rss/headlines"],
-  "cbc.ca/news": ["https://www.cbc.ca/webfeed/rss/rss-topstories"],
   "abc.net.au/news": ["https://www.abc.net.au/news/feed/51120/rss.xml"],
   "rnz.co.nz": ["https://www.rnz.co.nz/rss/national.xml"],
   "nasa.gov": ["https://www.nasa.gov/news-release/feed/"],
@@ -180,17 +208,23 @@ async function descobre(f: any) {
   else if (home.txt) cand.push(...linksDeFeed(home.txt, home.url));
   for (const p of ["feed/", "rss/", "rss.xml", "feed.xml", "index.xml", "atom.xml", "?feed=rss2", "feed/rss/", "feeds/", "arc/outboundfeeds/rss/?outputType=xml"]) cand.push(base + p);
   if (root !== base) for (const p of ["feed/", "rss.xml"]) cand.push(root + p);
-  const vistos = new Set<string>();
+  // 17/11: feed parado (a matéria mais nova tem mais de 30 dias) não serve se houver outro vivo; fica só como último recurso
+  const vistos = new Set<string>(), VIVO = Date.now() - 30 * 864e5; let parado: any = null;
   for (const u of cand) {
     if (vistos.has(u)) continue; vistos.add(u);
     const r = await get(u, 9000);
     if (r.ok && pareceFeed(r.txt)) {
       const itens = leFeed(r.txt, r.url).itens;
-      if (itens.length) return { feed_url: r.url, feed_tipo: ehMapaNoticias(r.txt) ? "sitemap" : /<feed[\s>]/i.test(r.txt.slice(0, 4000)) ? "atom" : "rss" };
+      if (!itens.length) continue;
+      const achado = { feed_url: r.url, feed_tipo: ehMapaNoticias(r.txt) ? "sitemap" : /<feed[\s>]/i.test(r.txt.slice(0, 4000)) ? "atom" : "rss" };
+      const maisNova = Math.max(0, ...itens.map((i: any) => (i.publicada_em && !isNaN(+i.publicada_em) ? +i.publicada_em : 0)));
+      if (!maisNova || maisNova >= VIVO) return achado;
+      parado = parado || { ...achado, erro: "Feed parado: a matéria mais nova tem mais de 30 dias" };
     }
   }
   const mapa = await mapaDeNoticias(root, rb.mapas);
   if (mapa) return { feed_url: mapa, feed_tipo: "sitemap" };
+  if (parado) return parado;
   return { feed_url: null, feed_tipo: "nenhum", erro: home.ok ? "Nenhum feed encontrado" : "Site não respondeu (" + (home.status || home.err) + ")" };
 }
 
@@ -413,7 +447,10 @@ Deno.serve(async (req) => {
   const agora = new Date().toISOString(), rel: any[] = [];
   if (modo === "descobrir") {
     // canais do YouTube já têm o endereço certo do RSS (cadastrado pelo ID do canal): não passam pela busca
-    const busca = fontes.filter((f: any) => f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia" && (q.get("so") !== "semfeed" || !f.feed_url || q.get("id") === String(f.id)));
+    // ?ids=1,2,3 refaz a busca só dessas fontes, de qualquer lote (usado para feeds parados)
+    const ids = (q.get("ids") || "").split(",").map((x) => +x).filter(Boolean);
+    const busca = ids.length ? (todas || []).filter((f: any) => ids.includes(f.id) && f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia")
+      : fontes.filter((f: any) => f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia" && (q.get("so") !== "semfeed" || !f.feed_url || q.get("id") === String(f.id)));
     for (let i = 0; i < busca.length; i += 4) await Promise.all(busca.slice(i, i + 4).map(async (f: any) => {
       const d: any = await descobre(f);
       await SB.from("fontes").update({ feed_url: d.feed_url, feed_tipo: d.feed_tipo, descoberto_em: agora, ultimo_erro: d.erro || null }).eq("id", f.id);

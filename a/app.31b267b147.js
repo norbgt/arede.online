@@ -1760,7 +1760,7 @@ function sourceBase(fl=S.filt, types=tabTypes()){
 }
 const POLICIAL = /\b(mort[oa]s?|mata|matou|assassin\w*|crimes?|pres[oa]s?|pris[aã]o|pol[ií]cia\w*|tiros?|baleado\w*|acidentes?|viol[eê]ncia|homic[ií]dio\w*|estupr\w*|tr[aá]fico|furto|roubo|assalt\w*|sequestr\w*|police|killed|shooting|murder\w*|arrest\w*|polic[ií]a|asesin\w*|detenid\w*|muert[eo]s?)\b/i;
 const policialLonge = it => !!it && it.coletada && POLICIAL.test(it.titulo || "") && prox(it) < 2 && !((it.ext && it.ext.verif || []).length >= 2);
-const EQ = {bloco:20, grupo:2, grande:10, opiniao:3, olhar:40, janela:360};   /* 17/11 (Amanda): os limites valem dentro de uma janela de 6 horas */
+const EQ = {bloco:20, grupo:2, grande:10, opiniao:3, olhar:40, janela:360, janelaNoite:720};   /* 17/11 (Amanda): os limites valem dentro de uma janela de 6 horas */
 const grupoDe = it => it.grupoMidia || it.org;
 function equilibra(l){ const fila = l.slice(), out = [];
   const ok = (x, nivel) => { if (x.conta) return true; const ult = out.slice(-2), jan = out.slice(-(EQ.bloco - 1)), g = grupoDe(x);
@@ -1770,7 +1770,10 @@ function equilibra(l){ const fila = l.slice(), out = [];
   /* 17/11 (Amanda): equilíbrio por janela de tempo. O feed anda de 6 em 6 horas: só entra o que tem no máximo 6 horas a mais
      que a notícia mais nova ainda não mostrada. Dentro da janela vale a ordem do algoritmo e os limites; notícia velha nunca é
      puxada para cima para completar bloco, nem por ser do seu tema. */
-  while (fila.length){ const novo = Math.min(...fila.map(x=>x.min || 0)), lim = novo + EQ.janela, cabe = x => x.conta || (x.min || 0) <= lim;
+  /* 17/11: madrugada (0h às 6h de quem lê). Quase só a grande imprensa publica nesse horário; regional, independente e as demais
+     da noite anterior continuam valendo por até 12 horas, para o feed não virar só grande imprensa. */
+  const hr = new Date().getHours(), noite = hr < 6, janOutras = noite ? EQ.janelaNoite : EQ.janela;
+  while (fila.length){ const novo = Math.min(...fila.map(x=>x.min || 0)), lim = novo + EQ.janela, cabe = x => x.conta || (x.min || 0) <= lim || (!x.grande && (x.min || 0) <= novo + janOutras);
     const cand = []; for (let k = 0; k < fila.length && cand.length < EQ.olhar; k++) if (cabe(fila[k])) cand.push(k);
     const oks = []; for (const k of cand){ if (ok(fila[k], 0)) oks.push(k); if (oks.length === 4) break; }
     let i = oks.find(k=>cobForte(fila[k])); if (i === undefined) i = oks[0];
@@ -4299,7 +4302,7 @@ function mockSB(o = {}){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
     conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
     meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
@@ -5231,7 +5234,22 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
   /* 17/11 (Amanda): fontes recusadas pela curadoria. A marca fica só aqui no painel (área privada), sem selo público */
   const rec = new Map(); try{ const r = await SB.rpc("fontes_recusadas"); (r.data || []).forEach(x=>rec.set(x.fonte_id, x)); }catch(e){}
   const at = data.filter(f=>f.ativa), comFeed = at.filter(f=>f.feed_url), comErro = at.filter(f=>f.ultimo_erro);
-  box.innerHTML = `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
+  /* 17/11 (Amanda): saúde do feed. Confere, a cada vez que o painel abre, o que chega a quem lê: tetos, imagens, coleta e fontes paradas */
+  let sd = null; try{ const r = await SB.rpc("feed_saude"); sd = r.data || null; }catch(e){}
+  const saude = !sd ? "" : (()=>{ const al = [];
+    if (sd.ultima_coleta_min > 30) al.push(["err", `A última notícia chegou há ${sd.ultima_coleta_min} minutos. A coleta pode estar parada.`]);
+    if (sd.grande_pct > sd.grande_teto + 0.5) al.push(["err", `Grande imprensa em ${String(sd.grande_pct).replace(".",",")}% do feed, acima do teto de ${sd.grande_teto}%.`]);
+    if (sd.grupo_pct > sd.grupo_teto + 0.5) al.push(["err", `${esc(sd.grupo_nome)} em ${String(sd.grupo_pct).replace(".",",")}% do feed, acima do teto de ${sd.grupo_teto}% por grupo.`]);
+    if (sd.sem_imagem_pct > 15) al.push(["err", `${String(sd.sem_imagem_pct).replace(".",",")}% dos cartões sem imagem.`]);
+    if (sd.titulos_quebrados_24h) al.push(["none", `${sd.titulos_quebrados_24h} notícias com título quebrado foram ocultadas nas últimas 24 horas.`]);
+    (sd.fontes_paradas || []).forEach(f=>al.push(["none", `${esc(f.nome)}: feed responde, mas nenhuma notícia nova ${f.ultima ? quando(f.ultima) : "desde que foi ligada"}.`]));
+    (sd.fontes_erro || []).forEach(f=>al.push(["err", `${esc(f.nome)}: ${esc(f.erro)}`]));
+    return `<h3 class="osec">Saúde do feed</h3>
+      <div class="facts"><div class="fact"><b>${String(sd.grande_pct).replace(".",",")}%</b>grande imprensa (teto ${sd.grande_teto}%)</div><div class="fact"><b>${String(sd.grupo_pct).replace(".",",")}%</b>maior grupo · ${esc(sd.grupo_nome)}</div><div class="fact"><b>${sd.com_cobertura}</b>cartões com outras fontes</div></div>
+      <div class="facts"><div class="fact"><b>${sd.fontes_coletando_7d} de ${sd.fontes_ativas}</b>fontes trouxeram notícia em 7 dias</div><div class="fact"><b>${String(sd.sem_imagem_pct).replace(".",",")}%</b>cartões sem imagem</div><div class="fact"><b>há ${sd.ultima_coleta_min} min</b>última notícia</div></div>
+      ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}
+      <h3 class="osec">Fontes</h3>`; })();
+  box.innerHTML = saude + `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
     <p class="curnota">Fontes sem feed (dados públicos, tribunais, portais sem RSS) ficam de fora da coleta automática; seguem na curadoria manual.</p>
     <div class="curfontes">${data.filter(f=>!rec.has(f.id)).map(f=>`<div class="cfrow ${!f.ativa ? "off" : f.ultimo_erro ? "err" : f.feed_url ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span>
       <span class="cft"><b>${esc(f.nome)}</b><small>${f.feed_url ? esc(f.feed_url.replace(/^https?:\/\//,"")) : "sem feed"}${f.ultimo_erro ? " · " + esc(f.ultimo_erro) : ""}</small></span>
@@ -6709,7 +6727,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 08:01";
+const VERSAO = "v1 registrada · 17/11 08:19";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
