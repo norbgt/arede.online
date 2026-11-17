@@ -4355,12 +4355,13 @@ async function contaInicia(){
     perfilCarrega().then(()=>{ contaAtualiza(); acessoMudou(); }); });
   try{ const {data} = await SB.auth.getSession(); ME.user = data.session ? data.session.user : null; }catch(e){ ME.offline = true; }
   pinNoticiaCarrega();   /* 17/11: link direto de notícia abre na hora, sem esperar o feed */
+  const NT0 = noticiasCarrega();   /* 17/11: o feed começa a chegar logo que a conta é reconhecida, em paralelo com perfil, páginas e publicações */
   if (veio.has("code") || erroUrl){            /* volta do link do e-mail: limpa o endereço */
     history.replaceState(null, "", location.pathname + (!location.hash || location.hash==="#conta" ? "#perfil" : location.hash));
     if (erroUrl) toast("O link do e-mail expirou ou já foi usado. Entre com e-mail e senha ou peça outro link.");
     else if (ME.user) toast("E-mail confirmado. Sua conta está ativa.");
   }
-  textosCarrega(); segCarrega(); cfgCarrega(); regrasCarrega(); adPrecosCarrega(); adNoArCarrega(); setInterval(()=>{ if (document.visibilityState==="visible") adNoArCarrega(); }, 15 * 60000); usoInicia(); await perfilCarrega(); ME.pronto = true; adVolta(); apoioVolta(); if (route()==="anunciar") adPedidosCarrega(); const _mk = marcasCarrega(); await paginasCarrega(); await publicacoesCarrega(); await _mk; await noticiasCarrega(); contaAtualiza(); logoInicio(); redesSync().then(redesAtualizaTodas); orgsAprovadasCarrega(); acessoMudou(true);
+  textosCarrega(); segCarrega(); cfgCarrega(); regrasCarrega(); adPrecosCarrega(); adNoArCarrega(); setInterval(()=>{ if (document.visibilityState==="visible") adNoArCarrega(); }, 15 * 60000); usoInicia(); await perfilCarrega(); ME.pronto = true; adVolta(); apoioVolta(); if (route()==="anunciar") adPedidosCarrega(); const _mk = marcasCarrega(); await paginasCarrega(); await publicacoesCarrega(); await _mk; await NT0; contaAtualiza(); logoInicio(); redesSync().then(redesAtualizaTodas); orgsAprovadasCarrega(); acessoMudou(true);
   setInterval(()=>{ if (document.visibilityState==="visible") noticiasCarrega(); }, 15 * 60000);
 }
 /* a escolha guardada na conta vale em qualquer aparelho; se a conta ainda não tem, guarda a deste aparelho (quando a pessoa já escolheu) */
@@ -4519,7 +4520,8 @@ const isoDia = d => { const x = new Date(d); return x.getFullYear() + "-" + Stri
 /* cópia das notícias embutida no arquivo: usada quando o servidor não responde (prévia do Claude, sem internet) */
 const COPIA = (()=>{ try{ const el = document.getElementById("noticias-copia"); const c = el ? JSON.parse(el.textContent) : null; return c && c.itens && c.itens.length ? c : null; }catch(e){ return null; } })();
 const copiaQuando = () => COPIA ? new Date(COPIA.gerada).toLocaleString("pt-BR", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) : "";
-async function noticiasCarrega(){ let data = null, ref = Date.now(); oficiaisCarrega();   /* 16/11: ao mesmo tempo que as notícias */
+async function noticiasCarrega(){ return umaVez("noticias", noticiasCarrega0); }
+async function noticiasCarrega0(){ let data = null, ref = Date.now(); oficiaisCarrega();   /* 16/11: ao mesmo tempo que as notícias */
   /* 10 nov 2026: as notícias saem pela função "conteudo" do servidor, que entrega na medida do nível de acesso
      (visitante: 30 e 8 vídeos; conta com e-mail: até 100 novas por hora; verificada e admin: o conjunto completo).
      A leitura direta da tabela ficou só para a administração. Se o servidor não responder, vale a cópia embutida. */
@@ -6702,7 +6704,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 07:52";
+const VERSAO = "v1 registrada · 17/11 07:55";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
