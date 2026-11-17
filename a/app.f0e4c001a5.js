@@ -12,6 +12,7 @@ const store = {
   set(k, v){ try{ localStorage.setItem("arede-"+k, JSON.stringify(v)); }catch(e){} }
 };
 const ICON = {
+  copia:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
   bookmark:'<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/>',
   compass:'<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -2387,12 +2388,12 @@ const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e po
 function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa(p);
   ORG[id] = Object.assign(ORG[id] || {}, {id, nome:limpo(p.nome) || "Página", sigla:siglaDe(limpo(p.nome)), cidade:limpo(p.cidade) || "", tema:limpo(p.tema) || "", membros:0, real:true, pagina:true,
     paginaTipo:p.tipo, natureza:p.tipo === "empresa" ? "página de empresa" : "página de conteúdo", cor:CORES_CONTA[(p.cor || 0) % CORES_CONTA.length], sobre:limpo(p.descricao) || "",
-    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, ficticia:exPagId(p.id)});
+    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, mei:!!p.cnpj_conferido && !!p.mei, ficticia:exPagId(p.id)});
   return id; }
 async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
 async function paginasCarrega0(){ if (!SB) return;
-  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
-    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
@@ -2766,7 +2767,7 @@ async function capaGrava(alvo, v){ const [k, id] = alvo.split(/:(.+)/);
 function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.find(x=>x.id === pid);
   if (!o || !p) return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Página</h1></div>`) + `<div class="container"><p class="empty">${PAGS.carregou ? "Esta página não existe ou não está no ar." : "Carregando…"}</p></div>`;
   const meu = ME.user && p.dono === ME.user.id, f = S.follow.has(id), emp = p.tipo === "empresa", tt = tatDe(p);
-  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Portfólio") : "Publicações"], ["pastas", "Pastas"], meu && mod(p, "agenda") ? ["agenda","Agenda"] : null, mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, ["sobre","Sobre"]].filter(Boolean);
+  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Portfólio") : "Publicações"], ["pastas", "Pastas"], meu && mod(p, "agenda") ? ["agenda","Agenda"] : null, mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, meu && o.mei ? ["fin","Financeiro"] : null, ["sobre","Sobre"]].filter(Boolean);
   const t = tabs.some(x=>x[0] === S.pgTab) ? S.pgTab : "pubs";
   const aviso = p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
   const ib = (act, icn, rot, extra, cl) => `<button class="iconbtn${cl ? " " + cl : ""}" type="button" data-act="${act}" ${extra || ""} aria-label="${rot}" title="${rot}">${ic(icn)}</button>`;
@@ -2784,13 +2785,14 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const tipo = tt ? (papelRot(p) || tipoNome(p)) : tipoNome(p);   /* 16/11: o papel (Tatuador) vai para a linha do tipo; no alto fica só "Página" */
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
   return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina") + (o.ficticia ? `<span class="topex">${EXTAG}</span>` : ""), acoes)
-    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
+    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.mei ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="MEI com CNPJ conferido pela curadoria: o que significa" title="MEI com CNPJ conferido pela curadoria">${ic("predio","sm")}MEI · CNPJ ativo</button>` : o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
         linhas:[...(tt ? tatResumo(p).filter(Boolean).map(l=>`<span class="phcusto">${l}</span>`) : []), [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
         extra:`<div class="phnovo">${aviso}${tt ? tatConvitesHTML(p) : ""}</div>`})}
       <div class="tabs" role="tablist" aria-label="Seções da página" style="margin-top:4px">${tabs.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pgtab" data-tab="${k}" aria-selected="${t===k}">${n}</button>`).join("")}</div>
       <div id="pgbody" style="padding-top:var(--gap)">${paginaCorpoTab(o, p, t)}</div></div>`; }
 function paginaCorpoTab(o, p, t){
+  if (t === "fin" && o.mei && pgMeu(p)) return finHTML(p);
   if (t === "agenda" && mod(p, "agenda") && pgMeu(p)) return pgAgendaHTML(p);
   if (t === "reputacao" && mod(p, "reputacao")) return tatReputacaoHTML(p);
   if (t === "equipe" && mod(p, "equipe")) return tatEquipeHTML(p);
@@ -2910,6 +2912,36 @@ function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
     <div class="field"><label for="vilink">Link para comprar ou pedir (opcional)</label><input id="vilink" maxlength="300" placeholder="https://, mailto: ou tel:" autocapitalize="none" spellcheck="false"><small class="hint">Sem link, o botão leva ao site da página.</small></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="vitsalva" data-p="${pid}">Adicionar</button>`, "Adicionar à loja");
   S.viFoto = null; const fi = $("#vifoto"); if (fi) fi.addEventListener("change", async ()=>{ const a = fi.files && fi.files[0]; if (!a) return; try{ S.viFoto = await fotoReduz(a, 1000); $("#vifotobox").innerHTML = `<span class="orcref"><img src="${S.viFoto}" alt="Foto do produto"></span>`; }catch(e){ toast("Não foi possível usar essa imagem."); } }); }
+/* FINANCEIRO DO MEI (17/11, decisão 123 da Amanda: caminho 1 + planejar o 2). Só a dona da página vê. A rede não emite a nota:
+   leva ao Emissor Nacional (gov.br) com os dados prontos para copiar. As vendas vêm do registro da própria pessoa e dos atendimentos
+   concluídos por check-in, que entram para confirmar o valor. O teto anual é o parâmetro mei_teto, no backoffice. */
+const FIN = {}, NFSE_URL = "https://www.nfse.gov.br/EmissorNacional";
+const finBRL = v => (+v || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+const finData = d => d ? String(d).slice(0, 10).split("-").reverse().join("/") : "";
+const finValor = t => { const m = String(t || "").replace(/\./g, "").match(/\d+(,\d{1,2})?/); return m ? +m[0].replace(",", ".") : null; };
+async function finCarrega(pid){ if (!SB || FIN[pid] === "carregando") return; FIN[pid] = "carregando";
+  try{ const {data, error} = await SB.rpc("mei_financeiro", {p_pagina:pid}); FIN[pid] = error ? {erro:erroAuth(error)} : data; }catch(e){ FIN[pid] = {erro:"Não foi possível carregar agora."}; }
+  pgRepintaTab(pid, "fin"); }
+function finHTML(p){ const d = FIN[p.id]; if (!d || d === "carregando"){ finCarrega(p.id); return `<p class="empty">Carregando…</p>`; } if (d.erro) return `<p class="empty">${esc(d.erro)}</p>`;
+  const pct = Math.max(0, +d.pct || 0), pr = String(Math.round(pct*10)/10).replace(".", ",");
+  const pend = (d.pendentes || []).map(x=>`<div class="finv"><b>${esc(x.item || "Atendimento")}</b><small>${esc(finData(x.quando))}${x.cliente ? " · " + esc(x.cliente) : ""}${x.valor ? " · " + esc(x.valor) : ""}</small>
+      <div class="row" style="gap:6px"><button class="btn sm" type="button" data-act="finconfirma" data-p="${p.id}" data-s="${esc(x.sessao)}">Confirmar venda</button></div></div>`).join("");
+  const vend = (d.vendas || []).map(v=>`<div class="finv"><b>${esc(v.descricao)}</b><small>${finBRL(v.valor)} · ${esc(finData(v.data))}${v.tomador ? " · " + esc(v.tomador) : ""}</small>
+      <div class="row" style="gap:6px"><button class="btn sm" type="button" data-act="fincopia" data-p="${p.id}" data-id="${esc(v.id)}">${ic("copia","sm")} Copiar dados da venda</button>
+      <a class="btn sm" href="${NFSE_URL}" target="_blank" rel="noopener noreferrer">Emitir nota no gov.br ${ic("ext","sm")}</a>
+      <button class="btn sm ghost" type="button" data-act="finremove" data-p="${p.id}" data-id="${esc(v.id)}">Tirar</button></div></div>`).join("");
+  return `<div class="setting l1" style="display:block"><b>Financeiro</b><div class="finbar${pct >= 80 ? " alto" : ""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Math.round(pct))}" aria-label="${pr}% do teto anual usado"><i style="width:${Math.min(100, pct)}%"></i></div>
+      <small>${pr}% do teto anual usado · ${finBRL(d.total)} de ${finBRL(d.teto)} em ${d.ano}</small></div>
+    <button class="btn primary" type="button" data-act="finnova" data-p="${p.id}" style="margin-top:12px">${ic("plus","sm")} Registrar venda</button>
+    ${pend ? `<p class="fintit">Atendimentos concluídos</p>${pend}` : ""}
+    <p class="fintit">Vendas de ${d.ano}</p>${vend || `<p class="empty">Nenhuma venda registrada em ${d.ano}.</p>`}`; }
+function sheetFinVenda(pid, x){ const hoje = new Date(Date.now() - 3*36e5).toISOString().slice(0, 10), v = x ? finValor(x.valor) : null;
+  openSheet(shead("Registrar venda") + `
+    <div class="field"><label for="fnval">Valor (R$)</label><input id="fnval" inputmode="decimal" maxlength="14" placeholder="350,00" value="${v ? String(v.toFixed(2)).replace(".", ",") : ""}"></div>
+    <div class="field"><label for="fndesc">O que foi vendido</label><input id="fndesc" maxlength="200" value="${x ? esc(x.item || "") : ""}"></div>
+    <div class="field"><label for="fntom">Tomador (opcional)</label><input id="fntom" maxlength="120" value="${x ? esc(x.cliente || "") : ""}"><small class="hint">Quem comprou. Só você vê.</small></div>
+    <div class="field"><label for="fndata">Data</label><input id="fndata" type="date" max="${hoje}" value="${x ? String(x.quando || hoje).slice(0, 10) : hoje}"></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="finsalva" data-p="${pid}"${x ? ` data-s="${esc(x.sessao)}"` : ""}>Registrar venda</button>`, "Registrar venda"); }
 /* ORGANIZAÇÕES (14/11, pedido da Amanda): comunidades e páginas dividem a mesma tela, num feed só que pode ser filtrado.
    O feed "Para você" usa as duas formas de ver do Início: cartões soltos (grade irregular) ou em blocos (grade regular).
    Os cartões são o mesmo molde; muda o rótulo de tipo (Comunidade / Página) e a forma da marca (quadrada / redonda). */
@@ -4004,6 +4036,7 @@ function mockSB(o = {}){
       for (let i = 0; i < ses; i++) tab("tat_sessoes").push({id:novoId(), pagina_id:pid(n), status:"verificada", quando:new Date(Date.now() - (i+1)*5*864e5).toISOString()});
       for (let i = 0; i < q; i++) tab("pagina_avaliacoes").push({id:novoId(), pagina_id:pid(n), nota:(i % 10) < Math.round((med - 4) * 10) ? 5 : 4, pos:(i % 100) < pos*100 * (i % 7 ? 1 : .9), dor:(i / q) < dor ? "igual" : (i % 2 ? "mais" : "menos"), texto:TX[i % TX.length], autor_nome:NOMES[i % NOMES.length], criado_em:new Date(Date.now() - (i+1)*6*864e5).toISOString()}); });
     salva(); }
+  { const pd = tab("paginas").find(p=>p.id === "00000000-0000-4000-8000-0000000000ad"); if (pd && pd.mei === undefined){ pd.mei = true; pd.cnpj_conferido = true; const q = new Date(Date.now() - 5*864e5).toISOString(); tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f9", pagina_id:pd.id, pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Maria Teste", quando:q, duracao_min:120, valor:"R$ 250", status:"verificada", checkin_em:q, avaliada:false, criado_em:q}); } }   /* 17/11: a página de teste da administração vira MEI, para ver o Financeiro */
   if (!tab("paginas").some(p=>p.id === "00000000-0000-4000-8000-0000000000a2")){ const pg = (n, id, dono, tipo, nome, descricao, cidade, tema, cor, cnpj) => ({id:"00000000-0000-4000-8000-0000000000a" + id, dono, tipo, nome, descricao, cidade, tema, site:null, contato:null, cor, status:"aprovada", motivo:null, declaracao:"Declaração de teste", declarada_em:agora(), nao_eleitoral:true, criada_em:new Date(Date.now() - n*36e5).toISOString(), revisada_em:agora(), cnpj_conferido:cnpj, no_perfil:true});
     tab("paginas").push(pg(60, 2, TESTE_C, "criador", "Diário da Bike (teste)", "Página pessoal simulada: rotas, oficinas e mobilidade em Curitiba.", "Curitiba, PR", "Mobilidade", 3, false),
       pg(70, 3, TESTE_M, "empresa", "Ateliê Ponto a Ponto (teste)", "Página simulada: costura, reforma de roupas e oficinas no bairro.", "Recife, PE", "Cultura", 5, false),
@@ -4301,6 +4334,13 @@ function mockSB(o = {}){
         cor:Math.floor(Math.random()*8), status:"pendente", motivo:null, declaracao:a.p_declaracao, declarada_em:agora(), nao_eleitoral:true, criada_em:agora(), cnpj:a.p_cnpj || null, cnpj_conferido:false, no_perfil:false}); salva(); return {id, status:"pendente"}; },
     pagina_edita:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; Object.assign(p, {descricao:a.p_descricao, cidade:a.p_cidade, tema:a.p_tema, site:a.p_site, contato:a.p_contato}); salva(); return null; },
     pagina_cnpj:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.cnpj = a.p_cnpj; p.cnpj_conferido = false; salva(); } return null; },
+    mei_financeiro:({p_pagina})=>{ const p = tab("paginas").find(x=>x.id === p_pagina); if (!p || p.dono !== eu()) throw {message:"valor: só quem é dono da página vê o Financeiro"}; if (!p.mei) throw {message:"valor: esta página ainda não tem o selo MEI"};
+      const a = new Date().getFullYear(), vs = tab("mei_vendas").filter(v=>v.pagina_id === p_pagina && String(v.data).slice(0, 4) === String(a)).sort((x, y)=>String(y.data).localeCompare(String(x.data))), tot = vs.reduce((t, v)=>t + v.valor, 0);
+      const pend = tab("tat_sessoes").filter(s=>s.pagina_id === p_pagina && s.status === "verificada" && !tab("mei_vendas").some(v=>v.sessao_id === s.id)).map(s=>({sessao:s.id, quando:s.quando, valor:s.valor, cliente:s.cliente_nome, item:(tab("tat_pedidos").find(x=>x.id === s.pedido_id) || {}).item || null}));
+      return {ano:a, teto:81000, total:tot, pct:Math.round(tot*1000/81000)/10, vendas:vs, pendentes:pend}; },
+    mei_venda_registra:a=>{ const p = tab("paginas").find(x=>x.id === a.p_pagina); if (!p || p.dono !== eu() || !p.mei) throw {message:"valor: só quem é dono da página registra vendas"};
+      const id = novoId(); tab("mei_vendas").push({id, pagina_id:a.p_pagina, valor:Math.round(a.p_valor*100)/100, descricao:a.p_descricao, tomador:a.p_tomador || null, data:a.p_data || agora().slice(0, 10), origem:a.p_sessao ? "sessao" : "manual", sessao_id:a.p_sessao || null}); salva(); return id; },
+    mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
       if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
@@ -6451,6 +6491,17 @@ const A = {
       const r = await SB.rpc("pagina_cnpj", {p_id:b.dataset.id, p_cnpj:cn}); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } aviso = "Página salva. A curadoria vai conferir o CNPJ."; }
     ocupado(b, false); closeSheet(); await paginasCarrega(); toast(aviso); render(); },
   vitnovo: b => sheetVitrineNovo(b.dataset.p),
+  finnova: b => sheetFinVenda(b.dataset.p),
+  finconfirma: b => { const d = FIN[b.dataset.p] || {}, x = (d.pendentes || []).find(y=>y.sessao === b.dataset.s); if (x) sheetFinVenda(b.dataset.p, x); },
+  finsalva: async b => { const pid = b.dataset.p, val = finValor($("#fnval").value), desc = $("#fndesc").value.trim();
+    if (!val || val <= 0) return formErro("Informe o valor da venda."); if (desc.length < 2) return formErro("Diga o que foi vendido.");
+    ocupado(b, true, "Salvando…"); const {error} = await SB.rpc("mei_venda_registra", {p_pagina:pid, p_valor:val, p_descricao:desc, p_tomador:$("#fntom").value.trim() || null, p_data:$("#fndata").value || null, p_sessao:b.dataset.s || null});
+    ocupado(b, false); if (error) return formErro(erroAuth(error)); closeSheet(); delete FIN[pid]; S.pgTab = "fin"; toast("Venda registrada."); render(); },
+  fincopia: b => { const d = FIN[b.dataset.p] || {}, v = (d.vendas || []).find(y=>y.id === b.dataset.id); if (!v) return;
+    const t = `Serviço: ${v.descricao}\nValor: ${finBRL(v.valor)}\nData: ${finData(v.data)}` + (v.tomador ? `\nTomador: ${v.tomador}` : "");
+    try{ navigator.clipboard.writeText(t).then(()=>toast("Dados copiados."), ()=>toast("Não foi possível copiar.")); }catch(e){ toast("Não foi possível copiar."); } },
+  finremove: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Tirar mesmo?"; return; } const pid = b.dataset.p;
+    const {error} = await SB.rpc("mei_venda_remove", {p_id:b.dataset.id}); if (error) return toast(erroAuth(error)); delete FIN[pid]; toast("Venda tirada."); render(); },
   pgpasta: b => { const pid = route().slice(3); S.pgPasta = b.dataset.s ? {p:pid, s:b.dataset.s, f:b.dataset.f} : null; pgRepinta(pid); window.scrollTo(0, 0); },
   pgsecnova: () => { const pid = route().slice(3), l = PAGS.secoes[pid] || []; if (l.length >= MAX_SEC) return toast(`A página tem até ${MAX_SEC} seções.`); sheetPgSecao(pid, null); },
   pessoainfo: b => sheetPessoa(b.dataset.u),
@@ -6809,7 +6860,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 15:10";
+const VERSAO = "v1 registrada · 17/11 20:37";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
