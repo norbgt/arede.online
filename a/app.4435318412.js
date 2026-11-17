@@ -1329,7 +1329,7 @@ const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, k
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
 const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
-const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) - it.min/20000;
+const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
 function amplo(list){
   const by = {}; list.slice().sort((a,b)=>a.min-b.min).forEach(it=>{ (by[it.tema]=by[it.tema]||[]).push(it); });
@@ -6653,7 +6653,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 06:34";
+const VERSAO = "v1 registrada · 17/11 06:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
