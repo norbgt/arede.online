@@ -1,7 +1,7 @@
 // arede.online · COLETOR de notícias
 // Lê os feeds (RSS/Atom) das fontes com selo, guarda só título, chamada do veículo, um trecho de até 800 caracteres, data, imagem de capa e link,
 // evita repetidas, agrupa a mesma notícia em fontes diferentes (cobertura cruzada) e manda para o feed ou para a fila.
-// Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · ?modo=agrupar (junta a mesma notícia entre idiomas)
+// Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · a mesma notícia entre fontes é juntada no banco (privado.agrupa_mesmas)
 //   · ?modo=reclassificar&pagina=N (refaz o tema das notícias dos últimos 30 dias com os temas de temas.ts).
 // Lotes: ?lote=0..9 (as fontes se dividem em 10).
 // Canais do YouTube: feed_tipo "youtube", lidos pelo RSS público do canal (só vídeos longos, sem Shorts nem lives).
@@ -334,7 +334,7 @@ const limpaUrl = (u: string) => { try { const x = new URL(u); x.hash = ""; for (
 // texto que não é chamada: aviso de assinante, linha de publicação, descrição do próprio site
 const GENERICA = /exclusiv[ao] para assinantes|published online:|search, browse and learn/i;
 const ehYt = (x: any) => /youtube\.com\/watch/.test(x.url || "");
-async function coleta(f: any, recentes: any[]) {
+async function coleta(f: any) {
   const r = await get(f.feed_url, 12000);
   if (!r.ok || !pareceFeed(r.txt)) return { erro: r.ok ? "O feed não está mais no formato esperado" : "Feed não respondeu (" + (r.status || r.err) + ")", novas: 0 };
   const { lingua, itens } = leFeed(r.txt, r.url);
@@ -347,22 +347,23 @@ async function coleta(f: any, recentes: any[]) {
   const semResumo = new Set((ja || []).filter((x: any) => x.resumo === null).map((x: any) => x.url));
   await Promise.all(frescos.filter((i: any) => semResumo.has(i.url)).map((i: any) => SB.from("noticias").update({ resumo: i.resumo || "", chamada: i.chamada }).eq("url", i.url)));
   const novas: any[] = [];
+  // 17/11: o coletor não baixa mais as notícias recentes. A matéria repetida na fonte é conferida só pelos títulos desta leva,
+  // e a mesma notícia em fontes diferentes é reconhecida dentro do banco a cada 30 minutos (privado.agrupa_mesmas).
+  const h48 = new Date(Date.now() - 48 * 36e5).toISOString(), jaImp = new Set<string>();
+  const imps = [...new Set(frescos.filter((i: any) => !temUrl.has(i.url)).map((i: any) => norm(i.titulo)))];
+  for (let k = 0; k < imps.length; k += 20) { const { data } = await SB.from("noticias").select("impressao").eq("fonte_id", f.id).gte("coletada_em", h48).in("impressao", imps.slice(k, k + 20));
+    for (const x of data || []) jaImp.add(x.impressao); }
   for (const i of frescos) {
     if (temUrl.has(i.url)) continue;
-    const imp = norm(i.titulo); if (recentes.some((x) => x.fonte_id === f.id && x.impressao === imp)) continue;   // mesma matéria repetida na fonte
-    const pw = palavras(i.titulo);
-    const en = entidades(i.titulo + " " + (i.chamada || "")), et = entidades(i.titulo), eu = { pw, en, et };
-    // vídeo de canal fica no próprio grupo: não esconde nem é escondido por uma matéria escrita sobre o mesmo assunto
-    const yt = f.feed_tipo === "youtube";
-    const par = yt ? null : recentes.find((x) => x.fonte_id !== f.id && x.grupo && !x.yt && mesmaNoticia(eu, x));
-    const grupo: string = par ? par.grupo : crypto.randomUUID();   // cada notícia tem um grupo; a mesma notícia em outra fonte entra no mesmo
+    const imp = norm(i.titulo); if (jaImp.has(imp)) continue; jaImp.add(imp);   // mesma matéria repetida na fonte
+    const grupo: string = crypto.randomUUID();   // cada notícia nasce no próprio grupo; o banco junta a mesma notícia de outras fontes
     // idioma (14 nov 2026): vale o que o feed declara quando é pt, en ou es; senão, o idioma cadastrado da fonte; só sem os dois, as palavras do texto.
     // Antes, título curto de fonte em português caía em "outra" e ia para a fila, e francês era lido como espanhol.
     const decl = (lingua || "").slice(0, 2).toLowerCase(), fl = (f.lingua || "").slice(0, 2).toLowerCase();
     const lg = IDIOMAS.includes(decl) ? decl : /^[a-z]{2}$/.test(fl) && fl !== "ou" ? fl : idiomaDe(i.titulo + " " + (i.chamada || ""), "");
     const n = { previa_em: null as string | null, fonte_id: f.id, url: i.url, titulo: i.titulo.slice(0, 300), chamada: i.chamada, resumo: i.resumo || "", lingua: lg, imagem_url: i.imagem_url, publicada_em: i.publicada_em && !isNaN(+i.publicada_em) ? i.publicada_em.toISOString() : new Date().toISOString(),
       impressao: imp, grupo, tema: temaDe(i.titulo, i.chamada), status: FORA.test(imp) ? "recusada" : f.nota >= NOTA_DIRETO && IDIOMAS.includes(lg) ? "publicada" : "fila" };
-    novas.push(n); recentes.push({ id: null, fonte_id: f.id, impressao: imp, grupo, pw, en, et, yt });
+    novas.push(n);
   }
   // sem chamada ou sem imagem: completa pela página da matéria (novas primeiro, depois as que já entraram e ainda não foram consultadas).
   // Cada notícia é consultada uma vez só (previa_em), para a vez seguinte ir para as que faltam.
@@ -382,7 +383,9 @@ async function coleta(f: any, recentes: any[]) {
     else await SB.from("noticias").update({ chamada: ch, imagem_url: img, previa_em: agoraPv, ...(ch && !n.chamada ? { tema: temaDe(n.titulo, ch) } : {}) }).eq("url", n.url);
   }));
   // chamada igual em várias matérias da mesma fonte é texto genérico: nesses casos o cartão fica só com o título
-  const vistas = new Map<string, number>(); for (const x of recentes) if (x.fonte_id === f.id && x.chamada) vistas.set(x.chamada, (vistas.get(x.chamada) || 0) + 1);
+  const vistas = new Map<string, number>(), chs = [...new Set(novas.map((n: any) => n.chamada).filter(Boolean))];
+  for (let k = 0; k < chs.length; k += 10) { const { data } = await SB.from("noticias").select("chamada").eq("fonte_id", f.id).gte("coletada_em", h48).in("chamada", chs.slice(k, k + 10));
+    for (const x of data || []) vistas.set(x.chamada, (vistas.get(x.chamada) || 0) + 1); }
   for (const n of novas) if (n.chamada) vistas.set(n.chamada, (vistas.get(n.chamada) || 0) + 1);
   for (const n of novas) if (n.chamada && (GENERICA.test(n.chamada) || (vistas.get(n.chamada) || 0) >= 3)) n.chamada = null;
   if (novas.length) { const { error } = await SB.from("noticias").upsert(novas, { onConflict: "url", ignoreDuplicates: true }); if (error) return { erro: "Banco: " + error.message, novas: 0 }; }
@@ -418,29 +421,11 @@ Deno.serve(async (req) => {
     }));
     return new Response(JSON.stringify({ modo, lote, fontes: rel }), { headers: { "content-type": "application/json" } });
   }
-  const { data: rec } = await SB.from("noticias").select("id,fonte_id,url,impressao,grupo,titulo,chamada,publicada_em").gte("coletada_em", new Date(Date.now() - 3 * 864e5).toISOString()).limit(4000);
-  const recentes = (rec || []).map((x: any) => ({ ...x, pw: palavras(x.titulo), en: entidades(x.titulo + " " + (x.chamada || "")), et: entidades(x.titulo), yt: /youtube\.com\/watch/.test(x.url || "") }));
-  if (modo === "agrupar") {
-    // refaz os grupos dos últimos 3 dias: a mesma notícia, no mesmo idioma ou em idiomas diferentes (cada grupo com até 12 notícias)
-    const L = recentes, pai = new Map<string, string>();
-    const raiz = (g: string): string => { let r = g; while (pai.has(r) && pai.get(r) !== r) r = pai.get(r)!; return r; };
-    const tam = new Map<string, number>(); for (const x of recentes) tam.set(x.grupo, (tam.get(x.grupo) || 0) + 1);
-    let juntou = 0;
-    for (let a = 0; a < L.length; a++) for (let b = a + 1; b < L.length; b++) {
-      const x = L[a], y = L[b]; if (x.fonte_id === y.fonte_id || x.yt || y.yt) continue;
-      const rx = raiz(x.grupo), ry = raiz(y.grupo); if (rx === ry) continue;
-      if (Math.abs(+new Date(x.publicada_em) - +new Date(y.publicada_em)) > 2 * 864e5 || !mesmaNoticia(x, y)) continue;
-      if ((tam.get(rx) || 1) + (tam.get(ry) || 1) > 12) continue;
-      pai.set(ry, rx); tam.set(rx, (tam.get(rx) || 1) + (tam.get(ry) || 1)); juntou++;
-    }
-    const mudar = new Map<string, string>(); for (const x of recentes) { const r = raiz(x.grupo); if (r !== x.grupo) mudar.set(x.grupo, r); }
-    const m = [...mudar].map(([de, para]) => ({ de, para })); let mudou = 0;
-    for (let k = 0; k < m.length; k += 500) { const { data } = await SB.rpc("aplica_grupos", { m: m.slice(k, k + 500) }); mudou += data || 0; }
-    return new Response(JSON.stringify({ modo, juntou, grupos: mudar.size, noticias: mudou }), { headers: { "content-type": "application/json" } });
-  }
+  // 17/11: a mesma notícia em fontes diferentes é reconhecida dentro do banco a cada 30 minutos (privado.agrupa_mesmas), sem tirar dados do servidor.
+  if (modo === "agrupar") return new Response(JSON.stringify({ modo, aviso: "o agrupamento roda no banco: privado.agrupa_mesmas" }), { headers: { "content-type": "application/json" } });
   const comFeed = fontes.filter((f: any) => f.feed_url);
   for (let i = 0; i < comFeed.length; i += 5) await Promise.all(comFeed.slice(i, i + 5).map(async (f: any) => {
-    const r = await coleta(f, recentes);
+    const r = await coleta(f);
     await SB.from("fontes").update(r.erro ? { ultima_coleta: agora, ultimo_erro: r.erro } : { ultima_coleta: agora, ultimo_ok: agora, ultimo_erro: null, itens_ultima: r.novas }).eq("id", f.id);
     rel.push({ id: f.id, ...r });
   }));
