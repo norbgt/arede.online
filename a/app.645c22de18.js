@@ -699,6 +699,8 @@ let SELO_ALTA = 90, SELO_CONF = 75, SELO_BAIXA = 50, REP_POUCO = 75, REP_MUITO =
 function sealOf(it){
   const sc = it.id in SEAL ? SEAL[it.id] : (String(it.uid).startsWith("c") ? null : 80);
   if (it.autoral) return {sc:null, lv:"na", label:"Conteúdo autoral"};
+  if (it.pessoalNova) return {sc:null, lv:"pend", label:"Fonte não verificada · só você vê"};
+  if (it.recusadaMotivo) return {sc, lv:"bad", label:"Fonte recusada · só você vê", tone:tone(sc || 0)};
   if (it.fontePub && it.fontePub.situacao==="avaliacao") return {sc:null, lv:"pend", label:"Fonte não verificada"};
   if (it.fontePub && it.fontePub.situacao==="recusada") return {sc:null, lv:"bad", label:"Fonte não confiável", tone:tone(12)};
   /* decisão #40 (13 nov 2026): quem publica não é a fonte oficial; a publicação não recebe nota, mostra que cita fonte confiável */
@@ -762,7 +764,7 @@ function sealChecksBase(it){
   const L = (st, t, d) => `<div class="chk"><span class="st ${st}" aria-hidden="true">${{ok:"✓",warn:"!",bad:"✕",na:"–"}[st]}</span><span><b>${t}</b><small>${d}</small></span></div>`;
   if (it.arte) return sealChecksArte(it, L);
   if (it.daRede) return sealChecksRede(it, L);
-  if (it.ext){ let q = o.fonte ? L("ok","Fonte verificada", `${o.nome} está na base de fontes da rede (base ${it.seloBase ?? o.nota}).`) : L("ok","Organização real", `${o.nome} existe e publicou este conteúdo nos canais públicos dela.`);
+  if (it.ext){ let q = it.pessoalNova ? L("na","Fonte não verificada","Ainda sem avaliação da curadoria.") : it.recusadaMotivo ? L("bad","Fonte recusada", esc(it.recusadaMotivo)) : o.fonte ? L("ok","Fonte verificada", `${o.nome} está na base de fontes da rede (base ${it.seloBase ?? o.nota}).`) : L("ok","Organização real", `${o.nome} existe e publicou este conteúdo nos canais públicos dela.`);
     if (o.fonte && certDe(o).length) q += L("ok", "Certificação independente", certLinhas(o).join("<br>"));
     if (it.coletada){ const ck = it.checagem;   /* 17/11: checagem das agências da base sobre o mesmo assunto; sinal para quem lê, não muda a nota */
       q += ck && ck.res==="desmente" ? L("bad", "Desmentida por checagem", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>`)
@@ -1189,7 +1191,8 @@ function footInfo(it){
 }
 /* topo, título e pé do cartão textual: os mesmos no Início (blocos) e no mosaico (Buscar, organizações) */
 /* selo pequeno do cartão; publicação com fonte não verificada ou não confiável mostra isso no lugar da nota */
-const sealTag = (it, s) => s.sc!==null ? `<span class="tseal" aria-hidden="true">${sealIco(s,14)}${s.sc}</span>`
+const sealTag = (it, s) => it.pessoal && (it.pessoalNova || it.recusadaMotivo) ? `<span class="tseal tfonte ${s.lv}">${sealIco(s,14)}${s.sc!==null ? s.sc + " · " : ""}${s.label}</span>`   /* 17/11: fonte pessoal */
+  : s.sc!==null ? `<span class="tseal" aria-hidden="true">${sealIco(s,14)}${s.sc}</span>`
   : it.fontePub ? `<span class="tseal tfonte ${s.lv}">${sealIco(s,14)}${it.fontePub.situacao==="base" ? "Cita fonte confiável" : it.fontePub.situacao==="recusada" ? "Fonte não confiável" : "Fonte não verificada"}</span>` : "";
 function textParts(it){
   const o = ORG[it.org], s = sealOf(it);
@@ -4316,7 +4319,7 @@ function mockSB(o = {}){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], checagens_fila:()=>[], divergencias_curadoria:()=>({analise:[], avisos:[]}), divergencia_vota:()=>({conta:true, contesta:1, confirma:0}), divergencia_decide:()=>true, checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], fontes_pessoais_minhas:()=>({limite:10, fontes:[]}), fonte_pessoal_inclui:()=>({fonte_id:1, espera:false}), fonte_pessoal_remove:()=>true, fontes_pessoais_painel:()=>({total:0, teto:400, espera:0, fontes:[]}), checagens_fila:()=>[], divergencias_curadoria:()=>({analise:[], avisos:[]}), divergencia_vota:()=>({conta:true, contesta:1, confirma:0}), divergencia_decide:()=>true, checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
     conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
     meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
@@ -4587,8 +4590,9 @@ function noticiasAplica(data, ref){
        1 outra fonte: +3 · 2 ou mais: +6 · 3 ou mais de pelo menos 2 grupos diferentes do da fonte: +8. Checagem relacionada aparece no selo, sem mudar o número. */
     const oFont = new Set(outras.map(x=>(x.fontes||{}).nome || x.url)).size, oGrp = new Set(outras.map(x=>(x.fontes||{}).grupo_midia || (x.fontes||{}).nome).filter(g=>g && g !== f.grupo_midia && g !== f.nome)).size;
     const tri = !oFont ? 0 : oFont === 1 ? 3 : oFont >= 3 && oGrp >= 2 ? 8 : 6;
-    it.seloBase = f.nota; it.nid = n.id; it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
-    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (n.divergencia){ it.diverg = n.divergencia; if (n.divergencia.status==="desmentida"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; } }   /* 17/11: desmentida pela regra de volume ou pela curadoria: no máximo 20 */
+    it.seloBase = f.nota; it.nid = n.id;
+    if (n.pessoal){ it.pessoal = true; if (n.recusada) it.recusadaMotivo = n.recusada; else if (f.tipo==="Pessoal") it.pessoalNova = true; }   /* 17/11: fonte pessoal, só quem incluiu vê */ it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
+    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (it.recusadaMotivo) SEAL[id] = Math.min(SEAL[id], 30); if (it.pessoalNova) SEAL[id] = null;   /* recusada: no máximo 30; fonte nova: sem número até a curadoria avaliar */ if (n.divergencia){ it.diverg = n.divergencia; if (n.divergencia.status==="desmentida"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; } }   /* 17/11: desmentida pela regra de volume ou pela curadoria: no máximo 20 */
     if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
     POOL.push(it); });
   feedDadosNovos("noticias"); }
@@ -5292,9 +5296,12 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     (sd.fontes_erro || []).forEach(f=>al.push(["err", `${esc(f.nome)}: ${esc(f.erro)}`]));
     return `<h3 class="osec">Saúde do feed</h3>
       <div class="facts"><div class="fact"><b>${String(sd.grande_pct).replace(".",",")}%</b>grande imprensa (teto ${sd.grande_teto}%)</div><div class="fact"><b>${String(sd.grupo_pct).replace(".",",")}%</b>maior grupo · ${esc(sd.grupo_nome)}</div><div class="fact"><b>${sd.com_cobertura}</b>cartões com outras fontes</div><div class="fact"><b>${sd.fontes_coletando_7d} de ${sd.fontes_ativas}</b>fontes trouxeram notícia em 7 dias</div><div class="fact"><b>${String(sd.sem_imagem_pct).replace(".",",")}%</b>cartões sem imagem</div><div class="fact"><b>há ${sd.ultima_coleta_min} min</b>última notícia</div></div>
-      ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow al ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}
-      <h3 class="osec">Fontes</h3>`; })();
-  box.innerHTML = saude + `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
+      ${al.length ? `<div class="curfontes">${al.map(([c, t])=>`<div class="cfrow al ${c}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><small>${t}</small></span></div>`).join("")}</div>` : `<p class="curnota">Tudo dentro do combinado.</p>`}`; })();
+  let fpp = null; try{ const r = await SB.rpc("fontes_pessoais_painel"); fpp = r.data || null; }catch(e){}
+  const pess = !fpp ? `<h3 class="osec">Fontes da base</h3>` : `<h3 class="osec">Fontes pessoais · ${fpp.total} de ${fpp.teto}</h3><p class="curnota">Sites que as pessoas incluíram só para elas. Avalie se algum deve entrar na base para todos.${fpp.espera ? ` ${fpp.espera} ${fpp.espera===1 ? "pedido espera" : "pedidos esperam"} vaga.` : ""}</p>`
+    + (fpp.fontes.length ? `<div class="curfontes">${fpp.fontes.map(f=>`<div class="cfrow ${f.erro ? "err" : f.feed ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span><span class="cft"><b>${esc(f.nome)}</b><small>${f.pessoas} ${f.pessoas===1 ? "pessoa" : "pessoas"} · ${f.noticias} notícias em 7 dias${f.erro ? " · " + esc(f.erro) : f.feed ? "" : " · sem feed"}</small></span></div>`).join("")}</div>` : `<p class="empty">Nenhuma fonte pessoal ainda.</p>`)
+    + `<h3 class="osec">Fontes da base</h3>`;
+  box.innerHTML = saude + pess + `<div class="facts"><div class="fact"><b>${comFeed.length} de ${at.length}</b>fontes com feed</div><div class="fact"><b>${comErro.length}</b>com problema</div><div class="fact"><b>15 min</b>entre coletas</div></div>
     <p class="curnota">Fontes sem feed (dados públicos, tribunais, portais sem RSS) ficam de fora da coleta automática; seguem na curadoria manual.</p>
     <div class="curfontes">${data.filter(f=>!rec.has(f.id)).map(f=>`<div class="cfrow ${!f.ativa ? "off" : f.ultimo_erro ? "err" : f.feed_url ? "ok" : "none"}"><span class="cfdot" aria-hidden="true"></span>
       <span class="cft"><b>${esc(f.nome)}</b><small>${f.feed_url ? esc(f.feed_url.replace(/^https?:\/\//,"")) : "sem feed"}${f.ultimo_erro ? " · " + esc(f.ultimo_erro) : ""}</small></span>
@@ -5764,8 +5771,19 @@ function sheetAdjust(){
     ${S.algo ? "" : `<p class="anote" style="margin:0">Com o algoritmo desligado, o que você ajustar aqui vale quando ligar de novo.</p>`}
     <div class="chips" role="group" aria-label="Temas">${TEMAS.map(t=>`<button class="chip" type="button" data-act="ttoggle" data-t="${t}" aria-pressed="${S.temas.includes(t)}">${S.temas.includes(t)?ic("check","sm"):""}${t}</button>`).join("")}</div>
     <div class="field"><label for="mix">Equilíbrio: <span id="mixv">${S.mix}% organizações · ${100-S.mix}% temas</span></label><input class="range" id="mix" type="range" min="0" max="100" step="10" value="${S.mix}"></div>
+    ${ME.user ? `<div id="minhasfontes" class="field"></div>` : ""}
     <button class="btn primary block" type="button" data-act="applyalgo">Aplicar</button>`, "Meu algoritmo");
+  if (ME.user) fontesPessoaisCarrega();
 }
+/* 17/11 (Amanda): fontes pessoais. Até 5 por conta cadastrada e 10 por verificada; só quem incluiu vê; coleta de hora em hora */
+const FP_SIT = {coletando:"", procurando:"Procurando o feed", sem_feed:"Sem feed: não dá para acompanhar", recusada:"Recusada pela curadoria · nota até 30", base:"Já está na base da rede", espera:"Na fila: a rede chegou ao limite de fontes pessoais"};
+async function fontesPessoaisCarrega(){ const box = $("#minhasfontes"); if (!box || !SB) return;
+  const {data} = await SB.rpc("fontes_pessoais_minhas"); const d = data || {limite:5, fontes:[]}, l = d.fontes || [];
+  if (!$("#minhasfontes")) return;
+  box.innerHTML = `<label for="fpurl">Suas fontes · ${l.length} de ${d.limite}</label>
+    <p class="anote" style="margin:0 0 8px">Inclua sites para acompanhar no seu feed. Só você vê.${d.limite===5 ? " Com a conta verificada, são 10." : ""}</p>
+    ${l.length < d.limite ? `<div class="row"><input id="fpurl" class="input" type="url" inputmode="url" placeholder="https://site.com.br" maxlength="300"><button class="btn sm" type="button" data-act="fpinclui">Incluir</button></div>` : ""}
+    ${l.map(f=>`<div class="cfrow"><span class="cft"><b>${esc(f.nome)}</b><small>${f.situacao==="coletando" ? `${f.noticias} ${f.noticias===1 ? "notícia" : "notícias"} em 7 dias` : FP_SIT[f.situacao] || ""}</small></span><button class="iconbtn" type="button" data-act="fpremove" data-id="${f.id}" aria-label="Tirar ${esc(f.nome)}">${ic("close","sm")}</button></div>`).join("")}`; }
 function filterBody(){
   const d = S.fdraft, chip = (grp, v, label, on) => `<button class="chip" type="button" data-act="fchip" data-g="${grp}" data-v="${v}" aria-pressed="${on}">${on?ic("check","sm"):""}${label}</button>`;
   const n = source(d).length, total = nFiltros(d);
@@ -5939,6 +5957,10 @@ const A = {
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
     if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Organizações › Comunidades." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
+  fpinclui: async b => { const url = (($("#fpurl") || {}).value || "").trim(); if (!url) return toast("Cole o endereço do site.");
+    ocupado(b, true, "…"); const {data, error} = await SB.rpc("fonte_pessoal_inclui", {p_url:url}); ocupado(b, false);
+    if (error) return toast(erroAuth(error)); toast(data && data.espera ? "Na fila: a rede chegou ao limite de fontes pessoais." : "Incluída. As notícias chegam em até 1 hora."); fontesPessoaisCarrega(); },
+  fpremove: async b => { const {error} = await SB.rpc("fonte_pessoal_remove", {p_fonte:+b.dataset.id}); if (error) return toast(erroAuth(error)); fontesPessoaisCarrega(); },
   divvota: b => { if (!ME.user){ S.contaTab = "entrar"; return go("conta"); }
     const t = b.dataset.t; openSheet(shead(t==="contesta" ? "Contestar com fonte" : "Confirmar com fonte") + `<div class="cform"><label class="olbl" for="divurl">Link da fonte</label><input id="divurl" class="input" type="url" inputmode="url" placeholder="https://" maxlength="500">
       <p class="hint">${ME.perfil && ME.perfil.verificado ? "Sua conta é verificada: conta no volume." : "Contas só cadastradas vão para a curadoria e não contam no volume. Verifique a conta para contar."}</p>
@@ -6787,7 +6809,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:49";
+const VERSAO = "v1 registrada · 17/11 15:10";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

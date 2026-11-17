@@ -1,7 +1,7 @@
 // arede.online · COLETOR de notícias
 // Lê os feeds (RSS/Atom) das fontes com selo, guarda só título, chamada do veículo, um trecho de até 800 caracteres, data, imagem de capa e link,
 // evita repetidas, agrupa a mesma notícia em fontes diferentes (cobertura cruzada) e manda para o feed ou para a fila.
-// Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · a mesma notícia entre fontes é juntada no banco (privado.agrupa_mesmas)
+// Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · ?modo=pessoais (fontes pessoais, só quem incluiu vê) · a mesma notícia entre fontes é juntada no banco (privado.agrupa_mesmas)
 //   · ?modo=reclassificar&pagina=N (refaz o tema das notícias dos últimos 30 dias com os temas de temas.ts).
 // Lotes: ?lote=0..9 (as fontes se dividem em 10).
 // Canais do YouTube: feed_tipo "youtube", lidos pelo RSS público do canal (só vídeos longos, sem Shorts nem lives).
@@ -396,7 +396,7 @@ async function coleta(f: any) {
     const decl = (lingua || "").slice(0, 2).toLowerCase(), fl = (f.lingua || "").slice(0, 2).toLowerCase();
     const lg = IDIOMAS.includes(decl) ? decl : /^[a-z]{2}$/.test(fl) && fl !== "ou" ? fl : idiomaDe(i.titulo + " " + (i.chamada || ""), "");
     const n = { previa_em: null as string | null, fonte_id: f.id, url: i.url, titulo: i.titulo.slice(0, 300), chamada: i.chamada, resumo: i.resumo || "", lingua: lg, imagem_url: i.imagem_url, publicada_em: i.publicada_em && !isNaN(+i.publicada_em) ? i.publicada_em.toISOString() : new Date().toISOString(),
-      impressao: imp, grupo, tema: temaDe(i.titulo, i.chamada), status: FORA.test(imp) ? "recusada" : f.nota >= NOTA_DIRETO && IDIOMAS.includes(lg) ? "publicada" : "fila" };
+      impressao: imp, grupo, tema: temaDe(i.titulo, i.chamada), status: f.pessoalStatus ? "pessoal" : FORA.test(imp) ? "recusada" : f.nota >= NOTA_DIRETO && IDIOMAS.includes(lg) ? "publicada" : "fila" };
     novas.push(n);
   }
   // sem chamada ou sem imagem: completa pela página da matéria (novas primeiro, depois as que já entraram e ainda não foram consultadas).
@@ -449,7 +449,8 @@ Deno.serve(async (req) => {
     // canais do YouTube já têm o endereço certo do RSS (cadastrado pelo ID do canal): não passam pela busca
     // ?ids=1,2,3 refaz a busca só dessas fontes, de qualquer lote (usado para feeds parados)
     const ids = (q.get("ids") || "").split(",").map((x) => +x).filter(Boolean);
-    const busca = ids.length ? (todas || []).filter((f: any) => ids.includes(f.id) && f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia")
+    const porId = ids.length ? ((await SB.from("fontes").select("*").in("id", ids)).data || []) : [];   // inclui fontes pessoais (fora da base)
+    const busca = ids.length ? porId.filter((f: any) => f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia")
       : fontes.filter((f: any) => f.feed_tipo !== "youtube" && f.feed_tipo !== "referencia" && (q.get("so") !== "semfeed" || !f.feed_url || q.get("id") === String(f.id)));
     for (let i = 0; i < busca.length; i += 4) await Promise.all(busca.slice(i, i + 4).map(async (f: any) => {
       const d: any = await descobre(f);
@@ -460,7 +461,9 @@ Deno.serve(async (req) => {
   }
   // 17/11: a mesma notícia em fontes diferentes é reconhecida dentro do banco a cada 30 minutos (privado.agrupa_mesmas), sem tirar dados do servidor.
   if (modo === "agrupar") return new Response(JSON.stringify({ modo, aviso: "o agrupamento roda no banco: privado.agrupa_mesmas" }), { headers: { "content-type": "application/json" } });
-  const comFeed = fontes.filter((f: any) => f.feed_url);
+  // 17/11 (Amanda): fontes pessoais, de hora em hora, em lotes; as notícias entram como "pessoal" (só quem incluiu vê)
+  const pessoais = modo === "pessoais" ? (((await SB.rpc("coletor_pessoais", { p_lote: lote })).data) || []) : [];
+  const comFeed = modo === "pessoais" ? pessoais : fontes.filter((f: any) => f.feed_url);
   for (let i = 0; i < comFeed.length; i += 5) await Promise.all(comFeed.slice(i, i + 5).map(async (f: any) => {
     const r = await coleta(f);
     await SB.from("fontes").update(r.erro ? { ultima_coleta: agora, ultimo_erro: r.erro } : { ultima_coleta: agora, ultimo_ok: agora, ultimo_erro: null, itens_ultima: r.novas }).eq("id", f.id);
