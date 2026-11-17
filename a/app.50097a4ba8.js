@@ -764,8 +764,9 @@ function sealChecksBase(it){
   if (it.ext){ let q = o.fonte ? L("ok","Fonte verificada", `${o.nome} está na base de fontes da rede (base ${it.seloBase ?? o.nota}).`) : L("ok","Organização real", `${o.nome} existe e publicou este conteúdo nos canais públicos dela.`);
     if (o.fonte && certDe(o).length) q += L("ok", "Certificação independente", certLinhas(o).join("<br>"));
     if (it.coletada){ const ck = it.checagem;   /* 17/11: checagem das agências da base sobre o mesmo assunto; sinal para quem lê, não muda a nota */
-      q += ck ? L(ck.res==="desmentida" ? "warn" : "ok", "Checagem relacionada", `${esc(ck.fonte)}${ck.res==="desmentida" ? " desmentiu algo sobre este assunto" : " checou este assunto"}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>`)
-        : L("ok", "Checagem independente", "Nenhuma checagem das agências da base sobre este assunto nos últimos 10 dias."); }
+      q += ck && ck.res==="desmente" ? L("bad", "Desmentida por checagem", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>. Revisado pela curadoria.`)
+        : ck ? L("ok", "Checagem relacionada", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>`)
+        : L("ok", "Checagem independente", "Nenhum desmentido revisado pela curadoria."); }
     else q += s.lv==="na" ? L("na","Afirmações checadas","Convocação ou opinião: o selo avalia fatos, não opiniões.") : L(s.lv, "Afirmações checadas", (note && note[1]) || "Confere com fontes públicas.");
     /* linha editorial: a fonte é confiável nos fatos, mas tem posição declarada; vale ler junto com outras */
     if (reforco(it)) q += L("ok", "Reforço internacional", "Publicada por fontes de " + it.paises.length + " países: " + listaPaises(it.paises.map(p=>bandeira(p) + " " + p)) + ". O mesmo texto republicado conta uma vez só.");
@@ -886,7 +887,7 @@ function sealBox(it, compacto){
     ${s.sc!==null?`<div class="scale" role="img" aria-label="Nota ${s.sc} de 100"><i style="left:${s.sc}%"></i></div><div class="scalelbl"><span>Baixa</span><span>Moderada</span><span>Alta</span></div>`:""}
     ${m.length ? `<ul class="sbexp">${m.map(x=>`<li data-m="${x.k}">${ic(x.ic,"sm")}<span>${x.k==="dono" ? "" : `<b>${x.t}</b> `}${x.x}</span></li>`).join("")}</ul>` : ""}
     ${deOndeVem(it)}
-    <p class="sbaviso">${it.coletada ? `Nota desta notícia: base da fonte (${it.seloBase})${it.seloTri ? ` + ${it.seloTri} por outras fontes da base que cobriram` : ""}${it.seloAjuste ? ` ${it.seloAjuste > 0 ? "+" : "−"} ${Math.abs(it.seloAjuste)} por sinais da comunidade` : ""}. ` : ""}Critérios públicos e iguais para todas as fontes. <a href="#termos">Como funciona e como pedir revisão</a></p>
+    <p class="sbaviso">${it.coletada ? `Nota desta notícia: base da fonte (${it.seloBase})${it.seloTri ? ` + ${it.seloTri} por outras fontes da base que cobriram` : ""}${it.seloAjuste ? ` ${it.seloAjuste > 0 ? "+" : "−"} ${Math.abs(it.seloAjuste)} por sinais da comunidade` : ""}${it.seloDesm ? ", limitada a 20 porque uma checagem desmentiu a notícia" : ""}. ` : ""}Critérios públicos e iguais para todas as fontes. <a href="#termos">Como funciona e como pedir revisão</a></p>
     <div class="checks">${sealChecks(it)}</div>
     <p class="note" style="margin:10px 0"><span>Verificação automática com fontes públicas. Se alguém contesta, uma segunda verificação, independente, refaz a análise. O selo avalia fatos, nunca opiniões.</span></p>
     ${it.ext && it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).length ? `<div class="vsrc"><b>${ORG[it.org].fonte ? "A mesma notícia em outras fontes" : "Fontes que confirmam"}</b>${it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).map(v=>`<a href="${v.url}" target="_blank" rel="noopener"><span>${esc(v.fonte)}<small>${esc(v.papel||"")}${v.o_que_confirma?" · "+esc(v.o_que_confirma):""}</small></span>${ic("ext","sm")}</a>`).join("")}</div>`
@@ -4305,7 +4306,7 @@ function mockSB(o = {}){
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
-    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
+    denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], checagens_fila:()=>[], checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
     conta_situacao:()=>({apagando:false}), conta_reativa:()=>true,
     meu_perfil:()=>{ const p = tab("perfis").find(x=>x.id === eu()); return p ? Object.assign({mostra_cidade:false}, p) : null; } };
@@ -4577,7 +4578,7 @@ function noticiasAplica(data, ref){
     const oFont = new Set(outras.map(x=>(x.fontes||{}).nome || x.url)).size, oGrp = new Set(outras.map(x=>(x.fontes||{}).grupo_midia || (x.fontes||{}).nome).filter(g=>g && g !== f.grupo_midia && g !== f.nome)).size;
     const tri = !oFont ? 0 : oFont === 1 ? 3 : oFont >= 3 && oGrp >= 2 ? 8 : 6;
     it.seloBase = f.nota; it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
-    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
+    SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
     POOL.push(it); });
   feedDadosNovos("noticias"); }
 
@@ -5150,6 +5151,20 @@ function sheetEntender(id){ const x = ENT_BASE.find(y=>y.id===id) || {}, limpa =
     <div class="field"><label for="ebpo">Sinais de polêmica (opcional)</label><input id="ebpo" type="text" maxlength="590" value="${limpa(x.polemica)}" autocapitalize="off" spellcheck="false"><small class="hint">Palavras que indicam a confusão (por exemplo: presidente|governador|culpa). Sem isso, a nota aparece em toda notícia do assunto.</small></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="entsalva" data-id="${esc(id || "")}">${id ? "Salvar" : "Criar rascunho"}</button></div>`, id ? "Editar nota" : "Nova nota"); }
 /* curadoria da conversa: denúncias de comentários, candidatas a colaborador e sinais para o selo */
+/* 17/11 (Amanda): checagem passa pela curadoria. O robô sugere checagens das agências da base sobre o mesmo assunto;
+   só o que a curadoria decide aparece no site. "Desmente" limita a nota da notícia a 20; "Relacionada" só mostra o link no selo. */
+async function curadoriaChecagens(box){
+  const {data, error} = await SB.rpc("checagens_fila");
+  if (error){ box.innerHTML = `<p class="empty">${esc(erroAuth(error))}</p>`; return; }
+  const l = data || [];
+  box.innerHTML = `<p class="curnota">Checagens das agências da base que falam do mesmo assunto de uma notícia. Abra as duas antes de decidir: a checagem pode desmentir um boato sobre o tema, e não a notícia. Só o que você decide aparece no site.</p>
+    <div class="facts"><div class="fact"><b>Desmente</b>a notícia fica com nota de no máximo 20 e o selo mostra a checagem</div><div class="fact"><b>Relacionada</b>o selo mostra o link da checagem, sem mudar a nota</div></div>`
+    + (l.length ? l.map(x=>`<article class="curitem" data-id="${x.noticia_id}"><div>
+        <small>${esc(x.fonte)} · ${quando(x.publicada_em)}</small><b>${esc(x.noticia_titulo)}</b><a href="${esc(x.noticia_url)}" target="_blank" rel="noopener">Abrir a notícia ${ic("ext","sm")}</a>
+        <small style="margin-top:10px">${esc(x.checadora)} · ${x.resultado==="desmentida" ? "a checagem desmente algo" : "a checagem confirma algo"}</small><p>${esc(x.checagem_titulo)}</p><a href="${esc(x.checagem_url)}" target="_blank" rel="noopener">Abrir a checagem ${ic("ext","sm")}</a>
+        <div class="row"><button class="btn sm primary" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="desmente">Desmente esta notícia</button><button class="btn sm" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="relacionada">Só relacionada</button><button class="btn sm ghost" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="sem_relacao">Sem relação</button></div></div></article>`).join("")
+      : `<p class="empty">Nenhuma checagem esperando revisão.</p>`);
+}
 async function curadoriaConversa(box){
   curDen();
   const [d, c, s] = await Promise.all([SB.from("comentario_denuncias").select("comentario_id,motivo,criado_em,comentarios(id,texto,status,perfis(nome))").eq("status","aberta").order("criado_em").limit(200), SB.rpc("colaborador_candidatos"),
@@ -5207,13 +5222,14 @@ function screenCuradoria(){
   if (!ME.user || !ME.perfil || ME.perfil.papel!=="admin") return topo + `<div class="container cform"><div class="note">${ic("lock")}<span>Só administradoras da rede veem a curadoria. <a href="#conta">Entrar</a></span></div></div>`;
   const t = S.curTab || "fila";
   return topo + `<div class="container cur">
-    <div class="tabs" role="tablist" aria-label="Curadoria"><button class="tab" type="button" role="tab" data-act="curtab" data-t="fila" aria-selected="${t==="fila"}">Fila de revisão</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="fontes" aria-selected="${t==="fontes"}">Saúde das fontes</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="orgs" aria-selected="${t==="orgs"}">Organizações</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="arte" aria-selected="${t==="arte"}">Arte</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="verif" aria-selected="${t==="verif"}">Verificações</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="entender" aria-selected="${t==="entender"}">Para entender</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="conversa" aria-selected="${t==="conversa"}">Conversa</button></div>
+    <div class="tabs" role="tablist" aria-label="Curadoria"><button class="tab" type="button" role="tab" data-act="curtab" data-t="fila" aria-selected="${t==="fila"}">Fila de revisão</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="fontes" aria-selected="${t==="fontes"}">Saúde das fontes</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="orgs" aria-selected="${t==="orgs"}">Organizações</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="arte" aria-selected="${t==="arte"}">Arte</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="checagens" aria-selected="${t==="checagens"}">Checagens</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="verif" aria-selected="${t==="verif"}">Verificações</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="entender" aria-selected="${t==="entender"}">Para entender</button><button class="tab" type="button" role="tab" data-act="curtab" data-t="conversa" aria-selected="${t==="conversa"}">Conversa</button></div>
     <div id="curbody"><p class="empty">Carregando…</p></div></div>`;
 }
 const quando = d => { if (!d) return "nunca"; const m = Math.round(((ALTA_REF || Date.now()) - new Date(d)) / 60000); return m < 60 ? "há " + Math.max(1, m) + " min" : m < 1440 ? "há " + Math.round(m/60) + " h" : Math.round(m/1440) === 1 ? "há 1 dia" : "há " + Math.round(m/1440) + " dias"; };
 async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB || !ME.perfil || ME.perfil.papel!=="admin") return;
   if (S.curTab==="arte") return curadoriaArtes(box);
   if (S.curTab==="verif") return curadoriaVerif(box);
+  if (S.curTab==="checagens") return curadoriaChecagens(box);
   if (S.curTab==="entender") return curadoriaEntender(box);
   if (S.curTab==="conversa") return curadoriaConversa(box);
   if (S.curTab==="orgs"){
@@ -5249,6 +5265,7 @@ async function curadoriaCarrega(){ const box = $("#curbody"); if (!box || !SB ||
     if (sd.grande_pct > sd.grande_teto + 0.5) al.push(["err", `Grande imprensa em ${String(sd.grande_pct).replace(".",",")}% do feed, acima do teto de ${sd.grande_teto}%.`]);
     if (sd.grupo_pct > sd.grupo_teto + 0.5) al.push(["err", `${esc(sd.grupo_nome)} em ${String(sd.grupo_pct).replace(".",",")}% do feed, acima do teto de ${sd.grupo_teto}% por grupo.`]);
     if (sd.sem_imagem_pct > 15) al.push(["err", `${String(sd.sem_imagem_pct).replace(".",",")}% dos cartões sem imagem.`]);
+    if (sd.checagens_pendentes) al.push(["none", `${sd.checagens_pendentes} ${sd.checagens_pendentes === 1 ? "checagem espera" : "checagens esperam"} revisão em Checagens.`]);
     if (sd.titulos_quebrados_24h) al.push(["none", `${sd.titulos_quebrados_24h} notícias com título quebrado foram ocultadas nas últimas 24 horas.`]);
     const pr = sd.fontes_paradas || []; if (pr.length) al.push(["none", `${pr.length} ${pr.length === 1 ? "fonte responde" : "fontes respondem"}, mas sem notícia nova há mais de 14 dias: ${pr.map(f=>esc(f.nome)).join(", ")}.`]);
     (sd.fontes_erro || []).forEach(f=>al.push(["err", `${esc(f.nome)}: ${esc(f.erro)}`]));
@@ -5901,6 +5918,10 @@ const A = {
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
     if (error) return toast(erroAuth(error)); toast(st==="aprovada" ? "Aprovada: já aparece em Organizações › Comunidades." : "Recusada."); if (st==="aprovada") orgsAprovadasCarrega(); curadoriaCarrega(); },
+  checdecide: async b => { const row = b.closest(".curitem"); ocupado(b, true, "…");
+    const {error} = await SB.rpc("checagem_decide", {p_noticia:b.dataset.n, p_checagem:b.dataset.c, p_status:b.dataset.s});
+    if (error){ ocupado(b, false); return toast(erroAuth(error)); }
+    if (row) row.remove(); toast(b.dataset.s==="desmente" ? "Marcada como desmentida: nota de no máximo 20." : b.dataset.s==="relacionada" ? "Checagem ligada à notícia, sem mudar a nota." : "Descartada."); },
   curar: async b => { const id = b.dataset.id, st = b.dataset.s, row = b.closest(".curitem"); ocupado(b, true, "…");
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
@@ -6734,7 +6755,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:08";
+const VERSAO = "v1 registrada · 17/11 09:17";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
