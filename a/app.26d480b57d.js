@@ -764,14 +764,14 @@ function sealChecksBase(it){
   if (it.ext){ let q = o.fonte ? L("ok","Fonte verificada", `${o.nome} está na base de fontes da rede (base ${it.seloBase ?? o.nota}).`) : L("ok","Organização real", `${o.nome} existe e publicou este conteúdo nos canais públicos dela.`);
     if (o.fonte && certDe(o).length) q += L("ok", "Certificação independente", certLinhas(o).join("<br>"));
     if (it.coletada){ const ck = it.checagem;   /* 17/11: checagem das agências da base sobre o mesmo assunto; sinal para quem lê, não muda a nota */
-      q += ck && ck.res==="desmente" ? L("bad", "Desmentida por checagem", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>. Revisado pela curadoria.`)
+      q += ck && ck.res==="desmente" ? L("bad", "Desmentida por checagem", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>`)
         : ck ? L("ok", "Checagem relacionada", `${esc(ck.fonte)}: <a href="${esc(ck.url)}" target="_blank" rel="noopener">${esc(ck.titulo)}</a>`)
-        : L("ok", "Checagem independente", "Nenhum desmentido revisado pela curadoria."); }
+        : ""; }
     else q += s.lv==="na" ? L("na","Afirmações checadas","Convocação ou opinião: o selo avalia fatos, não opiniões.") : L(s.lv, "Afirmações checadas", (note && note[1]) || "Confere com fontes públicas.");
     /* linha editorial: a fonte é confiável nos fatos, mas tem posição declarada; vale ler junto com outras */
     if (reforco(it)) q += L("ok", "Reforço internacional", "Publicada por fontes de " + it.paises.length + " países: " + listaPaises(it.paises.map(p=>bandeira(p) + " " + p)) + ". O mesmo texto republicado conta uma vez só.");
     if (o.linha) q += L("warn", /ativista/i.test(o.linha) ? "Mídia ativista" : "Linha editorial", o.linha.replace(/^m[íi]dia ativista:\s*/i,"").replace(/^./,c=>c.toUpperCase()) + " Vale ler junto com outras fontes.");
-    q += L(it.ext.verif.length ? "ok" : "warn", o.fonte ? "Outras fontes cobriram" : "Fontes que confirmam", it.ext.verif.length ? (coberturas(it).length === it.ext.verif.length ? `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"}: veja em Quem mais cobriu.${it.seloTri ? " Soma " + it.seloTri + " pontos à nota." : ""}` : `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"} da base: ${it.ext.verif.map(v=>v.fonte).join(", ")}.`) : "Só esta fonte, por enquanto.");
+    q += L(it.ext.verif.length ? "ok" : "warn", o.fonte ? "Outras fontes cobriram" : "Fontes que confirmam", it.ext.verif.length ? (coberturas(it).length === it.ext.verif.length ? `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"}: veja em Quem mais cobriu.` : `${it.ext.verif.length} ${it.ext.verif.length===1?"fonte":"fontes"} da base: ${it.ext.verif.map(v=>v.fonte).join(", ")}.`) : "Só esta fonte, por enquanto.");
     return q; }
   if (it.conta){ const quem = L("ok", o.verificado ? "Perfil verificado" : "Conta real", o.verificado ? `${o.nome}: ${VERIF[o.verificado][0].toLowerCase()}.` : `${o.nome} tem conta confirmada por e-mail.`), fp = it.fontePub;
     if (it.autoral) return quem + L("na", "Conteúdo autoral", (it.autoral==="arte" ? "Arte" : "Ficção") + ", como a autora declarou. O selo avalia fatos; obra autoral não recebe nota.");
@@ -887,7 +887,7 @@ function sealBox(it, compacto){
     ${s.sc!==null?`<div class="scale" role="img" aria-label="Nota ${s.sc} de 100"><i style="left:${s.sc}%"></i></div><div class="scalelbl"><span>Baixa</span><span>Moderada</span><span>Alta</span></div>`:""}
     ${m.length ? `<ul class="sbexp">${m.map(x=>`<li data-m="${x.k}">${ic(x.ic,"sm")}<span>${x.k==="dono" ? "" : `<b>${x.t}</b> `}${x.x}</span></li>`).join("")}</ul>` : ""}
     ${deOndeVem(it)}
-    <p class="sbaviso">${it.coletada ? `Nota desta notícia: base da fonte (${it.seloBase})${it.seloTri ? ` + ${it.seloTri} por outras fontes da base que cobriram` : ""}${it.seloAjuste ? ` ${it.seloAjuste > 0 ? "+" : "−"} ${Math.abs(it.seloAjuste)} por sinais da comunidade` : ""}${it.seloDesm ? ", limitada a 20 porque uma checagem desmentiu a notícia" : ""}. ` : ""}Critérios públicos e iguais para todas as fontes. <a href="#termos">Como funciona e como pedir revisão</a></p>
+    <p class="sbaviso">A nota é uma avaliação da rede.online, por critérios públicos e iguais para todas as fontes. <a href="#termos">Como funciona e como pedir revisão</a></p>
     <div class="checks">${sealChecks(it)}</div>
     <p class="note" style="margin:10px 0"><span>Verificação automática com fontes públicas. Se alguém contesta, uma segunda verificação, independente, refaz a análise. O selo avalia fatos, nunca opiniões.</span></p>
     ${it.ext && it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).length ? `<div class="vsrc"><b>${ORG[it.org].fonte ? "A mesma notícia em outras fontes" : "Fontes que confirmam"}</b>${it.ext.verif.filter(v=>!(v.papel==="cobertura da mesma notícia")).map(v=>`<a href="${v.url}" target="_blank" rel="noopener"><span>${esc(v.fonte)}<small>${esc(v.papel||"")}${v.o_que_confirma?" · "+esc(v.o_que_confirma):""}</small></span>${ic("ext","sm")}</a>`).join("")}</div>`
@@ -6755,7 +6755,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:19";
+const VERSAO = "v1 registrada · 17/11 09:26";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
