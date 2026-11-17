@@ -12,6 +12,8 @@ const store = {
   set(k, v){ try{ localStorage.setItem("arede-"+k, JSON.stringify(v)); }catch(e){} }
 };
 const ICON = {
+  cracha:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M10 5V3h4v2"/><circle cx="12" cy="11" r="2.2"/><path d="M8.5 17c.6-1.6 1.9-2.4 3.5-2.4s2.9.8 3.5 2.4"/>',
+  nota:'<path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2L6 21z"/><path d="M9 9h6M9 13h6M9 17h3"/>',
   copia:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
   bookmark:'<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/>',
@@ -2388,12 +2390,12 @@ const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e po
 function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa(p);
   ORG[id] = Object.assign(ORG[id] || {}, {id, nome:limpo(p.nome) || "Página", sigla:siglaDe(limpo(p.nome)), cidade:limpo(p.cidade) || "", tema:limpo(p.tema) || "", membros:0, real:true, pagina:true,
     paginaTipo:p.tipo, natureza:p.tipo === "empresa" ? "página de empresa" : "página de conteúdo", cor:CORES_CONTA[(p.cor || 0) % CORES_CONTA.length], sobre:limpo(p.descricao) || "",
-    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, mei:!!p.cnpj_conferido && !!p.mei, ficticia:exPagId(p.id)});
+    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, mei:!!p.cnpj_conferido && !!p.mei, nf:!!p.cnpj_conferido && !!p.emite_nf, ficticia:exPagId(p.id)});
   return id; }
 async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
 async function paginasCarrega0(){ if (!SB) return;
-  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
-    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
@@ -2609,13 +2611,19 @@ async function sesCarrega(campo, valor){ const {data} = await SB.from("tat_sesso
 function sesHTML(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "";
   const l = SES.pedido[x.id]; if (!l){ sesCarrega("pedido_id", x.id).then(r=>{ SES.pedido[x.id] = r; if (route() === "conversa-" + x.id) render(); }); return ""; }
   const ativa = l.find(y=>y.status === "proposta" || y.status === "marcada");
-  const card = y => { const st = SES_ST[y.status], tat = modeloDe(p) === "tatuagem";
+  const card = y => { const st = y.status === "verificada" ? (y.checkout_em ? ["Encerrado","ok"] : ["Serviço iniciado","ok"]) : SES_ST[y.status], tat = modeloDe(p) === "tatuagem";
     let ac = "";
     if (y.status === "proposta") ac = eu ? `<small>Esperando a confirmação.</small><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sesconfirma" data-s="${y.id}">Confirmar</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Pedir outro horário</button>`;
     if (y.status === "marcada") ac = eu ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">${ic("check","sm")} Mostrar QR do check-in</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sescheckin" data-s="${y.id}">${ic("check","sm")} Fazer check-in</button><small>No dia, aponte a câmera para o QR que a página mostra, ou digite o código.</small>`;
-    if (y.status === "verificada") ac = eu ? `<small>Check-in feito ${quando(y.checkin_em)}.${y.avaliada ? " A cliente já avaliou." : ""}</small>` : y.avaliada ? `<small>Você avaliou esta ${tat ? "sessão" : "visita"}. Obrigada!</small>` : `<button class="btn sm primary" type="button" data-act="sesavalia" data-s="${y.id}">${ic("star","sm")} Avaliar</button>`;
-    return `<div class="sescard" data-s="${y.id}"><span class="ktipo">${ic("clock","sm")}${tat ? "Sessão" : "Horário"} · <span class="pgsit ${st[1]}">${st[0]}</span></span><b>${dataHora(y.quando)} · ${y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min"}</b>${y.valor ? `<small>Valor combinado: ${esc(y.valor)}</small>` : ""}<div class="sesac">${ac}</div></div>`; };
+    if (y.status === "verificada") ac = eu ? (y.checkout_em ? `<small>${y.avaliada ? "A cliente já avaliou." : ""}</small>` : `<button class="btn sm primary" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${x.id}">${ic("check","sm")} Encerrar atendimento</button>`) : y.avaliada ? `<small>Você avaliou esta ${tat ? "sessão" : "visita"}. Obrigada!</small>` : `<button class="btn sm primary" type="button" data-act="sesavalia" data-s="${y.id}">${ic("star","sm")} Avaliar</button>`;
+    return `<div class="sescard" data-s="${y.id}"><span class="ktipo">${ic("clock","sm")}${tat ? "Sessão" : "Horário"} · <span class="pgsit ${st[1]}">${st[0]}</span></span><b>${dataHora(y.quando)} · ${y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min"}</b>${y.status === "cancelada" ? "" : sesCiclo(x, y)}<div class="sesac">${ac}</div></div>`; };
   return `${l.filter(y=>y.status !== "cancelada").map(card).join("")}${eu && !ativa ? `<button class="btn ghost" type="button" data-act="sesnova" data-id="${x.id}">${ic("calplus","sm")} Marcar ${modeloDe(p) === "tatuagem" ? "sessão" : "horário"}</button>` : ""}`; }
+const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
+function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span class="sescl${ok ? " ok" : ""}">${ic(ok ? "check" : "clock","sm")}<span>${rot}</span><b>${val}</b></span>`;
+  return `<div class="sesciclo">${lin(!!c, "Orçamento · valor combinado", c ? finBRL(c) : "falta")}${lin(y.sinal != null, "Agendamento · sinal", y.sinal != null ? finBRL(y.sinal) : "sem sinal")}${lin(!!y.checkin_em, "Check-in · serviço iniciado", y.checkin_em ? new Date(y.checkin_em).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "falta")}${lin(!!y.checkout_em, "Checkout · valor pago", y.valor_pago ? finBRL(y.valor_pago) : "falta")}</div>`; }
+function sheetSesFim(sid, sug, pid){ openSheet(shead("Encerrar atendimento") + `
+    <div class="field"><label for="sfval">Valor pago (R$)</label><input id="sfval" inputmode="decimal" maxlength="14" value="${sug ? String((+sug).toFixed(2)).replace(".", ",") : ""}"><small class="hint">Total recebido, com o sinal.</small></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""}>Encerrar atendimento</button>`, "Encerrar atendimento"); }
 function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id); }
 function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; PED.msgs = {}; render(); }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
@@ -2623,7 +2631,8 @@ function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0),
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date"></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time"></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
-      <div class="field" style="flex:1"><label for="sesval">Valor combinado (opcional)</label><input id="sesval" maxlength="40" placeholder="R$ 350"></div></div>
+      <div class="field" style="flex:1"><label for="sesval">Valor combinado (opcional)</label><input id="sesval" maxlength="40" placeholder="R$ 350" value="${x.valor_combinado ? esc(finBRL(x.valor_combinado)) : esc(x.preco || "")}"></div></div>
+    <div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}">Propor</button>`, "Marcar"); }
 async function sheetSesQR(y){ if (!y.codigo && sesJanela(y)){ try{ const {data} = await SB.rpc("tat_sessao_codigo", {p_sessao:y.id}); if (data) y.codigo = data; }catch(e){} }   /* 15/11: o código fica no servidor; só a página o recebe */
   const url = location.origin + location.pathname + "#checkin-" + y.id + "-" + y.codigo, ok = sesJanela(y), cod = String(y.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
@@ -2785,7 +2794,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const tipo = tt ? (papelRot(p) || tipoNome(p)) : tipoNome(p);   /* 16/11: o papel (Tatuador) vai para a linha do tipo; no alto fica só "Página" */
   const chips = tt ? (tt.estilos || []).map(e=>`<span class="chip">${esc(e)}</span>`).join("") : o.tema ? `<span class="chip">${esc(o.tema)}</span>` : "";
   return capaTopo(p.capa, pid.length*5 + (p.cor||0), "", capaSobre(avatar(o, "phav")), lugarTag("pagina") + (o.ficticia ? `<span class="topex">${EXTAG}</span>` : ""), acoes)
-    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.mei ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="MEI com CNPJ conferido pela curadoria: o que significa" title="MEI com CNPJ conferido pela curadoria">${ic("predio","sm")}MEI · CNPJ ativo</button>` : o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : ""),
+    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : "") + (o.mei ? `<button class="cnpjselo mei" type="button" data-act="meiinfo" aria-label="MEI: o que significa" title="MEI">${ic("cracha","sm")}MEI</button>` : "") + (o.nf ? `<button class="cnpjselo nf" type="button" data-act="nfinfo" aria-label="Nota fiscal: o que significa" title="Nota fiscal">${ic("nota","sm")}Nota fiscal</button>` : ""),
         linhas:[...(tt ? tatResumo(p).filter(Boolean).map(l=>`<span class="phcusto">${l}</span>`) : []), [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
         extra:`<div class="phnovo">${aviso}${tt ? tatConvitesHTML(p) : ""}</div>`})}
@@ -2902,6 +2911,7 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
     <div class="field"><label for="pgsite">Site</label><input id="pgsite" type="url" maxlength="300" value="${v(p.site)}" placeholder="https://"></div>
     <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div>
     ${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
+    ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}
     ${tatFichaCampos(p)}
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>`, "Editar página"); tatFichaLiga(); }
 function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
@@ -2924,8 +2934,8 @@ async function finCarrega(pid){ if (!SB || FIN[pid] === "carregando") return; FI
   pgRepintaTab(pid, "fin"); }
 function finHTML(p){ const d = FIN[p.id]; if (!d || d === "carregando"){ finCarrega(p.id); return `<p class="empty">Carregando…</p>`; } if (d.erro) return `<p class="empty">${esc(d.erro)}</p>`;
   const pct = Math.max(0, +d.pct || 0), pr = String(Math.round(pct*10)/10).replace(".", ",");
-  const pend = (d.pendentes || []).map(x=>`<div class="finv"><b>${esc(x.item || "Atendimento")}</b><small>${esc(finData(x.quando))}${x.cliente ? " · " + esc(x.cliente) : ""}${x.valor ? " · " + esc(x.valor) : ""}</small>
-      <div class="row" style="gap:6px"><button class="btn sm" type="button" data-act="finconfirma" data-p="${p.id}" data-s="${esc(x.sessao)}">Confirmar venda</button></div></div>`).join("");
+  const pend = (d.pendentes || []).map(x=>`<div class="finv"><b>${esc(x.item || "Atendimento")}</b><small>${esc(finData(x.quando))}${x.cliente ? " · " + esc(x.cliente) : ""}${x.combinado ? " · " + finBRL(x.combinado) : x.valor ? " · " + esc(x.valor) : ""}</small>
+      <div class="row" style="gap:6px"><button class="btn sm" type="button" data-act="finfim" data-p="${p.id}" data-s="${esc(x.sessao)}">${ic("check","sm")} Encerrar atendimento</button></div></div>`).join("");
   const vend = (d.vendas || []).map(v=>`<div class="finv"><b>${esc(v.descricao)}</b><small>${finBRL(v.valor)} · ${esc(finData(v.data))}${v.tomador ? " · " + esc(v.tomador) : ""}</small>
       <div class="row" style="gap:6px"><button class="btn sm" type="button" data-act="fincopia" data-p="${p.id}" data-id="${esc(v.id)}">${ic("copia","sm")} Copiar dados da venda</button>
       <a class="btn sm" href="${NFSE_URL}" target="_blank" rel="noopener noreferrer">Emitir nota no gov.br ${ic("ext","sm")}</a>
@@ -2933,13 +2943,13 @@ function finHTML(p){ const d = FIN[p.id]; if (!d || d === "carregando"){ finCarr
   return `<div class="setting l1" style="display:block"><b>Financeiro</b><div class="finbar${pct >= 80 ? " alto" : ""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Math.round(pct))}" aria-label="${pr}% do teto anual usado"><i style="width:${Math.min(100, pct)}%"></i></div>
       <small>${pr}% do teto anual usado · ${finBRL(d.total)} de ${finBRL(d.teto)} em ${d.ano}</small></div>
     <button class="btn primary" type="button" data-act="finnova" data-p="${p.id}" style="margin-top:12px">${ic("plus","sm")} Registrar venda</button>
-    ${pend ? `<p class="fintit">Atendimentos concluídos</p>${pend}` : ""}
+    ${pend ? `<p class="fintit">Serviços iniciados</p>${pend}` : ""}
     <p class="fintit">Vendas de ${d.ano}</p>${vend || `<p class="empty">Nenhuma venda registrada em ${d.ano}.</p>`}`; }
 function sheetFinVenda(pid, x){ const hoje = new Date(Date.now() - 3*36e5).toISOString().slice(0, 10), v = x ? finValor(x.valor) : null;
   openSheet(shead("Registrar venda") + `
     <div class="field"><label for="fnval">Valor (R$)</label><input id="fnval" inputmode="decimal" maxlength="14" placeholder="350,00" value="${v ? String(v.toFixed(2)).replace(".", ",") : ""}"></div>
     <div class="field"><label for="fndesc">O que foi vendido</label><input id="fndesc" maxlength="200" value="${x ? esc(x.item || "") : ""}"></div>
-    <div class="field"><label for="fntom">Tomador (opcional)</label><input id="fntom" maxlength="120" value="${x ? esc(x.cliente || "") : ""}"><small class="hint">Quem comprou. Só você vê.</small></div>
+    <div class="field"><label for="fntom">Comprador (opcional)</label><input id="fntom" maxlength="120" value="${x ? esc(x.cliente || "") : ""}"><small class="hint">Nome ou identificação de quem comprou.</small></div>
     <div class="field"><label for="fndata">Data</label><input id="fndata" type="date" max="${hoje}" value="${x ? String(x.quando || hoje).slice(0, 10) : hoje}"></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="finsalva" data-p="${pid}"${x ? ` data-s="${esc(x.sessao)}"` : ""}>Registrar venda</button>`, "Registrar venda"); }
 /* ORGANIZAÇÕES (14/11, pedido da Amanda): comunidades e páginas dividem a mesma tela, num feed só que pode ser filtrado.
@@ -4036,7 +4046,7 @@ function mockSB(o = {}){
       for (let i = 0; i < ses; i++) tab("tat_sessoes").push({id:novoId(), pagina_id:pid(n), status:"verificada", quando:new Date(Date.now() - (i+1)*5*864e5).toISOString()});
       for (let i = 0; i < q; i++) tab("pagina_avaliacoes").push({id:novoId(), pagina_id:pid(n), nota:(i % 10) < Math.round((med - 4) * 10) ? 5 : 4, pos:(i % 100) < pos*100 * (i % 7 ? 1 : .9), dor:(i / q) < dor ? "igual" : (i % 2 ? "mais" : "menos"), texto:TX[i % TX.length], autor_nome:NOMES[i % NOMES.length], criado_em:new Date(Date.now() - (i+1)*6*864e5).toISOString()}); });
     salva(); }
-  { const pd = tab("paginas").find(p=>p.id === "00000000-0000-4000-8000-0000000000ad"); if (pd && pd.mei === undefined){ pd.mei = true; pd.cnpj_conferido = true; const q = new Date(Date.now() - 5*864e5).toISOString(); tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f9", pagina_id:pd.id, pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Maria Teste", quando:q, duracao_min:120, valor:"R$ 250", status:"verificada", checkin_em:q, avaliada:false, criado_em:q}); } }   /* 17/11: a página de teste da administração vira MEI, para ver o Financeiro */
+  { const pd = tab("paginas").find(p=>p.id === "00000000-0000-4000-8000-0000000000ad"); if (pd && pd.mei === undefined){ pd.mei = true; pd.cnpj_conferido = true; const q = new Date(Date.now() - 5*864e5).toISOString(); tab("tat_sessoes").push({id:"00000000-0000-4000-8000-0000000000f9", pagina_id:pd.id, pedido_id:"00000000-0000-4000-8000-0000000000e1", cliente:TESTE_M, cliente_nome:"Maria Teste", quando:q, duracao_min:120, valor:"R$ 250", sinal:100, status:"verificada", checkin_em:q, avaliada:false, criado_em:q}); const pe = tab("tat_pedidos").find(x=>x.id === "00000000-0000-4000-8000-0000000000e1"); if (pe) pe.valor_combinado = 250; } }   /* 17/11: a página de teste da administração vira MEI, para ver o Financeiro */
   if (!tab("paginas").some(p=>p.id === "00000000-0000-4000-8000-0000000000a2")){ const pg = (n, id, dono, tipo, nome, descricao, cidade, tema, cor, cnpj) => ({id:"00000000-0000-4000-8000-0000000000a" + id, dono, tipo, nome, descricao, cidade, tema, site:null, contato:null, cor, status:"aprovada", motivo:null, declaracao:"Declaração de teste", declarada_em:agora(), nao_eleitoral:true, criada_em:new Date(Date.now() - n*36e5).toISOString(), revisada_em:agora(), cnpj_conferido:cnpj, no_perfil:true});
     tab("paginas").push(pg(60, 2, TESTE_C, "criador", "Diário da Bike (teste)", "Página pessoal simulada: rotas, oficinas e mobilidade em Curitiba.", "Curitiba, PR", "Mobilidade", 3, false),
       pg(70, 3, TESTE_M, "empresa", "Ateliê Ponto a Ponto (teste)", "Página simulada: costura, reforma de roupas e oficinas no bairro.", "Recife, PE", "Cultura", 5, false),
@@ -4336,10 +4346,16 @@ function mockSB(o = {}){
     pagina_cnpj:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.cnpj = a.p_cnpj; p.cnpj_conferido = false; salva(); } return null; },
     mei_financeiro:({p_pagina})=>{ const p = tab("paginas").find(x=>x.id === p_pagina); if (!p || p.dono !== eu()) throw {message:"valor: só quem é dono da página vê o Financeiro"}; if (!p.mei) throw {message:"valor: esta página ainda não tem o selo MEI"};
       const a = new Date().getFullYear(), vs = tab("mei_vendas").filter(v=>v.pagina_id === p_pagina && String(v.data).slice(0, 4) === String(a)).sort((x, y)=>String(y.data).localeCompare(String(x.data))), tot = vs.reduce((t, v)=>t + v.valor, 0);
-      const pend = tab("tat_sessoes").filter(s=>s.pagina_id === p_pagina && s.status === "verificada" && !tab("mei_vendas").some(v=>v.sessao_id === s.id)).map(s=>({sessao:s.id, quando:s.quando, valor:s.valor, cliente:s.cliente_nome, item:(tab("tat_pedidos").find(x=>x.id === s.pedido_id) || {}).item || null}));
+      const pend = tab("tat_sessoes").filter(s=>s.pagina_id === p_pagina && s.status === "verificada" && !s.checkout_em && !tab("mei_vendas").some(v=>v.sessao_id === s.id)).map(s=>{ const pd = tab("tat_pedidos").find(x=>x.id === s.pedido_id) || {}; return {sessao:s.id, quando:s.quando, valor:s.valor, cliente:s.cliente_nome, item:pd.item || null, combinado:pd.valor_combinado || null, sinal:s.sinal == null ? null : s.sinal}; });
       return {ano:a, teto:81000, total:tot, pct:Math.round(tot*1000/81000)/10, vendas:vs, pendentes:pend}; },
     mei_venda_registra:a=>{ const p = tab("paginas").find(x=>x.id === a.p_pagina); if (!p || p.dono !== eu() || !p.mei) throw {message:"valor: só quem é dono da página registra vendas"};
       const id = novoId(); tab("mei_vendas").push({id, pagina_id:a.p_pagina, valor:Math.round(a.p_valor*100)/100, descricao:a.p_descricao, tomador:a.p_tomador || null, data:a.p_data || agora().slice(0, 10), origem:a.p_sessao ? "sessao" : "manual", sessao_id:a.p_sessao || null}); salva(); return id; },
+    tat_checkout:a=>{ const y = tab("tat_sessoes").find(x=>x.id === a.p_sessao), p = y && tab("paginas").find(x=>x.id === y.pagina_id); if (!p || p.dono !== eu()) throw {message:"valor: só a página encerra o atendimento"};
+      if (y.status !== "verificada") throw {message:"valor: o atendimento precisa do check-in antes"}; if (y.checkout_em) throw {message:"valor: este atendimento já foi encerrado"};
+      y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
+      if (p.mei){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
+      salva(); return {venda}; },
+    pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
@@ -6398,8 +6414,9 @@ const A = {
   sescria: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), d = $("#sesdia").value, h = $("#seshora").value; if (!x) return;
     if (!d || !h) return formErro("Escolha o dia e a hora."); const quando0 = new Date(d + "T" + h + ":00");
     if (quando0.getTime() < Date.now() - 36e5) return formErro("Escolha um horário que ainda não passou.");
-    ocupado(b, true, "Propondo…");
-    const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:$("#sesval").value.trim() || null, status:"proposta"});
+    ocupado(b, true, "Propondo…"); const vc = finValor($("#sesval").value), sn = $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
+    if (vc && vc !== +x.valor_combinado){ const r = await SB.from("tat_pedidos").update({valor_combinado:vc}).eq("id", x.id); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } x.valor_combinado = vc; }
+    const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:$("#sesval").value.trim() || null, sinal:sn, status:"proposta"});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await sesSistema(x.id, `Horário proposto: ${dataHora(quando0)}.`); ocupado(b, false); closeSheet(); toast("Proposta enviada na conversa."); sesRecarrega(); },
   sesconfirma: async b => { const y = sesAchar(b.dataset.s); if (!y) return; const {error} = await SB.from("tat_sessoes").update({status:"marcada"}).eq("id", y.id); if (error) return toast(erroAuth(error));
@@ -6486,11 +6503,18 @@ const A = {
     const {error} = await SB.rpc("pagina_edita", {p_id:b.dataset.id, p_descricao:$("#pgdesc").value, p_cidade:$("#pgcid").value, p_tema:$("#pgtema").value, p_site:$("#pgsite").value, p_contato:$("#pgcont").value});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     { const e2 = await tatFichaSalva(b.dataset.id); if (e2){ ocupado(b, false); return formErro(erroAuth(e2)); } }
+    { const nf = $("#pgnf"), pg0 = PAGS.lista.find(x=>x.id === b.dataset.id) || {}; if (nf && (nf.getAttribute("aria-checked") === "true") !== !!pg0.emite_nf){ const r = await SB.rpc("pagina_emite_nf", {p_id:b.dataset.id, p_on:nf.getAttribute("aria-checked") === "true"}); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } } }
     const cn = $("#pgcnpj") ? $("#pgcnpj").value.replace(/\D/g, "") : ""; let aviso = "Página salva.";
     if (cn){ if (cn.length !== 14){ ocupado(b, false); return formErro("Confira o CNPJ: são 14 números."); }
       const r = await SB.rpc("pagina_cnpj", {p_id:b.dataset.id, p_cnpj:cn}); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } aviso = "Página salva. A curadoria vai conferir o CNPJ."; }
     ocupado(b, false); closeSheet(); await paginasCarrega(); toast(aviso); render(); },
   vitnovo: b => sheetVitrineNovo(b.dataset.p),
+  sesfim: b => { const y = sesAchar(b.dataset.s), x = (PED.lista || []).find(z=>z.id === b.dataset.pd); if (y) sheetSesFim(y.id, sesComb(x, y), y.pagina_id); },
+  finfim: b => { const d = FIN[b.dataset.p] || {}, x = (d.pendentes || []).find(y=>y.sessao === b.dataset.s); if (x) sheetSesFim(x.sessao, x.combinado || finValor(x.valor), b.dataset.p); },
+  sesfimok: async b => { const v = finValor($("#sfval").value); if (!v || v <= 0) return formErro("Informe o valor pago.");
+    ocupado(b, true, "Encerrando…"); const {data, error} = await SB.rpc("tat_checkout", {p_sessao:b.dataset.s, p_valor:v}); ocupado(b, false); if (error) return formErro(erroAuth(error));
+    closeSheet(); if (b.dataset.p) delete FIN[b.dataset.p]; toast(data && data.venda ? "Atendimento encerrado. A venda entrou no Financeiro." : "Atendimento encerrado."); sesRecarrega(); },
+  pgnf: b => b.setAttribute("aria-checked", b.getAttribute("aria-checked") !== "true"),
   finnova: b => sheetFinVenda(b.dataset.p),
   finconfirma: b => { const d = FIN[b.dataset.p] || {}, x = (d.pendentes || []).find(y=>y.sessao === b.dataset.s); if (x) sheetFinVenda(b.dataset.p, x); },
   finsalva: async b => { const pid = b.dataset.p, val = finValor($("#fnval").value), desc = $("#fndesc").value.trim();
@@ -6498,13 +6522,15 @@ const A = {
     ocupado(b, true, "Salvando…"); const {error} = await SB.rpc("mei_venda_registra", {p_pagina:pid, p_valor:val, p_descricao:desc, p_tomador:$("#fntom").value.trim() || null, p_data:$("#fndata").value || null, p_sessao:b.dataset.s || null});
     ocupado(b, false); if (error) return formErro(erroAuth(error)); closeSheet(); delete FIN[pid]; S.pgTab = "fin"; toast("Venda registrada."); render(); },
   fincopia: b => { const d = FIN[b.dataset.p] || {}, v = (d.vendas || []).find(y=>y.id === b.dataset.id); if (!v) return;
-    const t = `Serviço: ${v.descricao}\nValor: ${finBRL(v.valor)}\nData: ${finData(v.data)}` + (v.tomador ? `\nTomador: ${v.tomador}` : "");
+    const t = `Serviço: ${v.descricao}\nValor: ${finBRL(v.valor)}\nData: ${finData(v.data)}` + (v.tomador ? `\nComprador: ${v.tomador}` : "");
     try{ navigator.clipboard.writeText(t).then(()=>toast("Dados copiados."), ()=>toast("Não foi possível copiar.")); }catch(e){ toast("Não foi possível copiar."); } },
   finremove: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Tirar mesmo?"; return; } const pid = b.dataset.p;
     const {error} = await SB.rpc("mei_venda_remove", {p_id:b.dataset.id}); if (error) return toast(erroAuth(error)); delete FIN[pid]; toast("Venda tirada."); render(); },
   pgpasta: b => { const pid = route().slice(3); S.pgPasta = b.dataset.s ? {p:pid, s:b.dataset.s, f:b.dataset.f} : null; pgRepinta(pid); window.scrollTo(0, 0); },
   pgsecnova: () => { const pid = route().slice(3), l = PAGS.secoes[pid] || []; if (l.length >= MAX_SEC) return toast(`A página tem até ${MAX_SEC} seções.`); sheetPgSecao(pid, null); },
   pessoainfo: b => sheetPessoa(b.dataset.u),
+  meiinfo: () => openSheet(shead("MEI") + `<div class="selosdif"><p><span class="cnpjselo mei">${ic("cracha","sm")}MEI</span><span><b>MEI.</b> O regime do negócio. A curadoria marca.</span></p></div>`, "MEI"),
+  nfinfo: () => openSheet(shead("Nota fiscal") + `<div class="selosdif"><p><span class="cnpjselo nf">${ic("nota","sm")}Nota fiscal</span><span><b>Emite nota fiscal.</b> Quem compra pode pedir a NFS-e. A página declara, sob a declaração de responsabilidade.</span></p></div>`, "Nota fiscal"),
   cnpjinfo: () => openSheet(shead("CNPJ conferido") + `<div class="selosdif"><p><span class="cnpjselo">${ic("predio","sm")}CNPJ</span><span><b>CNPJ conferido.</b> A curadoria conferiu que o CNPJ informado existe, está ativo e é desta atividade. Diz que é um negócio formal. O número só a curadoria vê.</span></p>
     <p><span class="vfy">${ic("vfy")}</span><span><b>Verificada.</b> Toda página tem uma pessoa responsável com conta verificada, que responde pelo que a página publica. Esse selo é sobre a pessoa; o do CNPJ, sobre a empresa.</span></p></div>`, "CNPJ conferido"),
   agliga: async b => { const pid = b.dataset.p, on = b.getAttribute("aria-checked") !== "true", f = TAT.fich[pid]; if (!f) return;
@@ -6860,7 +6886,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 20:37";
+const VERSAO = "v1 registrada · 17/11 20:52";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

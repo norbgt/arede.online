@@ -204,6 +204,7 @@ img,svg{max-width:100%}
 .decl{padding:12px 14px;border-radius:12px;background:var(--surface,rgba(127,127,127,.06));font-size:13.5px;line-height:1.5;margin:4px 0 8px}
 .chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;margin:8px 0}.chk input{margin-top:3px;flex:none}
 .pgcnpj[hidden]{display:none}
+.sesciclo{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}.sescl{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.sescl b{font-weight:600}.sescl.ok{color:var(--ink)}.sescl.ok .icon{color:var(--ok)}
 .finbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px 0 6px}.finbar i{display:block;height:100%;background:var(--accent)}.finbar.alto i{background:var(--warn)}.fintit{margin:18px 0 8px;font-weight:700}.finv{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-top:1px solid var(--line)}.finv small{color:var(--muted)}.finv .row{flex-wrap:wrap}
 .pgcard .av{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:16px;flex:none}
 .pgacoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pgacoes .btn{flex:1;min-width:110px}
@@ -2288,7 +2289,7 @@ p.phrep{cursor:default}.phrep{display:flex;align-items:center;gap:6px;max-width:
 .pfnums{margin:0 0 10px;font-size:14px}
 /* 15/11: dois selos com formas diferentes. Azul redondo = pessoa responsável verificada; etiqueta verde com prédio = CNPJ conferido */
 .cnpjselo{display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px 0 5px;margin-left:6px;border:0;border-radius:6px;background:color-mix(in srgb,var(--ok) 13%,transparent);color:var(--ok);font:700 10.5px/1 var(--font-body,inherit);letter-spacing:.04em;vertical-align:4px;cursor:pointer;white-space:nowrap}
-.cnpjselo .icon{width:13px;height:13px;stroke-width:2}
+.cnpjselo .icon{width:13px;height:13px;stroke-width:2}.cnpjselo.mei{background:color-mix(in srgb,#7F77DD 18%,transparent);color:#534AB7}.cnpjselo.nf{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
 .cnpjselo.cnpjp{height:17px;padding:0 5px 0 4px;margin-left:4px;font-size:9.5px;vertical-align:1px;cursor:default}.cnpjselo.cnpjp .icon{width:11px;height:11px}
 .selosdif p{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;font-size:14px;line-height:1.45}.selosdif p > span:first-child{flex:none;margin:1px 0 0}.selosdif .vfy{color:var(--accent,#2A3FD4);display:inline-grid}.selosdif .vfy .icon{width:20px;height:20px}
 .psec.sovoce{display:flex;align-items:center;gap:6px;margin-top:22px}.psec.sovoce .icon{width:15px;height:15px;color:var(--muted)}
