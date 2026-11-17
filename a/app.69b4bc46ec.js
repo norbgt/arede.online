@@ -5162,7 +5162,7 @@ async function curadoriaChecagens(box){
     + (l.length ? l.map(x=>`<article class="curitem" data-id="${x.noticia_id}"><div>
         <small>${esc(x.fonte)} · ${quando(x.publicada_em)}</small><b>${esc(x.noticia_titulo)}</b><a href="${esc(x.noticia_url)}" target="_blank" rel="noopener">Abrir a notícia ${ic("ext","sm")}</a>
         <small style="margin-top:10px">${esc(x.checadora)} · ${x.resultado==="desmentida" ? "a checagem desmente algo" : "a checagem confirma algo"}</small><p>${esc(x.checagem_titulo)}</p><a href="${esc(x.checagem_url)}" target="_blank" rel="noopener">Abrir a checagem ${ic("ext","sm")}</a>
-        <div class="row"><button class="btn sm primary" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="desmente">Desmente esta notícia</button><button class="btn sm" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="relacionada">Só relacionada</button><button class="btn sm ghost" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="sem_relacao">Sem relação</button></div></div></article>`).join("")
+        <div class="row"><button class="btn sm" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="desmente">Desmente esta notícia</button><button class="btn sm" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="relacionada">Só relacionada</button><button class="btn sm ghost" type="button" data-act="checdecide" data-n="${x.noticia_id}" data-c="${x.checagem_id}" data-s="sem_relacao">Sem relação</button></div></div></article>`).join("")
       : `<p class="empty">Nenhuma checagem esperando revisão.</p>`);
 }
 async function curadoriaConversa(box){
@@ -6755,7 +6755,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 09:17";
+const VERSAO = "v1 registrada · 17/11 09:19";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
