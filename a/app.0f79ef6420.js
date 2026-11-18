@@ -2587,13 +2587,24 @@ const pedSouPagina = x => !!(ME.user && pedPagina(x).dono === ME.user.id);
 const pedResumo = x => x.tipo === "tabela" ? `${x.item}${x.valor_combinado ? "" : x.preco ? " · " + x.preco : ""}` : (x.descricao || "Pedido personalizado");   /* com orçamento enviado, o valor está no progresso */
 /* MENSAGENS (17/11, pedido da Amanda): cada conversa diz o que espera de você, e o ícone conta. */
 const MSGS = {ses:null, pede:0};
+/* ORÇAMENTO NA CONVERSA (18/11, Amanda): a página envia um cartão de orçamento; o cliente aceita ou pede ajuste ali mesmo.
+   Só o aceite fixa o valor combinado (o vínculo). Depois do aceite, o próximo passo é a página propor o horário. */
+const ORC = {l:null, pede:0};
+const orcsDe = id => (ORC.l || []).filter(o=>o.pedido_id === id).sort((a, b)=>new Date(a.criado_em) - new Date(b.criado_em));
+const orcUltimo = id => { const l = orcsDe(id); return l[l.length - 1] || null; };
+function orcCarrega(){ if (!SB || !ME.user || ORC.pede) return; ORC.pede = 1; SB.from("tat_orcamentos").select("*").order("criado_em").then(({data})=>{ ORC.l = data || []; ORC.pede = 0; render(); }, ()=>{ ORC.l = []; ORC.pede = 0; }); }
 function msgsDados(){ if (!SB || !ME.user) return false; let ok = true;
   if (!PED.lista){ ok = false; if (!MSGS.ped){ MSGS.ped = 1; pedCarrega().then(()=>{ MSGS.ped = 0; render(); }); } }
+  if (!ORC.l){ ok = false; orcCarrega(); }
   if (!MSGS.ses){ ok = false; if (!MSGS.pede){ MSGS.pede = 1; SB.from("tat_sessoes").select("*").then(({data})=>{ MSGS.ses = data || []; MSGS.pede = 0; render(); }, ()=>{ MSGS.pede = 0; }); } }
   return ok; }
 function msgSituacao(x){ const eu = pedSouPagina(x), l = (MSGS.ses || []).filter(y=>y.pedido_id === x.id && y.status !== "cancelada"), p = pedPagina(x);
   if (x.status === "fechado") return null;
-  if (eu){ if (x.status === "aberto") return ["Responder","warn"]; if (l.some(y=>y.status === "verificada" && !y.checkout_em)) return ["Encerrar atendimento","warn"]; if (mod(p, "agenda") && !x.valor_combinado) return ["Enviar orçamento","warn"]; return null; }
+  const o = orcUltimo(x.id);
+  if (eu){ if (x.status === "aberto" && !o) return ["Responder","warn"]; if (l.some(y=>y.status === "verificada" && !y.checkout_em)) return ["Encerrar atendimento","warn"];
+    if (o && o.status === "ajuste") return ["Enviar orçamento","warn"]; if (!o && mod(p, "agenda") && !x.valor_combinado) return ["Enviar orçamento","warn"];
+    if (o && o.status === "aceito" && mod(p, "agenda") && !l.length) return ["Propor horário","warn"]; return null; }
+  if (o && o.status === "proposto") return ["Ver orçamento","warn"];
   if (l.some(y=>y.status === "proposta")) return ["Confirmar horário","warn"]; if (l.some(y=>y.status === "verificada" && !y.avaliada)) return ["Avaliar","ok"]; return null; }
 const msgPendentes = () => msgsDados() ? (PED.lista || []).filter(x=>msgSituacao(x)).length : 0;
 function screenConversas(){ return screenNotif("conversas"); }   /* 18/11 (Amanda): o sino comporta as mensagens; #conversas abre Notificações › Conversas */
@@ -2609,9 +2620,10 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
     + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
-      ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`).join("")}</div>
-      <div class="composer"><textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      <p class="lnote">Combine valor, sinal e data por aqui. ${mod(p, "agenda") ? "Quando a data estiver certa, a página marca a sessão; no dia, o check-in por QR confirma que vocês estiveram juntos." : ""}</p>`}</div>`; }
+      ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`}))
+        .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
+      <div class="composer">${eu && x.status !== "fechado" ? `<button class="iconbtn orcbtn" type="button" data-act="orcenvia" data-id="${id}" aria-label="Enviar orçamento" title="Enviar orçamento">${ic("cifrao")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
+      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Mande o orçamento pelo ${ic("cifrao","sm")} ao lado da mensagem: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -2677,16 +2689,17 @@ function sesHTML(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "
 function pedProgresso(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "";
   const l = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada"), pago = l.reduce((t, y)=>t + (+y.valor_pago || 0), 0), feitas = l.filter(y=>y.checkout_em).length, prev = Math.max(+x.sessoes_prev || 1, l.length), tot = +x.valor_combinado || 0;
   return `${tot ? `<div class="finbar" style="margin:10px 0 6px"><i style="width:${Math.min(100, Math.round(pago*100/tot))}%;background:var(--ok)"></i></div><span class="pedprog"><span>Pago ${finBRL(pago)} de ${finBRL(tot)}</span><span>${feitas} de ${prev} ${feitas === 1 ? "feita" : "feitas"}</span></span>` : ""}
-    ${eu ? `<button class="btn sm" type="button" data-act="orcenvia" data-id="${x.id}" style="align-self:flex-start;margin-top:12px">${tot ? "Alterar orçamento" : "Enviar orçamento"}</button>` : ""}`; }
+    ${eu ? `<button class="btn sm" type="button" data-act="orcenvia" data-id="${x.id}" style="align-self:flex-start;margin-top:12px">${tot ? "Enviar orçamento novo" : "Enviar orçamento"}</button>` : ""}`; }
 const sesSug = (x, y) => { const tot = +(x && x.valor_combinado) || 0; if (!tot) return sesComb(x, y);
   const l = (SES.pedido[x.id] || []).filter(z=>z.status !== "cancelada"), pago = l.filter(z=>z.id !== y.id).reduce((t, z)=>t + (+z.valor_pago || 0), 0), rest = Math.max(1, (+x.sessoes_prev || 1) - l.filter(z=>z.checkout_em && z.id !== y.id).length);
   return Math.max(0, Math.round((tot - pago) / rest * 100) / 100) || null; };
-function sheetOrcEnvia(x){ openSheet(shead(x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento") + `
-    <div class="row" style="gap:10px"><div class="field" style="flex:2"><label for="oevalor">Valor combinado (R$)</label><input id="oevalor" inputmode="decimal" maxlength="14" value="${x.valor_combinado ? String((+x.valor_combinado).toFixed(2)).replace(".", ",") : finValor(x.preco) ? String(finValor(x.preco).toFixed(2)).replace(".", ",") : ""}"></div>
-      <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" value="${+x.sessoes_prev || 1}"></div></div>
+function sheetOrcEnvia(x){ const o = orcUltimo(x.id); openSheet(shead(o && o.status === "proposto" ? "Trocar orçamento" : "Enviar orçamento") + `<p class="lnote osub">Vai como um cartão na conversa. ${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste ali, e só o aceite vale como combinado.</p>
+    <div class="row" style="gap:10px"><div class="field" style="flex:2"><label for="oevalor">Valor total (R$)</label><input id="oevalor" inputmode="decimal" maxlength="14" required value="${o ? String((+o.valor).toFixed(2)).replace(".", ",") : x.valor_combinado ? String((+x.valor_combinado).toFixed(2)).replace(".", ",") : finValor(x.preco) ? String(finValor(x.preco).toFixed(2)).replace(".", ",") : ""}"></div>
+      <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" required value="${o ? +o.sessoes : +x.sessoes_prev || 1}"></div></div>
     ${(()=>{ const pg = PAGS.lista.find(y=>y.id === x.pagina_id), M = MODELOS[modeloDe(pg)] || {}, l = ((tatDe(pg) || {}).estilos || []).length ? tatDe(pg).estilos : (M.esp || []);
       return l.length ? `<div class="field"><label for="oeestilo">${M.espRot === "Estilos" ? "Estilo do trabalho" : (M.espRot || "Tipo do trabalho")} (opcional)</label><select id="oeestilo"><option value="">Não informar</option>${l.map(e=>`<option${e === x.estilo ? " selected" : ""}>${esc(e)}</option>`).join("")}</select><small class="hint">Entra no passaporte de quem foi atendido.</small></div>` : ""; })()}
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}">${x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento"}</button>`, "Orçamento"); }
+    <div class="field"><label for="oenota">O que está incluído (opcional)</label><textarea id="oenota" rows="2" maxlength="300" placeholder="Retoque, material, tempo de cada sessão">${o && o.nota ? esc(o.nota) : ""}</textarea></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}" data-trava>Enviar na conversa</button>`, "Orçamento"); }
 const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
 function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span class="sescl${ok ? " ok" : ""}">${ic(ok ? "check" : "clock","sm")}<span>${rot}</span><b>${val}</b></span>`;
   return `<div class="sesciclo">${lin(!!c, "Orçamento · valor combinado", c ? finBRL(c) : "falta")}${lin(y.sinal != null, "Agendamento · sinal", y.sinal != null ? finBRL(y.sinal) : "sem sinal")}${lin(!!y.checkin_em, "Check-in · serviço iniciado", y.checkin_em ? new Date(y.checkin_em).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "falta")}${lin(!!y.checkout_em, "Checkout · valor pago", y.valor_pago ? finBRL(y.valor_pago) : "falta")}</div>`; }
@@ -2695,6 +2708,18 @@ function sheetSesFim(sid, sug, pid){ openSheet(shead("Encerrar atendimento") + `
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""} data-trava>Encerrar atendimento</button>`, "Encerrar atendimento"); }
 function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id); }
 function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; MSGS.ses = null; PED.msgs = {}; render(); }
+function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", ses = tat ? "sessões" : "horários", n = +o.sessoes || 1, ult = orcUltimo(x.id), vivo = ult && ult.id === o.id;
+  const st = {proposto:[eu ? "Esperando resposta" : "Para você responder","warn"], aceito:["Aceito","ok"], ajuste:["Ajuste pedido",""], substituido:["Trocado por outro",""]}[o.status] || ["",""];
+  const nSes = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada").length;
+  let ac = "";
+  if (o.status === "proposto" && vivo) ac = eu ? `<small>${esc(limpo(x.cliente_nome || "A cliente"))} vê este orçamento e responde aqui.</small><button class="btn sm ghost" type="button" data-act="orcenvia" data-id="${x.id}">Trocar orçamento</button>`
+    : `<button class="btn sm primary" type="button" data-act="orcaceita" data-o="${o.id}" data-id="${x.id}">Aceitar orçamento</button><button class="btn sm ghost" type="button" data-act="orcajuste" data-o="${o.id}" data-id="${x.id}">Pedir ajuste</button>`;
+  if (o.status === "aceito" && vivo) ac = eu ? (mod(p, "agenda") && !nSes ? `<button class="btn sm primary" type="button" data-act="sesnova" data-id="${x.id}">${ic("calplus","sm")} Propor o horário${n > 1 ? " da 1ª sessão" : ""}</button>` : `<small>Combinado. Os horários ficam em Atendimento.</small>`)
+    : (nSes ? `<small>Combinado. Os horários ficam em Atendimento.</small>` : "");
+  if (o.status === "ajuste" && vivo) ac = eu ? `<button class="btn sm primary" type="button" data-act="orcenvia" data-id="${x.id}">Enviar orçamento novo</button>` : `<small>Você pediu ajuste. Conte o que mudar na conversa.</small>`;
+  return `<div class="orccard${vivo ? "" : " velho"}"><div class="orchead"><span class="ktipo">${ic("cifrao","sm")}Orçamento</span>${st[0] ? `<span class="pgsit ${st[1]}">${st[0]}</span>` : ""}</div>
+    <b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? `${n} ${ses} · cerca de ${finBRL(Math.round(+o.valor / n * 100) / 100)} cada` : `1 ${tat ? "sessão" : "horário"}`}${o.estilo ? " · " + esc(limpo(o.estilo)) : ""}</small>
+    ${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}${ac ? `<div class="sesac">${ac}</div>` : ""}<small class="orcq">${quando(o.criado_em)}</small></div>`; }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
@@ -4671,6 +4696,16 @@ function mockSB(o = {}){
       let e = a.p_id && tab("cultura_eventos").find(x=>x.id === a.p_id); if (!e){ e = {id:novoId(), pagina_id:a.p_pagina}; tab("cultura_eventos").push(e); }
       Object.assign(e, {tipo:a.p_tipo, titulo:a.p_titulo, descricao:a.p_descricao, inicio:a.p_inicio, fim:a.p_fim, local:a.p_local}); salva(); return e.id; },
     evento_apaga:a=>{ const l = tab("cultura_eventos"), i = l.findIndex(x=>x.id === a.p_id); if (i >= 0) l.splice(i, 1); salva(); return true; },
+    orc_propoe:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só a página envia o orçamento"};
+      tab("tat_orcamentos").forEach(o=>{ if (o.pedido_id === x.id && o.status === "proposto"){ o.status = "substituido"; o.respondido_em = agora(); } });
+      const id = novoId(); tab("tat_orcamentos").push({id, pedido_id:x.id, valor:+a.p_valor, sessoes:Math.max(1, Math.min(20, +a.p_sessoes || 1)), nota:a.p_nota || null, estilo:a.p_estilo || null, status:"proposto", criado_em:agora(), respondido_em:null});
+      if (x.status === "aberto") x.status = "respondido"; x.atualizado_em = agora(); salva(); return id; },
+    orc_responde:a=>{ const o = tab("tat_orcamentos").find(y=>y.id === a.p_orc), x = o && tab("tat_pedidos").find(y=>y.id === o.pedido_id); if (!x || x.cliente !== eu()) throw {message:"valor: só quem fez o pedido responde ao orçamento"};
+      if (o.status !== "proposto") throw {message:"valor: este orçamento já foi respondido ou trocado por outro"}; o.status = a.p_aceita ? "aceito" : "ajuste"; o.respondido_em = agora();
+      const brl = v => "R$ " + (+v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+      if (a.p_aceita){ x.valor_combinado = o.valor; x.sessoes_prev = o.sessoes; if (o.estilo) x.estilo = o.estilo; }
+      tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:a.p_aceita ? `Orçamento aceito: ${brl(o.valor)}${o.sessoes > 1 ? " em " + o.sessoes + " sessões" : ""}. Próximo passo: a página propõe o horário${o.sessoes > 1 ? " da 1ª sessão" : ""}.` : "Ajuste pedido no orçamento. A conversa segue para combinar."});
+      x.atualizado_em = agora(); salva(); return a.p_aceita ? "aceito" : "ajuste"; },
     museu_checkin:a=>{ const r = tab("pagina_museu").find(x=>x.pagina_id === a.p_pagina && x.ativo), p = tab("paginas").find(x=>x.id === a.p_pagina);
       if (!r || !p || r.codigo !== a.p_codigo) throw {message:"Este QR não vale mais. Peça o QR atualizado na entrada."};
       const dia = agora().slice(0, 10), ja = tab("museu_visitas").some(v=>v.pagina_id === a.p_pagina && v.user_id === eu() && v.dia === dia);
@@ -4856,7 +4891,7 @@ const notifQuando = d => { const m = Math.round((Date.now() - new Date(d)) / 600
 const ncard = ({tag, attrs, marca, titulo, texto, meta, acao, nova}) => `<${tag} class="ncard${nova ? " nova" : ""}" ${attrs}>${marca}<span class="ntx"><b>${titulo}</b>${texto ? `<span>${texto}</span>` : ""}<small>${meta}</small></span>${acao ? `<span class="pgsit ${acao[1]} nacao">${acao[0]}</span>` : nova ? `<span class="nponto" aria-label="Nova"></span>` : ""}</${tag}>`;
 function convCard(x){ const p = pedPagina(x), eu = pedSouPagina(x), o = eu ? {nome:x.cliente_nome || "Cliente", sigla:siglaDe(x.cliente_nome || "C"), cor:"#5B6B7A", pessoa:true} : (ORG["pg-" + p.id] || {nome:p.nome || "Página", sigla:siglaDe(p.nome || "P"), cor:"#888"});
   const st = msgSituacao(x), nova = convNaoLida(x.id);
-  const aba = st && !/^Responder/.test(st[0]) ? "atendimento" : "conversa";   /* abre onde está a ação: avaliar, confirmar horário, encerrar e orçamento ficam em Atendimento */
+  const aba = st && /^(Avaliar|Confirmar horário|Encerrar atendimento)$/.test(st[0]) ? "atendimento" : "conversa";   /* abre onde está a ação: avaliar, confirmar horário, encerrar e orçamento ficam em Atendimento */
   return ncard({tag:"button", attrs:`type="button" data-act="convabre" data-id="${x.id}" data-tab="${aba}"`, marca:avatar(o), titulo:esc(limpo(eu ? x.cliente_nome || "Cliente" : p.nome || "Página")),
     texto:esc(pedResumo(x)) + (eu ? ` · ${esc(limpo(p.nome || ""))}` : ""), meta:(x.status === "fechado" ? "Encerrada" : "Conversa") + " · " + notifQuando(x.atualizado_em), acao:st || (nova ? ["Mensagem nova","ok"] : null), nova}); }
 function avisoCard(x){ const t = x.titulo || x.texto || "Aviso", tx = x.titulo ? x.texto : "";   /* sem título, o texto vira o título */
@@ -6976,8 +7011,17 @@ const A = {
   orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
   orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
-    ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null; const {error} = await SB.from("tat_pedidos").update({valor_combinado:v, sessoes_prev:n, estilo:est}).eq("id", x.id); if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
-    x.valor_combinado = v; x.sessoes_prev = n; x.estilo = est; await sesSistema(x.id, `Orçamento: ${finBRL(v)}${n > 1 ? ` em ${n} sessões` : ""}.`); ocupado(b, false); closeSheet(); toast("Orçamento enviado na conversa."); PED.msgs = {}; render(); },
+    ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null, nota = ($("#oenota").value || "").trim() || null;
+    const {error} = await SB.rpc("orc_propoe", {p_pedido:x.id, p_valor:v, p_sessoes:n, p_nota:nota, p_estilo:est}); ocupado(b, false); if (error) return formErro(msgErr(error));
+    if (x.status === "aberto") x.status = "respondido"; ORC.l = null; closeSheet(); S.convTab = "conversa"; toast("Orçamento enviado na conversa."); orcCarrega(); },
+  orcaceita: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), o = (ORC.l || []).find(z=>z.id === b.dataset.o); if (!x || !o) return; const p = pedPagina(x), n = +o.sessoes || 1;
+    openSheet(shead("Aceitar orçamento") + `<div class="orccard"><b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? n + " sessões" : "1 sessão"} com ${esc(limpo(p.nome || "a página"))}</small>${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}</div>
+      <p class="lnote">Ao aceitar, vocês combinam este valor. O pagamento é acertado direto com ${esc(limpo(p.nome || "a página"))}, fora da rede.online. ${mod(p, "agenda") ? "O próximo passo é a página propor o horário, e você confirma na conversa." : ""}</p>
+      <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcaceitaok" data-o="${o.id}">Aceitar orçamento</button><button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Agora não</button>`, "Aceitar orçamento"); },
+  orcaceitaok: async b => { ocupado(b, true, "Aceitando…"); const {error} = await SB.rpc("orc_responde", {p_orc:b.dataset.o, p_aceita:true}); ocupado(b, false); if (error) return formErro(msgErr(error));
+    closeSheet(); ORC.l = null; PED.msgs = {}; PED.lista = null; toast("Orçamento aceito. O valor está combinado."); orcCarrega(); pedCarrega().then(render); },
+  orcajuste: async b => { const {error} = await SB.rpc("orc_responde", {p_orc:b.dataset.o, p_aceita:false}); if (error) return toast(msgErr(error));
+    ORC.l = null; PED.msgs = {}; orcCarrega(); setTimeout(()=>{ const t = $("#msgtx"); if (t){ t.placeholder = "Conte o que você quer ajustar"; t.focus(); } }, 400); },
   gerver: b => { if (!b.dataset.v && !S.gerVer) return history.back(); S.gerVer = b.dataset.v; render(); window.scrollTo(0, 0); },
   gerconv: b => { S.convTab0 = "atendimento"; S.convId = null; go("conversa-" + b.dataset.id); },
   convtab: b => { S.convTab = b.dataset.tab; render(); },
@@ -7400,7 +7444,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:29";
+const VERSAO = "v1 registrada · 18/11 09:47";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
