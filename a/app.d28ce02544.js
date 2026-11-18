@@ -2622,8 +2622,8 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
       ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`}))
         .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
-      ${eu && x.status !== "fechado" ? (o0 => `<div class="orcatalho"><button class="rdf orcbtn" type="button" data-act="orcenvia" data-id="${id}">${ic("cifrao","sm")}${o0 && o0.status === "proposto" ? "Trocar orçamento" : o0 && o0.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento"}</button></div>`)(orcUltimo(id)) : ""}<div class="composer"><textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Use Enviar orçamento: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
+      <div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
+      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Toque no + para enviar o orçamento: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -2706,11 +2706,29 @@ function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span
 function sheetSesFim(sid, sug, pid){ openSheet(shead("Encerrar atendimento") + `
     <div class="field"><label for="sfval">Valor pago (R$)</label><input id="sfval" inputmode="decimal" maxlength="14" required value="${sug ? String((+sug).toFixed(2)).replace(".", ",") : ""}"><small class="hint">Total recebido, com o sinal.</small></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""} data-trava>Encerrar atendimento</button>`, "Encerrar atendimento"); }
-function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id); }
+function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id) || (MSGS.ses || []).find(z=>z.id === id); }
 function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; MSGS.ses = null; PED.msgs = {}; render(); }
+/* 18/11 (Amanda): o + da conversa abre só o que dá para fazer agora, conforme os módulos da página (Orçamento, Agenda) e o momento do atendimento. */
+const sesDoPedido = id => (SES.pedido[id] || (MSGS.ses || []).filter(y=>y.pedido_id === id)).filter(y=>y.status !== "cancelada");
+function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", o = orcUltimo(x.id), l = sesDoPedido(x.id), ag = mod(p, "agenda");
+  const hoje = y => Math.abs(new Date(y.quando) - Date.now()) < 14 * 36e5, out = [];   /* [ação, atributos, ícone, título, explicação] */
+  if (eu){
+    out.push(["orcenvia", `data-id="${x.id}"`, "cifrao", o && o.status === "proposto" ? "Trocar orçamento" : o && o.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento", o && o.status === "proposto" ? "O anterior fica como trocado" : `${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste aqui`]);
+    if (ag) out.push(["sesnova", `data-id="${x.id}"`, "calplus", "Propor horário", o && o.status === "aceito" ? "O próximo passo do que vocês combinaram" : "Dia, hora e sinal, se houver"]);
+    l.filter(y=>y.status === "marcada" && hoje(y)).forEach(y=>out.push(["sesqr", `data-s="${y.id}"`, "qrselo", "Mostrar QR do check-in", dataHora(y.quando)]));
+    l.filter(y=>y.status === "verificada" && !y.checkout_em).forEach(y=>out.push(["sesfim", `data-s="${y.id}" data-pd="${x.id}"`, "check", "Encerrar atendimento", "Registra o valor pago desta " + (tat ? "sessão" : "visita")]));
+  } else {
+    if (o && o.status === "proposto") out.push(["orcver", `data-id="${x.id}"`, "cifrao", "Ver o orçamento", finBRL(+o.valor) + " · aceite ou peça ajuste"]);
+    l.filter(y=>y.status === "proposta").forEach(y=>out.push(["sesconfirma", `data-s="${y.id}"`, "calplus", "Confirmar horário", dataHora(y.quando)]));
+    l.filter(y=>y.status === "marcada" && hoje(y)).forEach(y=>out.push(["sescheckin", `data-s="${y.id}"`, "qrselo", "Fazer check-in", "Com o QR ou o código que a página mostra"]));
+    l.filter(y=>y.status === "verificada" && !y.avaliada).forEach(y=>out.push(["sesavalia", `data-s="${y.id}"`, "star", "Avaliar", "Conta para a reputação da página"]));
+  }
+  return out; }
+function sheetConvMais(x, eu){ const l = convMais(x, eu);
+  openSheet(shead("Nesta conversa") + `<div class="list">${l.map(([a, at, i, t, sub])=>`<button class="setting l1" type="button" data-act="convfaz" data-a="${a}" ${at}><span class="cmic" aria-hidden="true">${ic(i)}</span><span class="t"><b>${t}</b><small>${sub}</small></span>${ic("back","sm flip")}</button>`).join("")}</div>`, "Nesta conversa"); }
 function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", ses = tat ? "sessões" : "horários", n = +o.sessoes || 1, ult = orcUltimo(x.id), vivo = ult && ult.id === o.id;
   const st = {proposto:[eu ? "Esperando resposta" : "Para você responder","warn"], aceito:["Aceito","ok"], ajuste:["Ajuste pedido",""], substituido:["Trocado por outro",""]}[o.status] || ["",""];
-  const nSes = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada").length;
+  const nSes = sesDoPedido(x.id).length;
   let ac = "";
   if (o.status === "proposto" && vivo) ac = eu ? `<small>${esc(limpo(x.cliente_nome || "A cliente"))} vê este orçamento e responde aqui.</small>`
     : `<button class="btn sm primary" type="button" data-act="orcaceita" data-o="${o.id}" data-id="${x.id}">Aceitar orçamento</button><button class="btn sm ghost" type="button" data-act="orcajuste" data-o="${o.id}" data-id="${x.id}">Pedir ajuste</button>`;
@@ -7014,6 +7032,9 @@ const A = {
     ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null, nota = ($("#oenota").value || "").trim() || null;
     const {error} = await SB.rpc("orc_propoe", {p_pedido:x.id, p_valor:v, p_sessoes:n, p_nota:nota, p_estilo:est}); ocupado(b, false); if (error) return formErro(msgErr(error));
     if (x.status === "aberto") x.status = "respondido"; ORC.l = null; closeSheet(); S.convTab = "conversa"; toast("Orçamento enviado na conversa."); orcCarrega(); },
+  convmais: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetConvMais(x, pedSouPagina(x)); },
+  convfaz: b => { const a = b.dataset.a; closeSheet(); setTimeout(()=>{ if (A[a]) A[a](b); }, 60); },
+  orcver: () => { const c = [...document.querySelectorAll(".orccard:not(.velho)")].pop(); if (c){ c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add("pisca"); setTimeout(()=>c.classList.remove("pisca"), 1600); } },
   orcaceita: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), o = (ORC.l || []).find(z=>z.id === b.dataset.o); if (!x || !o) return; const p = pedPagina(x), n = +o.sessoes || 1;
     openSheet(shead("Aceitar orçamento") + `<div class="orccard"><b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? n + " sessões" : "1 sessão"} com ${esc(limpo(p.nome || "a página"))}</small>${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}</div>
       <p class="lnote">Ao aceitar, vocês combinam este valor. O pagamento é acertado direto com ${esc(limpo(p.nome || "a página"))}, fora da rede.online. ${mod(p, "agenda") ? "O próximo passo é a página propor o horário, e você confirma na conversa." : ""}</p>
@@ -7444,7 +7465,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 10:19";
+const VERSAO = "v1 registrada · 18/11 10:45";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
