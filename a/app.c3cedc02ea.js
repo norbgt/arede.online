@@ -5224,11 +5224,14 @@ function artesDaCopia(){ if (!ARTES_COPIA) return;
 /* 16/11 (Amanda): o feed só aparece quando o conteúdo principal chegou (ou depois de 2,5 s), para não trocar na frente de quem lê.
    Enquanto isso, um esqueleto. Depois, conteúdo novo entra sem mexer no que já está na tela (F.manter). */
 var FEED_PRONTO = false, FEED_ESPERA = new Set(["noticias", "publicacoes", "artes", "oficiais"]);   /* 16/11: o dado oficial entra na primeira montagem, no lugar certo (não no fim) */
-function feedLibera(){ if (FEED_PRONTO) return; FEED_PRONTO = true; const r = route(); if (r==="inicio" || r===""){ F.key = null; render(); } }
+function feedLibera(){ if (FEED_PRONTO) return; FEED_PRONTO = true; F.provisorio = FEED_ESPERA.has("noticias"); const r = route();   /* 18/11: montou sem as notícias do servidor (demoraram mais que a espera) */ if (r==="inicio" || r===""){ F.key = null; render(); } }
 function feedFonteOk(k){ FEED_ESPERA.delete(k); if (!FEED_ESPERA.size) feedLibera(); }
 setTimeout(feedLibera, 2500);
 function feedDadosNovos(fonte){ if (fonte) feedFonteOk(fonte); if (!FEED_PRONTO) return; F.key = null; const r = route();
-  if (r==="inicio" || r===""){ if (F.items.length) F.manter = true; render(); } }
+  /* 18/11 (Amanda): se o feed abriu antes das notícias chegarem e a pessoa ainda não rolou, monta de novo com elas no lugar certo
+     (antes: o que estava na tela ficava parado no topo e as notícias do dia entravam embaixo) */
+  const refaz = fonte==="noticias" && F.provisorio && window.scrollY < 400; if (fonte==="noticias") F.provisorio = false;
+  if (r==="inicio" || r===""){ if (F.items.length && !refaz) F.manter = true; render(); } }
 function feedEsqueleto(){ return `<div class="feedesp" aria-busy="true" aria-label="Carregando o feed">${Array.from({length:4}, (_, i)=>`<div class="fesq${i % 2 ? " b" : ""}"><span></span><i></i><i></i></div>`).join("")}</div>`; }
 /* página de um conteúdo aberta direto (link ou volta ao abrir): espera notícias e artes chegarem antes de dizer que não existe */
 let PIN_ESPERA = true;
@@ -6985,7 +6988,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 06:07";
+const VERSAO = "v1 registrada · 18/11 06:12";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
