@@ -2981,14 +2981,15 @@ function gerDados(p){ let ok = true;
   return ok; }
 function gerRepinta(pid){ const r = route(); if (r === "gerir-" + pid || r === "pg-" + pid) render(); }
 const gerNome = x => limpo(x.cliente_nome || "Cliente");
-function gerTarefas(p){ const peds = (PED.lista || []).filter(x=>x.pagina_id === p.id && x.status !== "fechado"), t = [];
+function gerTarefas(p){ const antes = (a, c)=>new Date(a.atualizado_em || a.criado_em || a.quando) - new Date(c.atualizado_em || c.criado_em || c.quando);
+  const peds = (PED.lista || []).filter(x=>x.pagina_id === p.id && x.status !== "fechado").sort(antes), t = gerHoje(p);   /* 17/11: uma lista só, o mais urgente primeiro: sessões de hoje, quem espera resposta, atendimentos a encerrar, orçamentos */
   peds.filter(x=>x.status === "aberto").forEach(x=>t.push(`<a class="gertask" href="#conversa-${x.id}">${ic("message","sm")}<span>Responder ${esc(gerNome(x))}${x.item ? " · " + esc(x.item) : ""}</span>${ic("back","sm flip")}</a>`));
+  (SES.pagina[p.id] || []).filter(y=>y.status === "verificada" && !y.checkout_em).sort((a, c)=>new Date(a.quando) - new Date(c.quando)).forEach(y=>t.push(`<button class="gertask" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${y.pedido_id}">${ic("check","sm")}<span>Encerrar atendimento · ${esc(gerNome(y))}, ${new Date(y.quando).toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"})}</span>${ic("back","sm flip")}</button>`));
   if (mod(p, "agenda")) peds.filter(x=>x.status !== "aberto" && !x.valor_combinado).forEach(x=>t.push(`<button class="gertask" type="button" data-act="gerconv" data-id="${x.id}">${ic("msgcifrao","sm")}<span>Enviar orçamento · ${esc(gerNome(x))}</span>${ic("back","sm flip")}</button>`));
-  (SES.pagina[p.id] || []).filter(y=>y.status === "verificada" && !y.checkout_em).forEach(y=>t.push(`<button class="gertask" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${y.pedido_id}">${ic("check","sm")}<span>Encerrar atendimento · ${esc(gerNome(y))}, ${new Date(y.quando).toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"})}</span>${ic("back","sm flip")}</button>`));
   return t; }
 function gerHoje(p){ const d = new Date().toDateString();
   return (SES.pagina[p.id] || []).filter(y=>y.status === "marcada" && new Date(y.quando).toDateString() === d).sort((a, c)=>new Date(a.quando) - new Date(c.quando))
-    .map(y=>`<div class="gertask">${ic("clock","sm")}<span>${new Date(y.quando).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})} · ${esc(gerNome(y))}</span><button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button></div>`); }
+    .map(y=>`<div class="gertask">${ic("clock","sm")}<span>Hoje, ${new Date(y.quando).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})} · ${esc(gerNome(y))}</span><button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button></div>`); }
 function gerBotao(p){ const n = gerDados(p) ? gerTarefas(p).length : 0;
   return `<a class="btn block gerbtn" href="#gerir-${p.id}">${ic("painel","sm")} Gerenciar${n ? `<span class="gercount" aria-label="${n} ${n === 1 ? "pendência" : "pendências"}">${n}</span>` : ""}</a>`; }
 function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["pg-" + pid];
@@ -2998,12 +2999,11 @@ function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["
   const ok = gerDados(p);
   if (S.gerVer === "agenda" && mod(p, "agenda")) return topo("Agenda", 1) + `<div class="container">${ok ? pgAgendaHTML(p) : `<p class="empty">Carregando…</p>`}</div>`;
   if (S.gerVer === "fin" && o.mei) return topo("Financeiro", 1) + `<div class="container">${finHTML(p)}</div>`;
-  const t = ok ? gerTarefas(p) : [], h = ok ? gerHoje(p) : [];
+  const t = ok ? gerTarefas(p) : [];
   const at = [mod(p, "agenda") ? `<button class="geratl" type="button" data-act="gerver" data-v="agenda">${ic("calplus")}<span>Agenda</span></button>` : "", o.mei ? `<button class="geratl" type="button" data-act="gerver" data-v="fin">${ic("grafico")}<span>Financeiro</span></button>` : "",
     `<a class="geratl" href="#conversas">${ic("message")}<span>Pedidos</span></a>`, `<button class="geratl" type="button" data-act="paginaedita" data-id="${pid}">${ic("lapis")}<span>Editar página</span></button>`].filter(Boolean).join("");
   return topo("Gerenciar") + `<div class="container"><p class="lnote osub" style="margin-top:0">${esc(o.nome)}</p>
     <h3 class="psec">Para fazer agora</h3>${!ok ? `<p class="empty">Carregando…</p>` : t.length ? `<div class="gerlist">${t.join("")}</div>` : `<p class="empty">Nada pendente.</p>`}
-    ${h.length ? `<h3 class="psec">Hoje</h3><div class="gerlist">${h.join("")}</div>` : ""}
     <div class="geratls">${at}</div></div>`; }
 /* ORGANIZAÇÕES (14/11, pedido da Amanda): comunidades e páginas dividem a mesma tela, num feed só que pode ser filtrado.
    O feed "Para você" usa as duas formas de ver do Início: cartões soltos (grade irregular) ou em blocos (grade regular).
@@ -6948,7 +6948,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:24";
+const VERSAO = "v1 registrada · 17/11 21:28";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
