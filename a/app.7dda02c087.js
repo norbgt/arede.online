@@ -2876,8 +2876,7 @@ function pgSecoesHTML(p){ const l = PAGS.secoes[p.id], meu = pgMeu(p); if (!l) r
       <div class="pboards prow" role="list">${fs.map(f=>pastaBtn(x, f)).join("")}${meu && x.pastas.length < MAX_PSEC ? `<button class="board bnova" type="button" data-act="pgpastanova" data-s="${x.id}"><span class="bmini"><span class="bempty">${ic("plus")}</span></span><b>Nova pasta</b><small>nesta seção</small></button>` : ""}</div></section>`; };
   const corpo = vis.map(bloco).join("");
   if (!corpo && !meu) return "";
-  return `<div class="pgsecoes">${corpo}${meu ? (l.length < MAX_SEC ? `<button class="btn ghost secnova" type="button" data-act="pgsecnova">${ic("plus","sm")} Nova seção <small>${l.length} de ${MAX_SEC}</small></button>` : "")
-    + (l.length ? "" : `<p class="lnote" style="margin-top:6px">Organize a página em até ${MAX_SEC} seções, com até ${MAX_PSEC} pastas cada, juntando publicações${p.tipo === "empresa" ? " e itens da vitrine" : ""}.</p>`) : ""}</div>`; }
+  return `<div class="pgsecoes">${meu && l.length < MAX_SEC ? `<button class="btn ghost secnova secnovatopo" type="button" data-act="pgsecnova">${ic("plus","sm")} Nova seção <small>${l.length} de ${MAX_SEC}</small></button>` : ""}${corpo}${meu ? (l.length ? "" : `<p class="lnote" style="margin-top:6px">Organize a página em até ${MAX_SEC} seções, com até ${MAX_PSEC} pastas cada, juntando publicações${p.tipo === "empresa" ? " e itens da vitrine" : ""}.</p>`) : ""}</div>`; }
 function pgPastaHTML(o, p){ const x = (PAGS.secoes[p.id] || []).find(y=>y.id===S.pgPasta.s), f = x && x.pastas.find(y=>y.id===S.pgPasta.f), meu = pgMeu(p);
   if (!f){ S.pgPasta = null; return paginaCorpoTab(o, p, "pastas"); }
   const it = pgItensDe(p, f), vit = pgItensDe(p, {itens:(f.itens || []).filter(k=>k.startsWith("v:"))}), pubs = pgItensDe(p, {itens:(f.itens || []).filter(k=>k.startsWith("p:"))});
@@ -3193,9 +3192,8 @@ function secoesHTML(){ secLimpa();
   const bloco = x => `<section class="psecao" aria-label="Seção ${esc(x.nome)}"><div class="psechead"><h3>${esc(x.nome)}</h3>${secLock(x)}<span class="psecn">${x.pastas.length} de ${MAX_PSEC}</span><span class="spacer"></span><button class="iconbtn tool" type="button" data-act="secedita" data-s="${x.id}" aria-label="Editar a seção ${esc(x.nome)}" title="Editar seção">${ic("dots")}</button></div>
     <div class="pboards prow" role="list">${x.pastas.map(k=>FOLDERS.find(f=>f[0]===k)).filter(Boolean).map(boardHTML).join("")}${x.pastas.length < MAX_PSEC ? `<button class="board bnova" type="button" data-act="pastanova" data-sec="${x.id}"><span class="bmini"><span class="bempty">${ic("plus")}</span></span><b>Nova pasta</b><small>nesta seção</small></button>` : ""}</div></section>`;
   const fora = FOLDERS.filter(f=>!secDe(f[0]));
-  return S.secoes.map(bloco).join("")
-    + (fora.length ? `<section class="psecao" aria-label="Pastas fora das seções"><div class="psechead"><h3>Fora das seções</h3><span class="seclock" role="img" aria-label="Só você vê" title="Só você vê">${ic("lock","sm")}</span><span class="psecn">só você vê</span></div><div class="pboards prow" role="list">${fora.map(boardHTML).join("")}</div></section>` : "")
-    + (S.secoes.length < MAX_SEC ? `<button class="btn ghost secnova" type="button" data-act="secnova">${ic("plus","sm")} Nova seção <small>${S.secoes.length} de ${MAX_SEC}</small></button>` : ""); }
+  return (S.secoes.length < MAX_SEC ? `<button class="btn ghost secnova secnovatopo" type="button" data-act="secnova">${ic("plus","sm")} Nova seção <small>${S.secoes.length} de ${MAX_SEC}</small></button>` : "") + S.secoes.map(bloco).join("")
+    + (fora.length ? `<section class="psecao" aria-label="Pastas fora das seções"><div class="psechead"><h3>Fora das seções</h3><span class="seclock" role="img" aria-label="Só você vê" title="Só você vê">${ic("lock","sm")}</span><span class="psecn">só você vê</span></div><div class="pboards prow" role="list">${fora.map(boardHTML).join("")}</div></section>` : ""); }
 function sheetSecao(x){ const nova = !x, tit = nova ? "Nova seção" : "Editar seção", sel = new Set(x ? x.pastas : []);
   const pastas = FOLDERS.map(f=>{ const o = secDe(f[0]), outra = o && (!x || o.id!==x.id), n = folderCount(f[0]);
     return `<label class="setting secpasta"><input type="checkbox" value="${f[0]}"${sel.has(f[0]) ? " checked" : ""}><span class="t"><b>${esc(f[1])}${f[3] ? " " + ic("lock","sm") : ""}</b><small>${n} ${n===1 ? "item" : "itens"}${f[3] ? " · secreta" : ""}${outra ? " · hoje em " + esc(o.nome) : ""}</small></span></label>`; }).join("");
@@ -6961,7 +6959,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:46";
+const VERSAO = "v1 registrada · 17/11 21:54";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
