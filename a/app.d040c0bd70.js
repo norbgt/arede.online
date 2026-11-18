@@ -863,6 +863,7 @@ function aplicaRegras(g){ if (!g || typeof g !== "object") return false; const n
   poe("rep_sobe_pouco", 0, 101, x=>{ REP_POUCO = x; }); poe("rep_sobe_muito", 0, 101, x=>{ REP_MUITO = x; }); poe("selo_auto_rep", 0, 101, x=>{ SELO_AUTO_REP = x; });
   poe("selo_antigo_dias", 1, 3650, x=>{ SELO_ANTIGO_DIAS = x; }); poe("senha_min", 8, 128, x=>{ SENHA_MIN = x; });
   if (typeof g.identidade_exigida === "boolean") { IDENT_EXIGE = g.identidade_exigida; mudou = true; }
+  poe("mensagem_apaga_min", 1, 60, x=>{ MSG_APAGA_MIN = x; });
   if (typeof g.aba_publicacoes === "boolean" && g.aba_publicacoes !== ABA_PUB) { ABA_PUB = g.aba_publicacoes; mudou = true; }
   if (Array.isArray(g.apoio_valores) && g.apoio_valores.length && g.apoio_valores.every(x=>Number.isInteger(x) && x > 0)) { APOIO_VALORES = g.apoio_valores.slice(0, 8); mudou = true; }
   return mudou; }
@@ -1327,8 +1328,8 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
 const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt"><span class="cslong">Seu negócio neste espaço, igual para todo mundo.</span><span class="csshort">Seu negócio aqui.</span></span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
-const adCard = (it, mode) => { const a = it.ad, fm = a.fmt || (a.casa ? "f" : "s"); return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile fmt-${fm}${a.casa ? " casa" : ""}${fm==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
-  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "f"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
+const adCard = (it, mode) => { const a = it.ad, fm = a.fmt || "s"; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile fmt-${fm}${a.casa ? " casa" : ""}${fm==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
+  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "s"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
 const cardFor = (it, mode, v) => it.anuncio ? adCard(it, mode) : v && v!=="masonry" && v!=="video" ? tabCard(it, mode, v) : card(it, mode);
 const EST = {anuncio:()=>200, video:it=>it.ar*170+70, imagem:it=>(it.ph || 1.25)*170+80, texto:()=>270, evento:()=>320, enquete:()=>330, votacao:()=>330, chamado:()=>330, documento:()=>290};
 const EST_V = {cedula:330, arquivo:150};
@@ -1350,9 +1351,6 @@ class Grid {
   placeB(u){ if (this.v==="agenda") this.Bh = this.Bcols.map(c=>c.offsetHeight); /* irregular: encaixa pela altura real */
     const it = this.obj[u];
     /* 18/11 (Amanda): na vista Cartões a Faixa ocupa a largura inteira, como no fluxo de venda: fecha as colunas, entra a faixa, e as colunas recomeçam */
-    if (it.anuncio && (it.ad.fmt || (it.ad.casa ? "f" : "s")) === "f" && this.v === "masonry" && this.n > 1 && this.Bcols[0] && this.Bcols[0].parentElement){
-      const m = this.Bcols[0].parentElement, w = document.createElement("div"); w.className = "faixarow"; w.innerHTML = cardFor(it, this.mode, this.v); m.after(w);
-      const [m2, cs] = this.cols(); w.after(m2); this.Bcols = cs; this.Bh = Array(this.n).fill(0); fitTiles(w); return; }
     const i = this.Bh.indexOf(Math.min(...this.Bh)); this.Bcols[i].insertAdjacentHTML("beforeend", cardFor(it, this.mode, this.v)); fitTiles(this.Bcols[i].lastElementChild); this.Bh[i] += this.est(u); }
   render(){
     const box = this.box; if (!box) return; box.innerHTML = "";
@@ -1493,7 +1491,7 @@ function adDoEspaco(n, antes){ const ok = a=>!S.adOculta.has(a.id), R = AD_REAIS
   const ex = ANUNCIANTES.filter(ok); return ex.length ? ex[(n - 1) % ex.length] : null; }
 /* 15/11: o espaço sem anúncio pago vira um convite discreto, sem marca inventada */
 const AD_CASA = {id:"ad-casa", casa:true, nome:"Anuncie aqui", frase:"Seu negócio neste espaço.", curta:"Seu negócio aqui.", seg:"", cor:"var(--surface-2)", cor2:"var(--surface-2)", logo:'<path d="M13 3 5 14h6l-1 7 8-11h-6z" fill="currentColor"/>'};
-const AD_SLOTS = [["f",2],["s",11],["t",23],["w",35]];
+const AD_SLOTS = [["s",2],["s",11],["t",23],["w",35]];   /* 18/11 (Amanda): a Faixa saiu dos formatos (na vista Cartões ela deixava um vão em branco acima); o 1º espaço virou Quadradinho */
 const AD_CASA_DE = fmt => Object.assign({}, AD_CASA, {fmt});
 ORG["ad-casa"] = {id:"ad-casa", nome:"a rede.online", sigla:"AR", cor:"#8D9BFF", cidade:"", anunciante:true, membros:0, natureza:"Anunciante"};
 function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anúncio na aba Vídeos, onde ficam as transmissões oficiais */
@@ -1520,7 +1518,7 @@ const AD_CALL = `<button class="adtag adcall" type="button" data-act="anunciar" 
 /* multiplicadores iguais aos da tabela de anúncios do painel. 18/11 (Amanda): o formato segue a área de tela (pixel × R$):
    Quadradinho 1 · Faixa 1,5 · Vertical 2 · Destaque 3,6 (a área dele vale 4; 10% de desconto no maior). Posição 1,6 · 1,3 · 1 */
 const AD_PRECO = {dia:5, minDias:3, maxDias:90, tempos:[3,7,15,30], descontos:[[30,.20],[15,.10],[7,.05]],
-  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["f","Faixa","Largura inteira, numa linha fina · 390 × 65 px no celular",1.5],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",2],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.6]],
+  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",2],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.6]],
   posicoes:[["rot","Rotativo","Do 4º espaço de anúncio em diante",1],["meio","Meio do feed","2º e 3º espaços de anúncio",1.3],["topo","Início do feed","1º espaço, depois de 8 cartões",1.6]]};
 const AD_CORES = [["#6D28D9","#A78BFA"],["#2338D8","#93A5FF"],["#0F766E","#5EEAD4"],["#15803D","#86EFAC"],["#EA580C","#FDBA74"],["#DC2626","#FCA5A5"],["#BE185D","#F9A8D4"],["#141615","#9CA3AF"]];
 /* pagamento pelo Mercado Pago (Checkout Pro). O modo vem do servidor: "desligado", "teste" (só a administração consegue cobrar, com credenciais de teste) ou "producao".
@@ -1530,7 +1528,7 @@ const adPodePagar = () => AD_MODO==="producao" || (AD_MODO==="teste" && nivel()=
 const AD_STATUS = {aguardando:["na","Aguardando pagamento"], pago:["warn","Pago · em conferência"], aprovado:["ok","No ar"], recusado:["bad","Recusado · devolução em andamento"], cancelado:["na","Cancelado"], expirado:["na","Expirado"], encerrado:["na","Encerrado"], devolvido:["na","Recusado · valor devolvido"]};
 const AD_VAZIO = {nome:"", frase:"", cta:"", seg:"", link:"", cor:0, fmt:"s", pos:"rot", dias:7, meio:"pix"};
 /* 15/11 (Amanda): fluxo começa vazio para quem navega; o rascunho só guarda o que a própria pessoa digitou e some quando vira pedido */
-const adDraft = () => { if (!S.adDraft) S.adDraft = Object.assign({}, AD_VAZIO, store.get("anuncioRascunho", {})); return S.adDraft; };
+const adDraft = () => { if (!S.adDraft){ S.adDraft = Object.assign({}, AD_VAZIO, store.get("anuncioRascunho", {})); if (!AD_PRECO.formatos.some(x=>x[0] === S.adDraft.fmt)) S.adDraft.fmt = "s"; } return S.adDraft; };
 function adLimpa(){ S.adDraft = Object.assign({}, AD_VAZIO); S.adPasso = 0; S.adConta = false; store.set("anuncioRascunho", {}); }
 const adBRL = v => v.toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
 const adDias = n => n + (n===1 ? " dia" : " dias");
@@ -1545,7 +1543,7 @@ function adPrecosAplica(d){ if (!d || typeof d!=="object") return false; const P
   const dia = num(d.dia,1,500), mn = num(d.minDias,1,30), mx = num(d.maxDias,1,365), ft = num(f.t,1,10), fw = num(f.w,1,10), pm = num(p.meio,1,10), pt = num(p.topo,1,10), d7 = num(ds["7"],0,.6), d15 = num(ds["15"],0,.6), d30 = num(ds["30"],0,.6);
   if ([dia,mn,mx,ft,fw,pm,pt,d7,d15,d30].some(x=>x===null) || mx < mn || d7 > d15 || d15 > d30) return false;
   P.dia = dia; P.minDias = Math.round(mn); P.maxDias = Math.round(mx); P.descontos = [[30,d30],[15,d15],[7,d7]];
-  const ff = num(f.f,1,10); if (ff !== null) P.formatos.find(x=>x[0]==="f")[3] = ff;   /* 15/11: Faixa */
+
   P.formatos.find(x=>x[0]==="t")[3] = ft; P.formatos.find(x=>x[0]==="w")[3] = fw; P.posicoes.find(x=>x[0]==="meio")[3] = pm; P.posicoes.find(x=>x[0]==="topo")[3] = pt;
   if (route()==="anunciar") adRefaz(); return true; }
 async function adPrecosCarrega(){ if (LOCAL) adPrecosAplica(store.get("anuncioPrecos", null)); if (!SB) return;
@@ -1597,8 +1595,7 @@ function adModulo(d){ const P = AD_PRECO, v = adPreco(d), [c1, c2] = AD_CORES[d.
     return `<button class="admslot${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-act="adset" data-k="fmt" data-v="${k}" style="grid-area:${area}" aria-label="${x[1]}: ${pr} por dia">${on
       ? `<span class="tile adtile ${k}${k === "f" ? " faixa" : ""}" style="--adc:${c1};--adc2:${c2}">${adFace(d)}</span>` : `<span class="admlab"><b>${x[1]}</b><small>${pr}/dia</small></span>`}</button>`; };
   const skt = a => `<div class="adsk" style="grid-area:${a}" aria-hidden="true"><i></i><i></i><i></i></div>`;   /* 18/11: vizinho de texto, como no feed */
-  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 4")}${slot("t", "1 / 5 / span 2 / span 2")}${slot("s", "3 / 1 / span 1 / span 2")}${skt("3 / 3 / span 1 / span 4")}</div>
-    <div class="blk admodf">${slot("f", "1 / 1 / span 1 / span 1")}</div></div>
+  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 4")}${slot("t", "1 / 5 / span 2 / span 2")}${slot("s", "3 / 1 / span 1 / span 2")}${skt("3 / 3 / span 1 / span 4")}</div></div>
     <p class="admodinfo"><b>${v.f[1]}</b> · ${esc(v.f[2])} · <b>${adBRL(v.diaria)}</b> por dia</p>`; }
 /* onde o anúncio entra na rolagem: cada número é um espaço de anúncio (um a cada 8 cartões) */
 function adMapa(d){ const on = k => d.pos==="topo" ? k===1 : d.pos==="meio" ? (k===2 || k===3) : k>=4;
@@ -2078,8 +2075,8 @@ function planBlock(Q, final, g){
   const take = (pred, w=LOOK+1) => { const n = Math.min(Q.length, w); for (let i=0;i<n;i++) if (pred(Q[i])) return Q.splice(i,1)[0]; return null; };
   const cell = (it, size, r, c, rs, cs) => ({uid:it.uid, size, area:[r,c,rs,cs]});
   /* a mídia só sobe para o bloco atual se já estiver perto (janela curta): assim imagens e vídeos ficam espalhados pelo feed */
-  const adFmt = it => it.anuncio ? (it.ad.fmt || (it.ad.casa ? "f" : "s")) : "", adPeq = it => it.anuncio && adFmt(it)!=="w" && adFmt(it)!=="f";
-  if (Q[0] && Q[0].anuncio && adFmt(Q[0])==="f") return {casa:true, cells:[cell(Q.shift(),"bar",1,1,1,6)]};   /* 15/11: Faixa (e o "Anuncie aqui"): uma linha fina, de ponta a ponta */
+  const adFmt = it => it.anuncio ? (it.ad.fmt || "s") : "", adPeq = it => it.anuncio && adFmt(it)!=="w";
+   /* 15/11: Faixa (e o "Anuncie aqui"): uma linha fina, de ponta a ponta */
   const mediaCol = (c, w=LOOK+1) => { let m = take(it=>!isTextual(it) && !it.anuncio, w);
     if (!m){ const a = take(adPeq, w); if (!a) return null; if (adFmt(a)==="t") return [cell(a,"t",1,c,2,2)];
       const p = take(it=>it.tipo==="imagem", adFmt(a)==="s" ? LOOK+40 : LOOK+6);   /* 18/11: o Quadradinho procura o par mais longe, para ficar no tamanho que foi vendido */
@@ -2109,9 +2106,9 @@ function planBlock(Q, final, g){
 }
 function tileHTML(it, cl, mode="none"){
   if (it.anuncio){ const a = it.ad, [r,c,rs,cs] = cl.area;
-    const fx = (a.fmt || (a.casa ? "f" : "s"))==="f";
+    const fx = false;
     return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}${fx ? " faixa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
-      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "f"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
+      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "s"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
   const seal = sealTag(it, s);
@@ -2599,7 +2596,9 @@ const etqTodas = () => { const m = new Map(); (ETQ.l || []).forEach(e=>{ const k
 const etqAtende = () => (PED.lista || []).some(pedSouPagina);
 const etqChips = l => l.map(n=>`<span class="etqchip">${esc(limpo(n))}</span>`).join("");
 const orcsDe = id => (ORC.l || []).filter(o=>o.pedido_id === id).sort((a, b)=>new Date(a.criado_em) - new Date(b.criado_em));
-const orcUltimo = id => { const l = orcsDe(id); return l[l.length - 1] || null; };
+const orcUltimo = id => { const l = orcsDe(id).filter(o=>o.status !== "retirado" && o.status !== "substituido"); return l[l.length - 1] || null; };   /* o orçamento que vale: retirados e trocados não contam */
+let MSG_APAGA_MIN = 15;   /* 18/11 (Amanda): quem enviou apaga a mensagem nos primeiros minutos; no lugar fica "Mensagem apagada" */
+const msgApagavel = m => !m.apagada_em && m.autor === (ME.user || {}).id && Date.now() - new Date(m.criado_em) < MSG_APAGA_MIN * 60000;
 const orcAceito = id => orcsDe(id).some(o=>o.status === "aceito");   /* com orçamento aceito, o sinal vem dele; sem orçamento (pedido pela tabela), é decidido ao marcar o horário */
 function orcCarrega(){ if (!SB || !ME.user || ORC.pede) return; ORC.pede = 1; SB.from("tat_orcamentos").select("*").order("criado_em").then(({data})=>{ ORC.l = data || []; ORC.pede = 0; render(); }, ()=>{ ORC.l = []; ORC.pede = 0; }); }
 function msgsDados(){ if (!SB || !ME.user) return false; let ok = true;
@@ -2630,10 +2629,11 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
     + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${eu ? (l => `<button class="convetq" type="button" data-act="etqabre" data-id="${id}" aria-label="${l.length ? "Etiquetas: " + esc(l.join(", ")) + ". Editar" : "Adicionar etiqueta"}">${ic("etiqueta","sm")}${l.length ? etqChips(l) : `<span class="etqvazio">Adicionar etiqueta</span>`}</button>`)(etqDe(id)) : ""}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
-      ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`}))
+      ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : m.apagada_em ? `<div class="bolha apagada${meu(m) ? " eu" : ""}"><p>Mensagem apagada</p><small>${quando(m.criado_em)}</small></div>`
+          : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}${msgApagavel(m) ? ` · <button class="msgapaga" type="button" data-act="msgapaga" data-m="${m.id}" data-id="${id}">Apagar</button>` : ""}</small></div>`}))
         .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
-      <div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? "Toque no + para enviar o orçamento." : "O orçamento da página aparece aqui para você aceitar ou pedir ajuste."}</p>`}`}</div>`; }
+      ${x.status === "fechado" ? `<div class="convfim"><span>Conversa encerrada. Nada foi apagado.</span><button class="btn sm" type="button" data-act="convreabre" data-id="${id}">Reabrir conversa</button></div>` : `<div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
+      ${orcUltimo(id) ? "" : `<p class="lnote">${eu ? "Toque no + para enviar o orçamento." : "O orçamento da página aparece aqui para você aceitar ou pedir ajuste."}</p>`}`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -2686,7 +2686,7 @@ function sesHTML(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "
   const card = (y, n) => { const st = y.status === "verificada" ? (y.checkout_em ? ["Encerrado","ok"] : ["Serviço iniciado","ok"]) : SES_ST[y.status], tat = modeloDe(p) === "tatuagem";
     let ac = "";
     if (y.status === "proposta") ac = eu ? `<small>Esperando a confirmação.</small><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sesconfirma" data-s="${y.id}">Confirmar</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Pedir outro horário</button>`;
-    if (y.status === "marcada") ac = eu ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">${ic("check","sm")} Mostrar QR do check-in</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sescheckin" data-s="${y.id}">${ic("check","sm")} Fazer check-in</button><small>No dia, aponte a câmera para o QR que a página mostra, ou digite o código.</small>`;
+    if (y.status === "marcada") ac = eu ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">${ic("check","sm")} Mostrar QR do check-in</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sescheckin" data-s="${y.id}">${ic("check","sm")} Fazer check-in</button>${new Date(y.quando) > Date.now() ? `<button class="btn sm ghost" type="button" data-act="sesdesiste" data-s="${y.id}">Cancelar</button>` : ""}<small>No dia, aponte a câmera para o QR que a página mostra, ou digite o código.</small>`;
     if (y.status === "verificada") ac = eu ? (y.checkout_em ? `<small>${y.avaliada ? "A cliente já avaliou." : ""}</small>` : `<button class="btn sm primary" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${x.id}">${ic("check","sm")} Encerrar atendimento</button>`) : y.avaliada ? `<small>Você avaliou esta ${tat ? "sessão" : "visita"}. Obrigada!</small>` : `<button class="btn sm primary" type="button" data-act="sesavalia" data-s="${y.id}">${ic("star","sm")} Avaliar</button>`;
     return `<div class="sescard" data-s="${y.id}"><div class="seshead"><b>${tat ? "Sessão" : "Horário"}${n ? " " + n : ""}</b><span class="pgsit ${st[1]}">${st[0]}</span></div><span class="sesdata">${ic("clock","sm")}${dataHora(y.quando)} · ${y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min"}</span>${y.status === "cancelada" ? "" : sesCiclo(x, y)}<div class="sesac">${ac}</div></div>`; };
   const tat0 = modeloDe(p) === "tatuagem", vivas = l.filter(y=>y.status !== "cancelada").sort((a, c)=>new Date(a.quando) - new Date(c.quando)), dur = y => y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min";
@@ -2728,6 +2728,7 @@ function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); co
   const hoje = y => Math.abs(new Date(y.quando) - Date.now()) < 14 * 36e5, out = [];   /* [ação, atributos, ícone, título, explicação] */
   if (eu){
     out.push(["orcenvia", `data-id="${x.id}"`, "cifrao", o && o.status === "proposto" ? "Trocar orçamento" : o && o.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento", o && o.status === "proposto" ? "O anterior fica como trocado" : `${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste aqui`]);
+    if (o && o.status === "proposto") out.push(["orcretira", `data-o="${o.id}" data-id="${x.id}"`, "close", "Retirar orçamento", "Enquanto não houver resposta"]);
     if (ag) out.push(["sesnova", `data-id="${x.id}"`, "calplus", "Propor horário", o && o.status === "aceito" ? "O próximo passo do que vocês combinaram" : "Dia, hora e sinal, se houver"]);
     l.filter(y=>y.status === "marcada" && hoje(y)).forEach(y=>out.push(["sesqr", `data-s="${y.id}"`, "qrselo", "Mostrar QR do check-in", dataHora(y.quando)]));
     l.filter(y=>y.status === "verificada" && !y.checkout_em).forEach(y=>out.push(["sesfim", `data-s="${y.id}" data-pd="${x.id}"`, "check", "Encerrar atendimento", "Registra o valor pago desta " + (tat ? "sessão" : "visita")]));
@@ -2737,6 +2738,7 @@ function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); co
     l.filter(y=>y.status === "marcada" && hoje(y)).forEach(y=>out.push(["sescheckin", `data-s="${y.id}"`, "qrselo", "Fazer check-in", "Com o QR ou o código que a página mostra"]));
     l.filter(y=>y.status === "verificada" && !y.avaliada).forEach(y=>out.push(["sesavalia", `data-s="${y.id}"`, "star", "Avaliar", "Conta para a reputação da página"]));
   }
+  if (!l.some(y=>y.status === "proposta" || y.status === "marcada" || (y.status === "verificada" && !y.checkout_em))) out.push(["convencerra", `data-id="${x.id}"`, "lock", "Encerrar conversa", "Nada é apagado e dá para reabrir"]);
   return out; }
 function sheetEtq(x){ const minhas = etqDe(x.id), todas = etqTodas(), mk = new Set(minhas.map(n=>n.toLowerCase()));
   [...minhas, ...ETQ.ex.values()].forEach(n=>{ if (!todas.some(t=>t.nome.toLowerCase() === n.toLowerCase())) todas.push({nome:n, n:0}); });
@@ -2763,10 +2765,16 @@ async function etqMuda(x, nome, liga){ const k = nome.toLowerCase(), antes = (ET
   if (!liga) ETQ.ex.set(k, nome);
   if (!liga && NOTIF.f && NOTIF.f.toLowerCase() === "etq:" + k && !etqTodas().some(t=>t.nome.toLowerCase() === k)) NOTIF.f = "tudo";
   return null; }
+/* 18/11 (Amanda): a pessoa atendida cancela horário confirmado; a página é avisada e, se houve sinal, a pessoa é avisada de que o perde */
+function sheetSesDesiste(y){ const sn = +y.sinal > 0 ? +y.sinal : 0;
+  openSheet(shead("Cancelar horário") + `<p class="orcses">${dataHora(y.quando)}</p>
+    <p class="lnote">${sn ? `<b class="perde">Você perde o sinal de ${finBRL(sn)}.</b> ` : ""}A página é avisada e pode propor outro horário.</p>
+    <p class="ferr" role="alert" hidden></p><button class="btn block perigo" type="button" data-act="sesdesisteok" data-s="${y.id}">Cancelar horário</button>
+    <button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Voltar</button>`, "Cancelar horário"); }
 function sheetConvMais(x, eu){ const l = convMais(x, eu);
   openSheet(shead("Nesta conversa") + `<div class="list">${l.map(([a, at, i, t, sub])=>`<button class="setting l1" type="button" data-act="convfaz" data-a="${a}" ${at}><span class="cmic" aria-hidden="true">${ic(i)}</span><span class="t"><b>${t}</b><small>${sub}</small></span>${ic("back","sm flip")}</button>`).join("")}</div>`, "Nesta conversa"); }
 function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", ses = tat ? "sessões" : "horários", n = +o.sessoes || 1, ult = orcUltimo(x.id), vivo = ult && ult.id === o.id;
-  const st = {proposto:[eu ? "Esperando resposta" : "Para você responder","warn"], aceito:["Aceito","ok"], ajuste:["Ajuste pedido",""], substituido:["Trocado por outro",""]}[o.status] || ["",""];
+  const st = {proposto:[eu ? "Esperando resposta" : "Para você responder","warn"], aceito:["Aceito","ok"], ajuste:["Ajuste pedido",""], substituido:["Trocado por outro",""], retirado:["Retirado",""]}[o.status] || ["",""];
   const nSes = sesDoPedido(x.id).length;
   let ac = "";
   if (o.status === "proposto" && vivo) ac = eu ? `<small>${esc(limpo(x.cliente_nome || "A cliente"))} vê este orçamento e responde aqui.</small>`
@@ -4767,6 +4775,18 @@ function mockSB(o = {}){
       tab("tat_orcamentos").forEach(o=>{ if (o.pedido_id === x.id && o.status === "proposto"){ o.status = "substituido"; o.respondido_em = agora(); } });
       const id = novoId(); tab("tat_orcamentos").push({id, pedido_id:x.id, valor:+a.p_valor, sessoes:Math.max(1, Math.min(20, +a.p_sessoes || 1)), nota:a.p_nota || null, estilo:a.p_estilo || null, sinal:a.p_sinal > 0 ? +a.p_sinal : null, status:"proposto", criado_em:agora(), respondido_em:null});
       if (x.status === "aberto") x.status = "respondido"; x.atualizado_em = agora(); salva(); return id; },
+    orc_retira:a=>{ const o = tab("tat_orcamentos").find(y=>y.id === a.p_orc), x = o && tab("tat_pedidos").find(y=>y.id === o.pedido_id), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só a página retira o orçamento"};
+      if (o.status !== "proposto") throw {message:"valor: este orçamento já foi respondido ou trocado por outro"}; o.status = "retirado"; o.respondido_em = agora();
+      tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:"Orçamento retirado pela página."}); x.atualizado_em = agora(); salva(); return true; },
+    conversa_encerra:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!x || (x.cliente !== eu() && (pg || {}).dono !== eu())) throw {message:"valor: conversa não encontrada"};
+      const nome = x.cliente === eu() ? (x.cliente_nome || "quem pediu") : ((pg || {}).nome || "a página");
+      if (a.p_encerra){ if (x.status === "fechado") return "fechado";
+        if (tab("tat_sessoes").some(y=>y.pedido_id === x.id && (y.status === "proposta" || y.status === "marcada" || (y.status === "verificada" && !y.checkout_em)))) throw {message:"valor: há um horário em aberto. Cancele ou conclua antes de encerrar"};
+        x.status_antes = x.status; x.status = "fechado"; x.fechado_por = x.cliente === eu() ? "cliente" : "pagina"; }
+      else { if (x.status !== "fechado") return x.status; x.status = x.status_antes && x.status_antes !== "fechado" ? x.status_antes : "respondido"; x.status_antes = null; x.fechado_por = null; }
+      x.atualizado_em = agora(); tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:`Conversa ${a.p_encerra ? "encerrada" : "reaberta"} por ${nome}.`}); salva(); return a.p_encerra ? "fechado" : "aberta"; },
+    msg_apaga:a=>{ const m = tab("tat_mensagens").find(y=>y.id === a.p_id); if (!m || m.autor !== eu() || m.de === "sistema") throw {message:"valor: só quem enviou apaga a mensagem"};
+      if (Date.now() - new Date(m.criado_em) > 15 * 60000) throw {message:"valor: só dá para apagar nos primeiros 15 minutos"}; m.texto = "Mensagem apagada"; m.apagada_em = agora(); salva(); return true; },
     orc_responde:a=>{ const o = tab("tat_orcamentos").find(y=>y.id === a.p_orc), x = o && tab("tat_pedidos").find(y=>y.id === o.pedido_id); if (!x || x.cliente !== eu()) throw {message:"valor: só quem fez o pedido responde ao orçamento"};
       if (o.status !== "proposto") throw {message:"valor: este orçamento já foi respondido ou trocado por outro"}; o.status = a.p_aceita ? "aceito" : "ajuste"; o.respondido_em = agora();
       const brl = v => "R$ " + (+v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -6799,7 +6819,7 @@ const A = {
   pgreativa: async b => { ocupado(b, true, "Reativando…"); let r; try{ r = await SB.rpc("pagina_reativa", {p_id:b.dataset.id}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
     ocupado(b, false); const msg = r.error ? r.error.message : (r.data || {}).erro; if (msg) return toast(msg);
     const pg = PAGS.lista.find(x=>x.id === b.dataset.id); if (pg) pg.apagar_em = null; F.key = null; publicacoesCarrega && publicacoesCarrega(); render(); toast("Página reativada. Tudo volta a aparecer."); },
-  anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
+  anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* o "Anuncie aqui" do feed abre no formato do espaço */
   adconta: () => { S.adConta = !S.adConta; adRefaz(); },
   adpasso: b => { if (b.dataset.checa && !S.adPasso && adFalta()) return adMostraFalta(); S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
   adset: b => { const d = adDraft(), k = b.dataset.k, v = b.dataset.v; d[k] = (k==="cor" || k==="dias") ? +v : v; adGuarda(); adRefaz(); },
@@ -7109,6 +7129,19 @@ const A = {
     ocupado(b, true, "Salvando…"); const e = await etqEdita(de, n); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta renomeada."); sheetEtqLista(x); render(); },
   etqapaga: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar: apagar de todas"; return; }
     ocupado(b, true, "Apagando…"); const e = await etqEdita(b.dataset.n, null); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta apagada."); etqTodas().length ? sheetEtqLista(x) : sheetEtq(x); render(); },
+  sesdesiste: b => { const y = sesAchar(b.dataset.s); if (y) sheetSesDesiste(y); },
+  sesdesisteok: async b => { const y = sesAchar(b.dataset.s); if (!y) return; ocupado(b, true, "Cancelando…");
+    const {error} = await SB.from("tat_sessoes").update({status:"cancelada"}).eq("id", y.id); ocupado(b, false); if (error) return formErro(msgErr(error));
+    const x = (PED.lista || []).find(z=>z.id === y.pedido_id); await sesSistema(y.pedido_id, `${limpo((x && x.cliente_nome) || "A pessoa atendida")} cancelou o horário de ${dataHora(y.quando)}.`);
+    closeSheet(); delete PED.msgs[y.pedido_id]; toast("Horário cancelado."); sesRecarrega(); },
+  orcretira: async b => { const {error} = await SB.rpc("orc_retira", {p_orc:b.dataset.o}); if (error) return toast(msgErr(error)); ORC.l = null; delete PED.msgs[b.dataset.id]; toast("Orçamento retirado."); render(); },
+  convencerra: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const {error} = await SB.rpc("conversa_encerra", {p_pedido:x.id, p_encerra:true}); if (error) return toast(msgErr(error));
+    x.status = "fechado"; x.atualizado_em = new Date().toISOString(); delete PED.msgs[x.id]; toast("Conversa encerrada."); render(); },
+  convreabre: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; ocupado(b, true, "Reabrindo…"); const {data, error} = await SB.rpc("conversa_encerra", {p_pedido:x.id, p_encerra:false}); ocupado(b, false); if (error) return toast(msgErr(error));
+    PED.lista = null; delete PED.msgs[x.id]; toast("Conversa reaberta."); render(); },
+  msgapaga: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar?"; return; }
+    b.disabled = true; const {error} = await SB.rpc("msg_apaga", {p_id:b.dataset.m}); if (error){ b.disabled = false; return toast(msgErr(error)); }
+    const m = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m){ m.apagada_em = new Date().toISOString(); m.texto = "Mensagem apagada"; } render(); },
   convmais: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetConvMais(x, pedSouPagina(x)); },
   convfaz: b => { const a = b.dataset.a; closeSheet(); setTimeout(()=>{ if (A[a]) A[a](b); }, 60); },
   orcver: () => { const c = [...document.querySelectorAll(".orccard:not(.velho)")].pop(); if (c){ c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add("pisca"); setTimeout(()=>c.classList.remove("pisca"), 1600); } },
@@ -7487,7 +7520,7 @@ document.addEventListener("click", e=>{ const a = e.target.closest && e.target.c
 if (S.localAuto && navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(q=>{ if (q.state==="granted" && Date.now() - (S.localQuando || 0) > 6 * 3600e3) localAtualiza(true); }).catch(()=>{});
 contaInicia();
 if (/[?&]teste=1/.test(location.search)) window.__arede = {feedDadosNovos, POOL, F, sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
-if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS, PED, SES, ORC, sheetSesNova});
+if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS, PED, SES, ORC, MSGS, sheetSesNova, sheetSesDesiste});
 window.addEventListener("scroll", ()=>{ const t = $("#top"); if (t) t.classList.toggle("scrolled", window.scrollY > 4); }, {passive:true});
 window.addEventListener("resize", debounce(()=>{
   placeLogoDots();
@@ -7542,7 +7575,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 11:33";
+const VERSAO = "v1 registrada · 18/11 13:13";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
