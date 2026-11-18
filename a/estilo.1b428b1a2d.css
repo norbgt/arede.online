@@ -174,8 +174,17 @@ img,svg{max-width:100%}
 .dot{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:#E0592A;border:2px solid var(--bg)}
 .ncount{position:absolute;top:3px;right:1px;min-width:9px;height:15px;padding:0 3px;border-radius:8px;background:#E0592A;color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;border:1.5px solid var(--bg);box-sizing:content-box;pointer-events:none}
 .topconta{display:inline-flex;gap:8px;align-items:center}
-.nlist{display:flex;flex-direction:column;gap:6px;margin:8px 0 24px}
-.nitem{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:0;background:var(--surface,rgba(127,127,127,.06));color:inherit;font:inherit;cursor:pointer}
+.nlist{display:flex;flex-direction:column;gap:8px;margin:8px 0 20px}
+.nfil{margin:4px 0 6px}.rdn{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#E0592A;color:#fff;font-size:11px;font-weight:700;line-height:1}
+.nsec{margin:18px 0 0;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.ncard{display:flex;gap:12px;align-items:center;width:100%;min-height:64px;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface,rgba(127,127,127,.06));color:inherit;font:inherit;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.ncard:hover{border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+.ncard .av,.ncard .nic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff}
+.ncard .nic{background:var(--bg);color:var(--ink)}.ncard .nic .icon{width:18px;height:18px}
+.ncard .ntx{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}.ncard .ntx b{font-weight:600;line-height:1.3}.ncard.nova .ntx b{font-weight:700}
+.ncard .ntx span{font-size:14px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}.ncard .ntx small{color:var(--muted);font-size:12.5px}
+.ncard .nacao{flex:none;align-self:center}.nponto{flex:none;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.nnota{display:flex;gap:6px;align-items:flex-start}.nnota .icon{flex:none;margin-top:3px}
 .nitem.nova{background:color-mix(in srgb,var(--brand) 16%,transparent)}
 .nitem .nic{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--bg)}
 .nitem .ntx{display:flex;flex-direction:column;gap:2px;min-width:0}.nitem .ntx b{font-weight:600}.nitem.nova .ntx b{font-weight:700}

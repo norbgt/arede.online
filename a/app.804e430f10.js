@@ -2596,16 +2596,13 @@ function msgSituacao(x){ const eu = pedSouPagina(x), l = (MSGS.ses || []).filter
   if (eu){ if (x.status === "aberto") return ["Responder","warn"]; if (l.some(y=>y.status === "verificada" && !y.checkout_em)) return ["Encerrar atendimento","warn"]; if (mod(p, "agenda") && !x.valor_combinado) return ["Enviar orçamento","warn"]; return null; }
   if (l.some(y=>y.status === "proposta")) return ["Confirmar horário","warn"]; if (l.some(y=>y.status === "verificada" && !y.avaliada)) return ["Avaliar","ok"]; return null; }
 const msgPendentes = () => msgsDados() ? (PED.lista || []).filter(x=>msgSituacao(x)).length : 0;
-function screenConversas(){ if (!ME.user) return header(`<div class="toprow"><h1 class="pagehead">Mensagens</h1></div>`) + `<div class="container"><p class="empty">Entre na sua conta para ver suas conversas.</p></div>`;
-  msgsDados(); const l = (PED.lista || []).slice().sort((a, c)=>(!!msgSituacao(c)) - (!!msgSituacao(a)));
-  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Mensagens</h1></div>`)
-    + `<div class="container"><p class="lnote">Toda conversa nasce de um pedido: de orçamento a uma página de tatuagem, por enquanto. Ninguém manda mensagem solta para você.</p>
-      ${!PED.lista ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.map(x=>{ const p = pedPagina(x), o = ORG["pg-" + p.id] || {nome:p.nome, sigla:"?", cor:"#888"}, eu = pedSouPagina(x);
-        return `<a class="setting l1 conv" href="#conversa-${x.id}">${avatar(o)}<span class="t"><b>${eu ? esc(limpo(x.cliente_nome || "Cliente")) + " → " : ""}${esc(limpo(p.nome || ""))}</b><small>${esc(pedResumo(x))}</small><small class="muted">${x.tipo === "tabela" ? "Pela tabela" : "Personalizado"} · ${quando(x.atualizado_em)}</small>${(st => st ? `<span class="pgsit ${st[1]}" style="align-self:flex-start;margin-top:4px">${st[0]}</span>` : "")(msgSituacao(x))}</span></a>`; }).join("")}</div>` : `<p class="empty">Nenhuma conversa ainda.</p>`}</div>`; }
+function screenConversas(){ return screenNotif("conversas"); }   /* 18/11 (Amanda): o sino comporta as mensagens; #conversas abre Notificações › Conversas */
 function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversa-" + id) render(); }); return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Conversa</h1></div>`) + `<div class="container"><p class="empty">Carregando…</p></div>`; }
   const x = PED.lista.find(y=>y.id === id); if (!x) return screenConversas();
   if (S.convId !== id){ S.convId = id; S.convTab = S.convTab0 || "conversa"; S.convTab0 = null; }   /* 17/11, decisão da Amanda: Conversa e Atendimento em abas; abre sempre na conversa */
   const p = pedPagina(x), eu = pedSouPagina(x), ms = PED.msgs[id];
+  { const lidos = (NOTIF.nao || []).filter(n=>convDoLink(n.link) === id).map(n=>n.id);   /* 18/11: abrir a conversa lê os avisos dela */
+    if (lidos.length && SB){ NOTIF.nao = NOTIF.nao.filter(n=>!lidos.includes(n.id)); (NOTIF.lista || []).forEach(n=>{ if (lidos.includes(n.id)) n.lida_em = new Date().toISOString(); }); NOTIF.n = sinoConta(); setTimeout(navConta, 0); SB.rpc("notif_marca_lidas", {p_ids:lidos}).then(()=>{}, ()=>{}); } }
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
@@ -4158,7 +4155,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r==="organizacoes"){ main.innerHTML = screenOrgs(); fillOrgs(); }
   else if (r==="comunidades-todas"){ main.innerHTML = screenCmnTodas(); }
   else if (r==="paginas-todas"){ main.innerHTML = screenPgTodas(); }
-  else if (r==="conversas"){ main.innerHTML = screenConversas(); }
+  else if (r==="conversas"){ main.innerHTML = screenNotif("conversas"); notifFresca(); }
   else if (r.startsWith("gerir-")){ if (S.gerPid !== r.slice(6)){ S.gerPid = r.slice(6); S.gerVer = ""; } main.innerHTML = screenGerir(r.slice(6)); }
   else if (r.startsWith("checkin-")){ main.innerHTML = screenCheckin(r.slice(8)); }
   else if (r.startsWith("visita-")){ main.innerHTML = screenVisita(r.slice(7)); }
@@ -4167,7 +4164,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r==="perfil" && semConta()){ if (!S.contaTab) S.contaTab = "entrar"; main.innerHTML = screenConta(); }
   else if (r==="perfil"){ main.innerHTML = screenProfile(); fillProfile(); }
   else if (r==="config") main.innerHTML = screenConfig();
-  else if (r==="notificacoes"){ main.innerHTML = screenNotif(); notifCarrega(); }
+  else if (r==="notificacoes"){ main.innerHTML = screenNotif(); notifFresca(); }
   else if (r==="termos" || r==="privacidade") main.innerHTML = screenDoc(r);
   else if (r==="perfil-ver"){ location.replace("#perfil"); return; }   /* 15/11: um perfil só; não há mais prévia separada */
   else if (r.startsWith("org-")){ main.innerHTML = screenOrg(r.slice(4)); fillOrg(); }
@@ -4831,27 +4828,59 @@ const CORES_CONTA = ["#2A3FD4","#1F7A4D","#B8430F","#7A3E9D","#0E7490","#C2185B"
 const semConta = () => !ME.user && !LOCAL;
 /* NOTIFICAÇÕES (14 nov 2026): ficam no servidor (tabela notificacoes). A administração decide no backoffice quais tipos existem
    e o padrão; cada pessoa escolhe, entre os que existem, quais quer receber (Configurações › Notificações). Por enquanto, só no site. */
-const NOTIF = {n:0, lista:null, tipos:null, prefs:{}, t:null};
-const NOTIF_IC = {novo_seguidor:"pessoa", publicacao_seguidos:"pessoa", comentario_publicacao:"message", comentario_util:"check", verificacao:"check", colaboradora:"check",
-  organizacao:"pessoa", fonte_sugerida:"info", moderacao_conteudo:"info", denuncia_analisada:"info", anuncio:"info", avisos_rede:"sino"};
+const NOTIF = {n:0, lista:null, tipos:null, prefs:{}, t:null, nao:[], f:"tudo"};
+/* NOTIFICAÇÕES E MENSAGENS (18/11, Amanda): um sino só. A tela tem Tudo, Conversas e Avisos.
+   Um cartão para tudo: marca (foto da página ou ícone do aviso), título, uma linha de contexto e quando; à direita, o que espera você.
+   Aviso de pedido (mensagem, horário, check-in) não vira cartão solto: entra no cartão da conversa, e abrir a conversa marca como lido.
+   O número do sino conta o que espera você: avisos não lidos + conversas com algo a fazer ou mensagem nova. Nada conta duas vezes. */
+const NOTIF_IC = {novo_seguidor:"seguir", publicacao_seguidos:"pessoa", comentario_publicacao:"message", comentario_util:"check", verificacao:"vfy", colaboradora:"star",
+  organizacao:"people", fonte_sugerida:"info", moderacao_conteudo:"info", denuncia_analisada:"info", anuncio:"raio", avisos_rede:"sino", pedidos:"message", pagina:"predio"};
+const convDoLink = l => { const m = /^#conversa-([0-9a-f-]{36})$/i.exec(l || ""); return m ? m[1] : null; };
+const convNaoLida = id => (NOTIF.nao || []).some(n=>convDoLink(n.link) === id);
+const convAtencao = x => !!(msgSituacao(x) || convNaoLida(x.id));
+const avisosNaoLidos = () => (NOTIF.nao || []).filter(n=>!convDoLink(n.link)).length;
+const convComAtencao = () => msgsDados() ? (PED.lista || []).filter(convAtencao).length : 0;
+const sinoConta = () => avisosNaoLidos() + convComAtencao();
 async function notifConta(){ return umaVez("notifConta", notifConta0); }
-async function notifConta0(){ if (!SB || !ME.user){ NOTIF.n = 0; return; }
-  try{ const {data} = await SB.rpc("notif_nao_lidas"); if (typeof data === "number" && data !== NOTIF.n){ NOTIF.n = data; navConta(); } }catch(e){} }
+async function notifConta0(){ if (!SB || !ME.user){ NOTIF.n = 0; NOTIF.nao = []; return; }
+  try{ const {data} = await SB.from("notificacoes").select("id,tipo,link,lida_em").order("criada_em", {ascending:false}).limit(100);
+    NOTIF.nao = (data || []).filter(n=>!n.lida_em); const n = sinoConta(); if (n !== NOTIF.n){ NOTIF.n = n; navConta(); } }catch(e){} }
 function notifVigia(){ clearInterval(NOTIF.t); notifConta(); NOTIF.t = setInterval(()=>{ if (document.visibilityState === "visible" && ME.user && !PREVIA) notifConta(); }, 90000); }
-async function notifCarrega(){ const box = $("#nlist"); if (!box) return;
-  if (!SB || !ME.user){ box.innerHTML = `<p class="nvazio">Entre na sua conta para ver suas notificações.</p><button class="btn primary block" type="button" data-act="acessar">Entrar ou criar conta</button>`; return; }
+const notifFresca = () => { if (!NOTIF.lista || Date.now() - (NOTIF.em || 0) > 60000) notifCarrega(); };
+async function notifCarrega(){ if (!$("#nlist")) return; if (!SB || !ME.user) return; NOTIF.em = Date.now();
   try{ const {data} = await SB.from("notificacoes").select("id,tipo,titulo,texto,link,n,criada_em,lida_em").order("criada_em", {ascending:false}).limit(100); NOTIF.lista = data || []; }catch(e){ NOTIF.lista = []; }
-  if (!$("#nlist")) return; $("#nlist").innerHTML = notifLista(); }
-const notifQuando = d => { const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? "agora" : m < 60 ? "há " + m + " min" : m < 1440 ? "há " + Math.round(m/60) + " h" : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}); };
-function notifLista(){ const l = NOTIF.lista || [];
-  if (!l.length) return `<p class="nvazio">Nenhuma notificação por enquanto.</p>`;
-  return l.map(x=>`<button class="nitem${x.lida_em ? "" : " nova"}" type="button" data-act="notifabre" data-id="${x.id}"><span class="nic" aria-hidden="true">${ic(NOTIF_IC[x.tipo] || "info","sm")}</span>
-    <span class="ntx"><b>${esc(x.titulo)}</b>${x.texto ? `<span>${esc(x.texto)}</span>` : ""}<small>${notifQuando(x.criada_em)}${x.lida_em ? "" : " · nova"}</small></span></button>`).join(""); }
-function screenNotif(){
-  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Notificações</h1><div class="spacer"></div>
-    ${ME.user ? `<button class="linkbtn" type="button" data-act="notiftodas">Marcar todas como lidas</button>` : ""}</div>`)
-  + `<div class="container"><div class="nlist" id="nlist"><p class="nvazio">Carregando…</p></div>
-    ${ME.user ? `<div class="list"><button class="setting l1" type="button" data-act="notifprefs"><span class="t"><b>Escolher o que receber</b><small>Você decide quais notificações quer ver</small></span>${ic("back","sm flip")}</button></div>` : ""}</div>`; }
+  NOTIF.nao = NOTIF.lista.filter(n=>!n.lida_em); NOTIF.n = sinoConta(); navConta(); notifPinta(); }
+function notifPinta(){ if (route() === "notificacoes" || route() === "conversas"){ const y = scrollY; render(); scrollTo(0, y); } }
+const notifQuando = d => { const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? "agora" : m < 60 ? "há " + m + " min" : m < 1440 ? "há " + Math.round(m/60) + " h" : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", ""); };
+/* o cartão único */
+const ncard = ({tag, attrs, marca, titulo, texto, meta, acao, nova}) => `<${tag} class="ncard${nova ? " nova" : ""}" ${attrs}>${marca}<span class="ntx"><b>${titulo}</b>${texto ? `<span>${texto}</span>` : ""}<small>${meta}</small></span>${acao ? `<span class="pgsit ${acao[1]} nacao">${acao[0]}</span>` : nova ? `<span class="nponto" aria-label="Nova"></span>` : ""}</${tag}>`;
+function convCard(x){ const p = pedPagina(x), eu = pedSouPagina(x), o = eu ? {nome:x.cliente_nome || "Cliente", sigla:siglaDe(x.cliente_nome || "C"), cor:"#5B6B7A", pessoa:true} : (ORG["pg-" + p.id] || {nome:p.nome || "Página", sigla:siglaDe(p.nome || "P"), cor:"#888"});
+  const st = msgSituacao(x), nova = convNaoLida(x.id);
+  return ncard({tag:"a", attrs:`href="#conversa-${x.id}"`, marca:avatar(o), titulo:esc(limpo(eu ? x.cliente_nome || "Cliente" : p.nome || "Página")),
+    texto:esc(pedResumo(x)) + (eu ? ` · ${esc(limpo(p.nome || ""))}` : ""), meta:(x.status === "fechado" ? "Encerrada" : "Conversa") + " · " + notifQuando(x.atualizado_em), acao:st || (nova ? ["Mensagem nova","ok"] : null), nova}); }
+function avisoCard(x){ return ncard({tag:"button", attrs:`type="button" data-act="notifabre" data-id="${x.id}"`, marca:`<span class="nic" aria-hidden="true">${ic(NOTIF_IC[x.tipo] || "info","sm")}</span>`,
+  titulo:esc(x.titulo), texto:x.texto ? esc(x.texto) : "", meta:"Aviso · " + notifQuando(x.criada_em), nova:!x.lida_em}); }
+function screenNotif(f){ if (f) NOTIF.f = f; f = NOTIF.f || "tudo";
+  const topo = header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Notificações</h1><div class="spacer"></div>
+    ${ME.user && f !== "conversas" && avisosNaoLidos() ? `<button class="linkbtn" type="button" data-act="notiftodas">Marcar como lidas</button>` : ""}</div>`);
+  if (!ME.user) return topo + `<div class="container"><p class="nvazio">Entre na sua conta para ver suas notificações e conversas.</p><button class="btn primary block" type="button" data-act="acessar">Entrar ou criar conta</button></div>`;
+  const okC = msgsDados(), convs = (PED.lista || []).slice(), avisos = (NOTIF.lista || []).filter(n=>!convDoLink(n.link));
+  const nC = convs.filter(convAtencao).length, nA = avisos.filter(n=>!n.lida_em).length;
+  const pil = (k, nm, n) => `<button class="rdf" type="button" data-act="notiff" data-f="${k}" aria-pressed="${f === k}">${nm}${n ? `<span class="rdn">${n > 99 ? "99+" : n}</span>` : ""}</button>`;
+  const quando = it => new Date(it.c ? it.x.atualizado_em : it.x.criada_em).getTime();
+  let lista = [];
+  if (f !== "avisos") lista = lista.concat(convs.map(x=>({c:1, x})));
+  if (f !== "conversas") lista = lista.concat(avisos.map(x=>({c:0, x})));
+  const espera = lista.filter(it=>it.c && convAtencao(it.x)).sort((a, b)=>quando(b) - quando(a)), resto = lista.filter(it=>!(it.c && convAtencao(it.x))).sort((a, b)=>quando(b) - quando(a));
+  const card = it => it.c ? convCard(it.x) : avisoCard(it.x);
+  const carregando = (f !== "avisos" && !okC) || (f !== "conversas" && !NOTIF.lista);
+  const vazio = f === "conversas" ? "Nenhuma conversa ainda." : f === "avisos" ? "Nenhum aviso por enquanto." : "Nada por aqui ainda.";
+  return topo + `<div class="container"><div class="lvlist rdfil nfil" role="group" aria-label="Mostrar">${pil("tudo","Tudo", 0)}${pil("conversas","Conversas", nC)}${pil("avisos","Avisos", nA)}</div>
+    <div id="nlist">${carregando && !lista.length ? `<p class="nvazio">Carregando…</p>` : !lista.length ? `<p class="nvazio">${vazio}</p>`
+      : (espera.length ? `<h2 class="nsec">Esperando você</h2><div class="nlist">${espera.map(card).join("")}</div>` : "")
+      + (resto.length ? `${espera.length ? `<h2 class="nsec">Recentes</h2>` : ""}<div class="nlist">${resto.map(card).join("")}</div>` : "")}</div>
+    ${f === "conversas" ? `<p class="lnote nnota">${ic("message","sm")} As conversas começam com um pedido de orçamento a uma página. Ninguém manda mensagem solta para você.</p>`
+      : `<div class="list"><button class="setting l1" type="button" data-act="notifprefs"><span class="t"><b>Escolher o que receber</b><small>Você decide quais avisos quer ver</small></span>${ic("back","sm flip")}</button></div>`}</div>`; }
 async function notifPrefs(){ if (!SB || !ME.user) return A.acessar();
   try{ const [t, p] = await Promise.all([SB.from("notif_tipos").select("chave,grupo,nome,descricao,padrao,ordem").eq("existe", true).order("ordem"), SB.from("notif_prefs").select("tipo,quer")]);
     NOTIF.tipos = t.data || []; NOTIF.prefs = Object.fromEntries((p.data || []).map(r=>[r.tipo, r.quer])); }catch(e){ return toast("Não foi possível abrir agora."); }
@@ -4861,7 +4890,7 @@ async function notifPrefs(){ if (!SB || !ME.user) return A.acessar();
       return `<div class="setting l1"><span class="t"><b>${esc(t.nome)}</b><small>${esc(t.descricao)}</small></span><button class="switch" type="button" role="switch" data-act="notifpref" data-k="${t.chave}" aria-checked="${on}" aria-label="${esc(t.nome)}"></button></div>`; }).join("")}</div>`).join(""), "Notificações"); }
 const topContaHTML = () => semConta()
   ? `<a class="iconbtn" href="#conta" data-act="acessar" aria-label="Entrar ou criar conta" title="Entrar ou criar conta">${ic("pessoa")}</a>`
-  : `<a class="iconbtn" href="#notificacoes" aria-label="Notificações${NOTIF.n ? ", " + NOTIF.n + (NOTIF.n === 1 ? " nova" : " novas") : ""}" title="Notificações">${ic("sino")}${NOTIF.n ? `<span class="ncount">${NOTIF.n > 9 ? "9+" : NOTIF.n}</span>` : ""}</a>${(n => `<button class="iconbtn" type="button" data-act="msgs" aria-label="Mensagens${n ? ", " + n + (n === 1 ? " esperando você" : " esperando você") : ""}" title="Mensagens">${ic("message")}${n ? `<span class="ncount">${n > 9 ? "9+" : n}</span>` : ""}</button>`)(msgPendentes())}`;
+  : (n => `<a class="iconbtn" href="#notificacoes" aria-label="Notificações${n ? ", " + n + (n === 1 ? " esperando você" : " esperando você") : ""}" title="Notificações">${ic("sino")}${n ? `<span class="ncount">${n > 9 ? "9+" : n}</span>` : ""}</a>`)(ME.user ? (NOTIF.n = sinoConta()) : 0);   /* 18/11: as mensagens entram no sino */
 function navConta(){ const tc = $("#topconta"); if (tc) tc.innerHTML = topContaHTML(); const b = $('.navbtn[data-nav="perfil"]'); if (!b) return; const on = !!ME.user, nome = (on && ME.perfil && ME.perfil.nome) || "", m = b.querySelector(".navme"), l = b.querySelector(".lbl");
   b.classList.toggle("logada", on); if (m){ m.hidden = !on; m.textContent = on ? siglaDe(nome || (ME.user.email || "?").split("@")[0]) : ""; }
   if (l){ const n = nome.trim(), p = n.split(/\s+/)[0] || "";   /* o nome inteiro quando cabe; senão o primeiro nome; nome curto demais vira "Perfil" */
@@ -7023,11 +7052,12 @@ const A = {
   notifpref: async b => { const k = b.dataset.k, on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on);
     const {error} = await SB.from("notif_prefs").upsert({user_id:ME.user.id, tipo:k, quer:on}); if (error){ b.setAttribute("aria-checked", !on); return toast("Não foi possível salvar agora."); }
     NOTIF.prefs[k] = on; toast(on ? "Você vai receber esta notificação." : "Você não vai mais receber esta notificação."); },
+  notiff: b => { NOTIF.f = b.dataset.f; render(); },
   notifabre: async b => { const x = (NOTIF.lista || []).find(n=>String(n.id)===b.dataset.id); if (!x) return;
-    if (!x.lida_em){ x.lida_em = new Date().toISOString(); NOTIF.n = Math.max(0, NOTIF.n - 1); navConta(); SB.rpc("notif_marca_lidas", {p_ids:[x.id]}).then(()=>{}, ()=>{}); b.classList.remove("nova"); }
+    if (!x.lida_em){ x.lida_em = new Date().toISOString(); NOTIF.nao = (NOTIF.nao || []).filter(n=>String(n.id) !== String(x.id)); NOTIF.n = sinoConta(); navConta(); SB.rpc("notif_marca_lidas", {p_ids:[x.id]}).then(()=>{}, ()=>{}); b.classList.remove("nova"); const p = b.querySelector(".nponto"); if (p) p.remove(); }
     if (x.link && /^https:\/\//.test(x.link)) window.open(x.link, "_blank", "noopener"); else if (x.link && x.link[0] === "#") go(x.link.slice(1)); },
-  notiftodas: async () => { if (!SB || !ME.user) return; await SB.rpc("notif_marca_lidas", {p_ids:null}).then(()=>{}, ()=>{}); (NOTIF.lista || []).forEach(x=>{ if (!x.lida_em) x.lida_em = new Date().toISOString(); });
-    NOTIF.n = 0; navConta(); const l = $("#nlist"); if (l) l.innerHTML = notifLista(); toast("Tudo marcado como lido."); },
+  notiftodas: async () => { if (!SB || !ME.user) return; const ids = (NOTIF.lista || []).filter(x=>!x.lida_em && !convDoLink(x.link)).map(x=>x.id); if (!ids.length) return; await SB.rpc("notif_marca_lidas", {p_ids:ids}).then(()=>{}, ()=>{}); (NOTIF.lista || []).forEach(x=>{ if (ids.includes(x.id)) x.lida_em = new Date().toISOString(); });
+    NOTIF.nao = (NOTIF.nao || []).filter(n=>convDoLink(n.link)); NOTIF.n = sinoConta(); navConta(); notifPinta(); toast("Avisos marcados como lidos."); },
   segprevia: () => toast("É assim que o botão aparece para outras pessoas. Você não segue a si mesma."),
   follow: async b => { const id = b.dataset.org;
     if (/^pg-[0-9a-f-]{36}$/.test(id)){   /* seguir uma página: precisa de conta e vai para o servidor */
@@ -7367,7 +7397,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:17";
+const VERSAO = "v1 registrada · 18/11 09:24";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
