@@ -2556,7 +2556,7 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
-    + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="tabs" role="tablist" aria-label="Conversa e atendimento" style="margin-bottom:12px">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="tab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}" style="flex:1">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
+    + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small></div>
       ${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`).join("")}</div>
@@ -6888,7 +6888,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 20:59";
+const VERSAO = "v1 registrada · 17/11 21:07";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
