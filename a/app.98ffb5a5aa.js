@@ -5636,21 +5636,23 @@ async function aoVivoCarrega(){ if (!SB){ if ((LV.t = (LV.t || 0) + 1) <= 8) set
       .map(c=>({k:c.k, nome:String(c.nome || "").slice(0, 40), canal:c.canal, url:c.url, video:c.video || null, estado:c.estado, conferido_em:c.conferido_em, direto:(AOVIVO_PADRAO.find(x=>x.k===c.k) || {}).direto, ambito:c.ambito==="int" ? "int" : "br", lingua:/^(pt|en|es|fr)$/.test(c.lingua || "") ? c.lingua : "pt", aviso:String(c.aviso || "").slice(0, 240)}));
     if (!LV.lista.length) LV.lista = null; if (!LV_ON) aoVivoPinta(); } catch(e){} }
 function aoVivoHTML(){ const tudo = lvLista(), temInt = tudo.some(x=>x.ambito==="int"), f = temInt && LV.f==="int" ? "int" : "br";
-  const l = tudo.filter(x=>(x.ambito || "br")===f).sort((a, b)=>f==="int" ? lingOrdem(a) - lingOrdem(b) : 0), c = tudo.find(x=>x.k===LV_ON), e = c && lvEstado(c);
+  const vivoAntes = x => ({aovivo:0, agendado:1})[lvEstado(x)] ?? 2;   /* 18/11 (Amanda): no ar primeiro */
+  const l = tudo.filter(x=>(x.ambito || "br")===f).sort((a, b)=>vivoAntes(a) - vivoAntes(b) || (f==="int" ? lingOrdem(a) - lingOrdem(b) : 0)), c = tudo.find(x=>x.k===LV_ON), e = c && lvEstado(c);
   const src = c && (c.video && e && e!=="fora" ? "https://www.youtube-nocookie.com/embed/" + c.video + "?autoplay=1&playsinline=1&rel=0"
     : !e && c.direto ? "https://www.youtube-nocookie.com/embed/live_stream?channel=" + c.canal + "&autoplay=1&playsinline=1&rel=0" : "");
   const rot = x => ({aovivo:"ao vivo agora", agendado:"transmissão agendada", fora:"sem transmissão agora"})[lvEstado(x)] || "";
   const nv = tudo.filter(x=>lvEstado(x)==="aovivo").length;
   return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true">${ic("tv")}</span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais e públicos${nv ? ` · ${nv} no ar agora` : ""}</span></div>
-    ${(()=>{ const chip = x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${x.ambito==="int" ? " (" + (LING_ROT[x.lingua] || "") + ")" : ""}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}${x.ambito==="int" ? `<span class="lgtag">${LING_ROT[x.lingua] || ""}</span>` : ""}</button>`, sv = tudo.filter(x=>cnSalvo("tv:" + x.k));
-      return `${temInt ? `<div class="lvlist rdfil" role="group" aria-label="Mostrar canais">${[["br","Brasil"],["int","Internacional"]].map(([k, n])=>`<button class="rdf" type="button" data-act="vivofil" data-f="${k}" aria-pressed="${k===f}">${n}</button>`).join("")}</div>` : ""}<div class="lvlist lvgrade">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist lvgrade cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${!c ? "" : src ? `<div class="lvbox"><iframe class="lvframe" src="${src}" title="Transmissão ao vivo: ${esc(c.nome)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
       <div class="lvnav"><button class="iconbtn" type="button" data-act="vivopasso" data-d="-1" aria-label="Canal anterior">${ic("back")}</button><span class="lvnavtx"><b>${esc(c.nome)}</b><small>Transmissão oficial · YouTube</small></span><button class="iconbtn" type="button" data-act="vivopasso" data-d="1" aria-label="Próximo canal">${ic("back","flip")}</button><button class="iconbtn" type="button" data-act="vivofecha" aria-label="Fechar a transmissão">${ic("close")}</button></div>
       <p class="lvcred">${cnSalvaBtn("tv:" + c.k, c.nome)}<span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a></p>
       ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal do próprio canal, sem cortes. A rede.online não exibe anúncios nesta aba.</p>`
     : `<div class="note lvfora">${ic("info")}<span><b>${e==="fora" ? esc(c.nome) + " está sem transmissão neste momento." : "A transmissão de " + esc(c.nome) + " abre no canal oficial."}</b> ${e==="fora" ? "As próximas aparecem no canal oficial." : ""}</span></div>
       <div class="lvnav"><button class="iconbtn" type="button" data-act="vivopasso" data-d="-1" aria-label="Canal anterior">${ic("back")}</button><span class="lvnavtx"><b>${esc(c.nome)}</b><small>Sem transmissão agora</small></span><button class="iconbtn" type="button" data-act="vivopasso" data-d="1" aria-label="Próximo canal">${ic("back","flip")}</button><button class="iconbtn" type="button" data-act="vivofecha" aria-label="Fechar">${ic("close")}</button></div>
-      <p class="lvcred">${cnSalvaBtn("tv:" + c.k, c.nome)}<span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a></p>${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}`}`; }
+      <p class="lvcred">${cnSalvaBtn("tv:" + c.k, c.nome)}<span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a></p>${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}`}
+    ${(()=>{ const chip = x=>`<button class="rdcard lvcard" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${x.ambito==="int" ? " (" + (LING_ROT[x.lingua] || "") + ")" : ""}${rot(x) ? ", " + rot(x) : ""}"><span class="rdci" aria-hidden="true">${ic("tv")}<span class="lvdot" data-e="${lvEstado(x) || "nd"}"></span></span><span class="rdct"><b>${esc(x.nome)}</b><small>${esc(capFirst(rot(x) || "canal oficial"))}${x.ambito==="int" && LING_ROT[x.lingua] ? " · " + LING_ROT[x.lingua] : ""}</small></span></button>`, sv = tudo.filter(x=>cnSalvo("tv:" + x.k));
+      return `${temInt ? `<div class="lvlist rdfil" role="group" aria-label="Mostrar canais">${[["br","Brasil"],["int","Internacional"]].map(([k, n])=>`<button class="rdf" type="button" data-act="vivofil" data-f="${k}" aria-pressed="${k===f}">${n}</button>`).join("")}</div>` : ""}<div class="rdgrid lvgrid">${l.map(chip).join("")}</div>${sv.length ? `<h3 class="rdg lvsalvos">${icFill("bookmark", true)}Salvos</h3><div class="rdgrid lvgrid cnsalvos" role="group" aria-label="Canais salvos">${sv.map(chip).join("")}</div>` : ""}`; })()}
+`; }
 function aoVivoPinta(){ const box = $("#aovivo"); if (!box || box.hidden) return; if (LV_IO){ LV_IO.disconnect(); LV_IO = null; }
   box.innerHTML = aoVivoHTML(); box.classList.toggle("aberto", !!LV_ON);
   const fr = box.querySelector(".lvbox"); if (fr){ let visto = false;   /* rolou para longe: a transmissão para */
@@ -7876,7 +7878,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 17:46";
+const VERSAO = "v1 registrada · 18/11 17:50";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

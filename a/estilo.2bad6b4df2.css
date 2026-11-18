@@ -2134,6 +2134,10 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .fotolin{display:flex;gap:18px;margin:-4px 0 14px 60px}.fotolin .linkbtn{color:var(--accent);padding:0;min-height:40px}
 .usucampo{display:flex;align-items:center;min-height:48px;border-radius:var(--r-sm);background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line)}.usucampo span{padding:0 2px 0 12px;color:var(--muted);font-size:16px}.usucampo input{flex:1;min-width:0;box-shadow:none !important;background:none !important;padding-left:2px !important}
 .domsteps{margin:4px 0 14px;padding-left:20px}.domsteps li{margin:0 0 10px}.domsteps b{display:block;font-size:14.5px}.domsteps small{display:block;color:var(--muted);font-size:13px;line-height:1.4}
+/* 18/11 (Amanda): canais no mesmo cartão da Rádio, em duas colunas iguais; o vídeo fica no alto */
+.lvgrid{margin:0 0 10px}.lvcard .rdci .lvdot:not([data-e="aovivo"]):not([data-e="agendado"]){display:none}.cmod .lvnota + .lvlist.rdfil,.cmod .lvcred + .lvlist.rdfil,.cmod .rdaviso + .lvlist.rdfil{margin-top:14px}.lvcard .rdci{position:relative}.lvcard .rdci .lvdot{position:absolute;top:1px;right:1px;width:9px;height:9px;margin:0;box-shadow:0 0 0 2px var(--bg)}
+.lvcard .rdct b{white-space:normal;line-height:1.25}.lvsalvos{display:flex;align-items:center;gap:6px;margin:6px 0 8px;font-size:13px;color:var(--muted);font-weight:600}
+.cmod .lvbox + .lvnav,.cmod .lvfora + .lvnav{margin-top:8px}
 .pcols{display:flex;flex-direction:column}.pcol{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.pcol > .icon{flex:none;width:22px;height:22px;color:var(--muted)}.pcol.ok > .icon{color:var(--accent)}
 .pcol .t{flex:1;min-width:0;display:flex;flex-direction:column}.pcol .t small{color:var(--muted)}.pprog{flex:none;width:92px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;color:var(--muted)}.pprog .adbar{width:100%}.pcol.ok .pprog{color:var(--accent)}.pok{color:var(--accent)}
 .dlist{margin:0 0 6px;padding-left:20px}.dlist li{margin:3px 0}
