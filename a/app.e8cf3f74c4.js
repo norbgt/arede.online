@@ -3477,7 +3477,9 @@ function fillOrgs(){ const H = hubItens(), c = $("#hubcarr");
   const ch = $("#hubch"); if (ch){ const g = new Grid("hubch", ch, "none", hubChCols(H.chamados.length), "agenda"); g.empty = true; H.chamados.forEach(it=>g.add(it)); g.render(); }
   const vo = $("#hubvo"); if (vo){ const g = new Grid("hubvo", vo, "none", feedCols("cedula"), "cedula"); g.empty = true; (S.hubVoTodas ? H.votacoes : H.votacoes.slice(0, HUB_VO)).forEach(it=>g.add(it)); g.render(); } }
 function orgTabBody(o){
-  const items = S.created.filter(c=>c.org===o.id).reverse().concat(POOL.filter(it=>it.org===o.id)), t = S.orgTab;
+  /* 18/11 (Amanda): só a conta oficial mostra no perfil o que as páginas dela publicam (as que ela deixou à mostra no perfil) */
+  const pgsOf = o.daRedeConta ? new Set(PAGS.lista.filter(p=>ehContaRede(p.dono) && p.no_perfil && p.status === "aprovada" && !p.apagar_em).map(p=>"pg-" + p.id)) : null;
+  const items = S.created.filter(c=>c.org===o.id).reverse().concat(POOL.filter(it=>it.org===o.id || (pgsOf && pgsOf.has(it.org))).sort((a, b)=>(a.min || 0) - (b.min || 0))), t = S.orgTab;
   const pg = String(o.id).startsWith("pg-");   /* 15/11: o feed da página usa a mesma grade do perfil (Publicações) */
   const pp = pg ? PAGS.lista.find(x=>"pg-" + x.id === o.id) : null;
   const mas = fn => { const l = items.filter(fn); return l.length ? `<div class="rwrap"><div data-mas="${l.map(i=>i.id).join(",")}" data-tiles="1"${pp && feedDe(pp) === "fotos" ? ' data-fotos="1"' : ""}></div></div>` : `<p class="empty">Nada por aqui ainda.</p>`; };   /* 15/11: perfil, página e comunidade usam a mesma grade de cartões */
@@ -7935,7 +7937,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:10";
+const VERSAO = "v1 registrada · 18/11 19:15";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
