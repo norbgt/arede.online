@@ -1649,8 +1649,8 @@ function sheetAdRevisar(){ const d = adDraft(), v = adPreco(d);
     <div class="adsum">${adConta(v)}</div>
     <ul class="adregras"><li>Toda peça é conferida antes de ir ao ar e pode ser recusada, por exemplo por propaganda eleitoral, link enganoso ou imagem imprópria.</li><li>Se for recusada, devolvemos o valor pago menos a tarifa que o Mercado Pago cobrou pelo pagamento.</li><li>O anúncio leva a marca “Anúncio” e aparece para todo mundo, no mesmo lugar.</li><li>Sem propaganda eleitoral, de candidatos ou de partidos.</li></ul>
     <div class="adpag" role="radiogroup" aria-label="Forma de pagamento">${[["pix","Pix","Confirma na hora"],["cartao","Cartão de crédito","Você escolhe na página do Mercado Pago"]].map(([k,n,sub])=>`<button class="adopt" type="button" role="radio" aria-checked="${d.meio===k}" data-act="admeio" data-v="${k}"><span class="t"><b>${n}</b><small>${sub}</small></span>${d.meio===k ? ic("check") : ""}</button>`).join("")}</div>
-    <label class="adok"><input type="checkbox" id="adaceite"><span>Li e aceito as regras de anúncio.</span></label>
-    <div class="sheetacts"><button class="btn primary block" type="button" data-act="adpagar">Pagar ${adBRL(v.total)}</button></div>
+    <label class="adok"><input type="checkbox" id="adaceite" required><span>Li e aceito as regras de anúncio.</span></label>
+    <div class="sheetacts"><button class="btn primary block" type="button" data-act="adpagar" data-trava>Pagar ${adBRL(v.total)}</button></div>
     <p class="srcnote" style="margin-top:8px">O pagamento acontece na página segura do Mercado Pago. A rede.online não vê nem guarda dados de cartão.</p>
     ${AD_MODO==="teste" && adPodePagar() ? `<div class="note" style="margin-top:10px">${ic("info")}<span><b>Modo de teste.</b> Só a administração vê este pagamento. A cobrança é real: se você recusar o anúncio no painel, o valor volta.</span></div>` : ""}`, "Revisar e pagar"); }
 function sheetAdSemPagamento(){ const v = adPreco(adDraft());
@@ -2555,7 +2555,7 @@ const LOCAIS = ["Braço","Antebraço","Mão","Perna","Panturrilha","Pé","Costas
 function sheetOrcamento(pid, modo){ if (!ME.user) return A.acessar(); const p = PAGS.lista.find(x=>x.id === pid), f = tatDe(p) || {}, nome = esc(limpo(p.nome));
   const so = f.orc_tabela && !f.orc_ref ? "tabela" : !f.orc_tabela && f.orc_ref ? "ref" : null; modo = modo || so;
   const tat = modeloDe(p) === "tatuagem";
-  const loc = tat ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="orcloc">Onde no corpo</label><select id="orcloc"><option value="">Escolha</option>${LOCAIS.map(l=>`<option>${l}</option>`).join("")}</select></div>` : `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="orcquando">Para quando? (opcional)</label><input id="orcquando" maxlength="60" placeholder="Ex.: até o fim do mês"></div>`;
+  const loc = tat ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="orcloc">Onde no corpo</label><select id="orcloc" required><option value="">Escolha</option>${LOCAIS.map(l=>`<option>${l}</option>`).join("")}</select></div>` : `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="orcquando">Para quando? (opcional)</label><input id="orcquando" maxlength="60" placeholder="Ex.: até o fim do mês"></div>`;
   const pe = `<p class="lnote">O pedido abre uma conversa com ${nome}. Valor final e data são combinados nela.</p><p class="ferr" role="alert" hidden></p>`;
   const fech = mod(p, "agenda") && !agAberta(p) ? `<div class="note" style="margin-bottom:10px">${ic("clock")}<span><b>Agenda fechada no momento.</b> Você pode mandar o pedido; ${nome} responde quando abrir a agenda.</span></div>` : "";
   if (!modo) return openSheet(shead("Orçamento") + fech + `<p class="lnote osub">Como você quer pedir a ${nome}?</p><div class="list">
@@ -2564,13 +2564,13 @@ function sheetOrcamento(pid, modo){ if (!ME.user) return A.acessar(); const p = 
   if (modo === "tabela") return openSheet(shead("Pela tabela") + `<p class="lnote osub">Preços de ${nome}. Escolha um item.</p>
     <div class="list orctab" role="radiogroup">${(f.tabela || []).map((x, i)=>`<label class="setting l1"><input type="radio" name="orcitem" value="${i}"${i ? "" : " checked"}><span class="t"><b>${esc(x.nome)}</b></span><b class="orcpreco">${esc(x.preco)}</b></label>`).join("")}</div>
     ${loc}</div><div class="field"><label for="orcobs">Alguma observação? (opcional)</label><textarea id="orcobs" rows="2" maxlength="400"></textarea></div>${pe}
-    <button class="btn primary block" type="button" data-act="orcenvia" data-p="${pid}" data-m="tabela">Enviar pedido</button>`, "Orçamento");
+    <button class="btn primary block" type="button" data-act="orcenvia" data-p="${pid}" data-m="tabela" data-trava>Enviar pedido</button>`, "Orçamento");
   openSheet(shead("Personalizado") + `<p class="lnote osub">Conte sua ideia para ${nome}. Quanto mais detalhe, melhor o orçamento.</p>
-    <div class="field"><label for="orcideia">Sua ideia</label><textarea id="orcideia" rows="3" maxlength="800" placeholder="O que você quer tatuar, estilo, detalhes importantes"></textarea></div>
+    <div class="field"><label for="orcideia">Sua ideia</label><textarea id="orcideia" rows="3" maxlength="800" placeholder="O que você quer tatuar, estilo, detalhes importantes" required minlength="10"></textarea><small class="hint">Pelo menos 10 letras.</small></div>
     <div class="field"><label>Fotos de referência <small>até 3</small></label><div class="orcrefs" id="orcrefs"></div><label class="btn ghost sm" style="cursor:pointer">${ic("plus","sm")} Adicionar foto<input type="file" accept="image/jpeg,image/png,image/webp" id="orcfile" hidden></label></div>
     ${loc}${tat ? `<div class="field" style="flex:1"><label for="orctam">Tamanho</label><select id="orctam"><option value="P">Pequeno (até 5 cm)</option><option value="M" selected>Médio (até 15 cm)</option><option value="G">Grande (mais de 15 cm)</option></select></div>` : ""}</div>
     ${tat ? `<div class="field"><label>Cor</label><div class="seg" role="radiogroup" aria-label="Cor"><label><input type="radio" name="orccor" value="preto" checked><span>Preto e cinza</span></label><label><input type="radio" name="orccor" value="cor"><span>Colorido</span></label></div></div>` : ""}${pe}
-    <button class="btn primary block" type="button" data-act="orcenvia" data-p="${pid}" data-m="ref">Enviar pedido</button>`, "Orçamento");
+    <button class="btn primary block" type="button" data-act="orcenvia" data-p="${pid}" data-m="ref" data-trava>Enviar pedido</button>`, "Orçamento");
   const fi = $("#orcfile"); S.orcRefs = []; if (fi) fi.addEventListener("change", async ()=>{ const a = fi.files && fi.files[0]; fi.value = ""; if (!a) return; if (S.orcRefs.length >= 3) return toast("Até 3 fotos.");
     try{ S.orcRefs.push(await fotoReduz(a, 1000)); $("#orcrefs").innerHTML = S.orcRefs.map((u, i)=>`<span class="orcref"><img src="${u}" alt="Referência ${i+1}"><button class="iconbtn solid" type="button" data-act="orcreftira" data-i="${i}" aria-label="Tirar a foto">${ic("close","sm")}</button></span>`).join(""); }catch(e){ toast("Não foi possível usar essa imagem."); } }); }
 function fotoReduz(file, max){ return new Promise((ok, erro)=>{ const img = new Image(), u = URL.createObjectURL(file); img.onload = ()=>{ const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
@@ -2689,18 +2689,18 @@ const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor
 function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span class="sescl${ok ? " ok" : ""}">${ic(ok ? "check" : "clock","sm")}<span>${rot}</span><b>${val}</b></span>`;
   return `<div class="sesciclo">${lin(!!c, "Orçamento · valor combinado", c ? finBRL(c) : "falta")}${lin(y.sinal != null, "Agendamento · sinal", y.sinal != null ? finBRL(y.sinal) : "sem sinal")}${lin(!!y.checkin_em, "Check-in · serviço iniciado", y.checkin_em ? new Date(y.checkin_em).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "falta")}${lin(!!y.checkout_em, "Checkout · valor pago", y.valor_pago ? finBRL(y.valor_pago) : "falta")}</div>`; }
 function sheetSesFim(sid, sug, pid){ openSheet(shead("Encerrar atendimento") + `
-    <div class="field"><label for="sfval">Valor pago (R$)</label><input id="sfval" inputmode="decimal" maxlength="14" value="${sug ? String((+sug).toFixed(2)).replace(".", ",") : ""}"><small class="hint">Total recebido, com o sinal.</small></div>
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""}>Encerrar atendimento</button>`, "Encerrar atendimento"); }
+    <div class="field"><label for="sfval">Valor pago (R$)</label><input id="sfval" inputmode="decimal" maxlength="14" required value="${sug ? String((+sug).toFixed(2)).replace(".", ",") : ""}"><small class="hint">Total recebido, com o sinal.</small></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""} data-trava>Encerrar atendimento</button>`, "Encerrar atendimento"); }
 function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id); }
 function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; MSGS.ses = null; PED.msgs = {}; render(); }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
-    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date"></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time"></div></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date" required></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time" required></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
       </div>
     ${(SES.pedido[x.id] || []).some(y=>y.status !== "cancelada") ? "" : `<div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>`}
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}">Propor</button>`, "Marcar"); }
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}" data-trava>Propor</button>`, "Marcar"); }
 async function sheetSesQR(y){ if (!y.codigo && sesJanela(y)){ try{ const {data} = await SB.rpc("tat_sessao_codigo", {p_sessao:y.id}); if (data) y.codigo = data; }catch(e){} }   /* 15/11: o código fica no servidor; só a página o recebe */
   const url = location.origin + location.pathname + "#checkin-" + y.id + "-" + y.codigo, ok = sesJanela(y), cod = String(y.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
   openSheet(shead("Check-in") + `<p class="lnote osub">${esc(limpo(y.cliente_nome || "A cliente"))} aponta a câmera do celular para o QR, ou digita o código na conversa.</p>
@@ -2959,17 +2959,17 @@ function sheetPaginaNova(){
     <p class="lnote osub">Cada conta pode ter até 2 páginas. Ela fica registrada na sua conta verificada: você responde pelo que ela publica, como em qualquer espaço da rede.</p>
     <input type="radio" name="pgtipo" value="${emp0 ? "empresa" : "criador"}" checked hidden>
     ${M.papeis ? `<fieldset class="rorig"><legend>Quem é</legend><div class="seg" role="radiogroup" aria-label="Quem é"><label><input type="radio" name="pgpapel" value="tatuador" checked><span>${M.papeis[0]}</span></label><label><input type="radio" name="pgpapel" value="estudio"><span>${M.papeis[1]}</span></label></div></fieldset>` : ""}
-    <div class="field"><label for="pgnome">Nome da página</label><input id="pgnome" maxlength="80"></div>
+    <div class="field"><label for="pgnome">Nome da página</label><input id="pgnome" maxlength="80" required minlength="2"></div>
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3" placeholder="O que a página oferece ou sobre o que ela fala"></textarea></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
     <div class="field"><label for="pgsite">Site (opcional)</label><input id="pgsite" type="url" inputmode="url" maxlength="300" placeholder="https://" autocapitalize="none" spellcheck="false"></div>
     <div class="field"><label for="pgcont">Contato (opcional)</label><input id="pgcont" maxlength="300" placeholder="WhatsApp, e-mail ou outro canal"></div>
     <div class="field pgcnpj" id="pgcnpjbox"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"><small class="hint">Não é obrigatório para ter vitrine. Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere, e isso dá mais credibilidade. O número só a curadoria vê.</small></div>
-    <label class="chk"><input type="checkbox" id="pgnaoel"><span>Esta página <b>não</b> é de candidato, partido ou campanha eleitoral.</span></label>
+    <label class="chk"><input type="checkbox" id="pgnaoel" required><span>Esta página <b>não</b> é de candidato, partido ou campanha eleitoral.</span></label>
     <details class="decl"><summary><b>Declaração de responsabilidade</b>${ic("chev","sm")}</summary><p>${esc(DECL_PAGINA)}</p></details>
-    <label class="chk"><input type="checkbox" id="pgdecl"><span>Li e aceito a declaração. Meu nome aparece na página como responsável.</span></label>
+    <label class="chk"><input type="checkbox" id="pgdecl" required><span>Li e aceito a declaração. Meu nome aparece na página como responsável.</span></label>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="paginacria">Enviar para a curadoria</button>
+    <button class="btn primary block" type="button" data-act="paginacria" data-trava>Enviar para a curadoria</button>
     <p class="lnote" style="margin-top:8px">A curadoria confere antes de a página ir ao ar e avisa você no sino.</p>`, "Criar página");
   $("#pgcnpjbox").hidden = !emp0; }
 function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p) return; const o = ORG["pg-" + pid], v = x => esc(x || "");
@@ -3000,9 +3000,9 @@ async function sheetPaginaApaga(pid){ const p = PAGS.lista.find(x=>x.id === pid)
     <div class="note">${ic("info")}<span><b class="ntit">Você tem 15 dias para voltar atrás</b>A página <b>${esc(p.nome)}</b> e as publicações dela somem na hora para todo mundo. Para reativar, abra a página em até 15 dias e toque em Reativar. Depois disso, tudo é apagado de vez.</span></div>
     ${vai ? `<p style="margin:12px 0 4px"><b>Vai junto, depois dos 15 dias:</b></p><ul class="dlist">${vai}</ul>` : ""}
     ${r.vendas ? `<p class="lnote">Se você usa o Financeiro para o MEI, copie os registros antes.</p>` : ""}
-    <div class="field" style="margin-top:12px"><label for="pgapsen">Sua senha</label><div class="pw"><input id="pgapsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="pgapsen">Mostrar</button></div></div>
+    <div class="field" style="margin-top:12px"><label for="pgapsen">Sua senha</label><div class="pw"><input id="pgapsen" type="password" autocomplete="current-password" required><button class="linkbtn" type="button" data-act="versenha" data-for="pgapsen">Mostrar</button></div></div>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn perigo block" type="button" data-act="pgapagaok" data-id="${pid}">${ic("trash","sm")} Apagar página</button>
+    <button class="btn perigo block" type="button" data-act="pgapagaok" data-trava data-id="${pid}">${ic("trash","sm")} Apagar página</button>
     <button class="btn ghost block" type="button" data-act="close">Cancelar</button></div>`, "Apagar página"); }
 function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
     <div class="field"><label for="vinome">Serviço ou produto</label><input id="vinome" maxlength="120"></div>
@@ -3133,11 +3133,11 @@ async function mavBusca(q){ const box = $("#mavres"); if (!box) return; if (q.tr
     + `<label class="setting l1"><input type="radio" name="mavm" value=""><span class="t"><b>Não está no guia</b><small>A página funciona com o QR, sem aparecer como parceira no guia</small></span></label>`; }
 function sheetEvento(pid, eid){ const e = ((MUS.meu[pid] || {}).eventos || []).find(x=>x.id === eid) || {tipo:"exposicao"};
   openSheet(shead(eid ? "Editar" : "Nova exposição ou evento") + `<div class="seg" role="radiogroup" aria-label="Tipo">${[["exposicao","Exposição"],["evento","Evento"]].map(([k, n])=>`<label><input type="radio" name="evtipo" value="${k}"${e.tipo === k ? " checked" : ""}><span>${n}</span></label>`).join("")}</div>
-    <div class="field"><label for="evtit">Nome</label><input id="evtit" maxlength="120" value="${esc(e.titulo || "")}"></div>
-    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="evini">Começa</label><input id="evini" type="date" value="${esc(e.inicio || "")}"></div><div class="field" style="flex:1"><label for="evfim">Termina</label><input id="evfim" type="date" value="${esc(e.fim || "")}"></div></div>
+    <div class="field"><label for="evtit">Nome</label><input id="evtit" maxlength="120" value="${esc(e.titulo || "")}" required minlength="2"></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="evini">Começa</label><input id="evini" type="date" value="${esc(e.inicio || "")}" required></div><div class="field" style="flex:1"><label for="evfim">Termina</label><input id="evfim" type="date" value="${esc(e.fim || "")}"></div></div>
     <div class="field"><label for="evloc">Sala ou local (opcional)</label><input id="evloc" maxlength="120" value="${esc(e.local || "")}"></div>
     <div class="field"><label for="evdesc">Sobre (opcional)</label><textarea id="evdesc" rows="3" maxlength="600">${esc(e.descricao || "")}</textarea></div>
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="evsalva" data-p="${pid}" data-e="${eid || ""}">Salvar</button>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="evsalva" data-p="${pid}" data-e="${eid || ""}" data-trava>Salvar</button>
     ${eid ? `<button class="btn ghost block" type="button" data-act="evapaga" data-p="${pid}" data-e="${eid}" style="margin-top:8px">Apagar</button>` : ""}`, "Exposição"); }
 /* check-in pelo QR da entrada: #visita-<página>-<código> */
 function screenVisita(arg){ const m = /^([0-9a-f-]{36})-([0-9a-f]{6,40})$/i.exec(arg) || [];
@@ -5408,15 +5408,15 @@ function cmnCard(o, c){ const h = cmnHash(o.id), f = c || S.follow.has(o.id), so
 const cmnRow = c => `<button class="rowitem" type="button" data-act="openorg" data-org="${esc(c.id)}">${avatar(ORG[c.id])}<span class="t"><b>${esc(c.nome)}<span class="fic">comunidade</span></b><small>${esc(c.tema)} · você criou · entrada ${c.entrada==="aprovacao" ? "com aprovação" : "aberta"}</small></span></button>`;
 function sheetCmnNova(){
   openSheet(shead("Criar comunidade") + `<p class="srcnote" style="margin:0 2px 12px">Um grupo em torno de um tema: para se organizar, debater, trocar ideia e postar meme. Todo tema cabe.</p>
-    <div class="field"><label for="cmnnome">Nome</label><input id="cmnnome" maxlength="60" autocomplete="off" placeholder="Ex.: Quem pedala em Curitiba"></div>
+    <div class="field"><label for="cmnnome">Nome</label><input id="cmnnome" maxlength="60" autocomplete="off" placeholder="Ex.: Quem pedala em Curitiba" required minlength="3"></div>
     <div class="field"><label for="cmntema">Tema</label><input id="cmntema" maxlength="40" autocomplete="off" list="cmntemas" placeholder="Escolha ou escreva o seu"><datalist id="cmntemas">${TEMAS.map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div>
     <div class="field"><label for="cmnsobre">Sobre</label><textarea id="cmnsobre" rows="3" maxlength="280" placeholder="Para quem é e o que se faz aqui."></textarea></div>
     <fieldset style="border:0;padding:0;margin:0 0 12px"><legend style="font-size:14px;font-weight:600;margin:0 0 8px;padding:0">Quem entra</legend>
       <label class="cmnopc"><input type="radio" name="cmnentrada" value="aberta" checked><span><b>Aberta</b><small>Qualquer conta entra e publica na hora.</small></span></label>
       <label class="cmnopc"><input type="radio" name="cmnentrada" value="aprovacao"><span><b>Com aprovação</b><small>Você, ou quem moderar, aprova cada entrada.</small></span></label></fieldset>
     <div class="field"><label for="cmnregras">Regras da comunidade (opcional)</label><textarea id="cmnregras" rows="3" maxlength="600" placeholder="Uma regra por linha."></textarea></div>
-    <label class="cmnopc"><input type="checkbox" id="cmnaceite"><span><b>Li e aceito as regras gerais das comunidades</b><small>${CMN_GERAIS.length} regras curtas. <button class="linkbtn" type="button" data-act="cmngerais">Ler</button></small></span></label>
-    <button class="btn primary block" type="button" data-act="cmncria">Criar comunidade</button>`, "Criar comunidade"); }
+    <label class="cmnopc"><input type="checkbox" id="cmnaceite" required><span><b>Li e aceito as regras gerais das comunidades</b><small>${CMN_GERAIS.length} regras curtas. <button class="linkbtn" type="button" data-act="cmngerais">Ler</button></small></span></label>
+    <button class="btn primary block" type="button" data-act="cmncria" data-trava>Criar comunidade</button>`, "Criar comunidade"); }
 function screenCmn(o){ const c = cmnDe(o.id); if (!c) return screenOrgs();
   const tabs = [["mural","Mural"],["discussoes","Discussões"],["regras","Regras"],["integrantes","Sobre"]]; if (!tabs.some(t=>t[0]===S.cmnTab)) S.cmnTab = "mural";
   return capaTopo(c.capa, c.nome.length*3, "cmn:" + o.id, capaSobre(avatar(o, "phav")), lugarTag("comunidade"), `<button class="iconbtn prim" type="button" data-act="cmnposta" aria-label="Publicar na comunidade" title="Publicar na comunidade">${ic("plus")}</button>`)
@@ -5816,22 +5816,22 @@ ${/* 15/11: Sua conta fica só com os dados da conta. Publicar está no Criar; s
     <div class="tabs" role="tablist" aria-label="Conta"><button class="tab" type="button" role="tab" data-act="contatab" data-t="entrar" aria-selected="${t==="entrar"}">Entrar</button><button class="tab" type="button" role="tab" data-act="contatab" data-t="criar" aria-selected="${t==="criar"}">Criar conta</button></div>
     ${t==="criar" ? `
     ${passosConta(1)}
-    <div class="field"><label for="cnome">Seu nome</label><input id="cnome" type="text" autocomplete="name" maxlength="80"></div>
-    <div class="field"><label for="cmail">E-mail</label><input id="cmail" type="email" autocomplete="email" inputmode="email" maxlength="254" autocapitalize="none" spellcheck="false"><small class="hint">Não aparece para ninguém. Serve para confirmar a conta e recuperar a senha.</small></div>
+    <div class="field"><label for="cnome">Seu nome</label><input id="cnome" type="text" autocomplete="name" maxlength="80" required minlength="2"></div>
+    <div class="field"><label for="cmail">E-mail</label><input id="cmail" type="email" autocomplete="email" inputmode="email" maxlength="254" autocapitalize="none" spellcheck="false" required><small class="hint">Não aparece para ninguém. Serve para confirmar a conta e recuperar a senha.</small></div>
     <div class="field"><label for="csen">Senha</label>${senhaCampo("csen")}</div>
     <div class="field"><label for="ccid">Cidade (opcional)</label><input id="ccid" type="text" maxlength="80" placeholder="Ex.: São Paulo, SP"><small class="hint">Aparece no seu perfil e ajuda a mostrar o que acontece perto de você. <button class="linkbtn inl" type="button" data-act="localpede" data-para="ccid">Usar minha localização</button></small></div>
     <div class="hpot" aria-hidden="true"><label for="csite">Não preencha este campo</label><input id="csite" type="text" tabindex="-1" autocomplete="off"></div>
     ${seusDadosNota()}
-    <label class="ichk"><input type="checkbox" id="c18"><span>Tenho 18 anos ou mais. A rede.online é para adultos.</span></label>
-    <label class="ichk"><input type="checkbox" id="cok"><span>Li e aceito os <a href="#termos" target="_blank" rel="noopener">Termos de uso</a> e a <a href="#privacidade" target="_blank" rel="noopener">Privacidade</a>.</span></label>
+    <label class="ichk"><input type="checkbox" id="c18" required><span>Tenho 18 anos ou mais. A rede.online é para adultos.</span></label>
+    <label class="ichk"><input type="checkbox" id="cok" required><span>Li e aceito os <a href="#termos" target="_blank" rel="noopener">Termos de uso</a> e a <a href="#privacidade" target="_blank" rel="noopener">Privacidade</a>.</span></label>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="cadastrar">Criar conta</button>
+    <button class="btn primary block" type="button" data-act="cadastrar" data-trava>Criar conta</button>
     <p class="inota">Você vai receber um e-mail da rede.online para confirmar o cadastro. A conta só funciona depois da confirmação.</p>`
     : `
-    <div class="field"><label for="lmail">E-mail</label><input id="lmail" type="email" autocomplete="username" inputmode="email" maxlength="254" autocapitalize="none" spellcheck="false"></div>
-    <div class="field"><label for="lsen">Senha</label><div class="pw"><input id="lsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="lsen">Mostrar</button></div></div>
+    <div class="field"><label for="lmail">E-mail</label><input id="lmail" type="email" autocomplete="username" inputmode="email" maxlength="254" autocapitalize="none" spellcheck="false" required></div>
+    <div class="field"><label for="lsen">Senha</label><div class="pw"><input id="lsen" type="password" autocomplete="current-password" required><button class="linkbtn" type="button" data-act="versenha" data-for="lsen">Mostrar</button></div></div>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="entrar">Entrar</button>
+    <button class="btn primary block" type="button" data-act="entrar" data-trava>Entrar</button>
     <button class="linkbtn" type="button" data-act="esqueci">Esqueci a senha</button>`}
     ${ME.pend ? `<div class="note okn pend">${ic(/ntit">Para publicar/.test(ME.pend) ? "info" : "mail")}<span>${ME.pend}</span></div>` : ""}</div>`;
 }
@@ -5887,11 +5887,11 @@ function sheetSugFonte(){
     <a class="btn primary block" href="#conta" data-act="criarconta">Criar conta</a><a class="btn block" href="#conta" data-act="acessar">Já tenho conta</a>`, "Sugerir uma fonte"); return; }
   openSheet(shead("Sugerir uma fonte") + `<div class="sform">
     <p style="margin:0 0 12px;color:var(--muted)">A curadoria confere se o site é público e identificável, se mostra de onde vêm os dados e se publica correções. Aceito, ele entra na base de fontes, passa a ser lido pela rede e as publicações que o citam ganham o selo dele.</p>
-    <div class="field"><label for="sfurl">Endereço do site</label><input id="sfurl" type="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="500" placeholder="https://"></div>
-    <div class="field"><label for="sfnome">Nome da fonte (opcional)</label><input id="sfnome" type="text" maxlength="120" placeholder="Ex.: Agência Pública"></div>
-    <div class="field"><label for="sfmot">Por que é confiável (opcional)</label><textarea id="sfmot" maxlength="500" rows="3" placeholder="Ex.: reportagem com autoria, expediente e página de correções"></textarea></div>
+    <div class="field"><label for="sfurl">Endereço do site</label><input id="sfurl" type="url" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="500" placeholder="https://" required></div>
+    <div class="field"><label for="sfnome">Nome da fonte</label><input id="sfnome" type="text" maxlength="120" placeholder="Ex.: Agência Pública" required minlength="2"></div>
+    <div class="field"><label for="sfmot">Por que é confiável</label><textarea id="sfmot" maxlength="500" rows="3" placeholder="Ex.: reportagem com autoria, expediente e página de correções" required minlength="10"></textarea><small class="hint">Pelo menos 10 letras.</small></div>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="sugfonteenvia">Enviar sugestão</button>
+    <button class="btn primary block" type="button" data-act="sugfonteenvia" data-trava>Enviar sugestão</button>
     <div id="minhassug"></div></div>`, "Sugerir uma fonte");
   minhasSugCarrega(); }
 async function minhasSugCarrega(){ const box = $("#minhassug"); if (!box || !SB) return;
@@ -5899,6 +5899,7 @@ async function minhasSugCarrega(){ const box = $("#minhassug"); if (!box || !SB)
     box.innerHTML = `<h3 class="osec">Suas sugestões</h3><ul class="sugmin">${r.data.map(x=>{ const st = SUG_ST[x.status] || SUG_ST.pendente;
       return `<li><span><b>${esc(x.nome || x.dominio)}</b><small>${esc(x.dominio)}</small></span><span class="sugst ${st[1]}">${st[0]}${x.status==="aceita" && x.nota != null ? " · selo " + x.nota : ""}</span></li>`; }).join("")}</ul>`; }catch(e){} }
 async function sugFonteEnvia(b){ const url = ($("#sfurl").value || "").trim(); if (url.length < 4) return formErro("Escreva o endereço do site.");
+  if (($("#sfnome").value || "").trim().length < 2) return formErro("Escreva o nome da fonte."); if (($("#sfmot").value || "").trim().length < 10) return formErro("Conte por que a fonte é confiável (pelo menos 10 letras).");
   formErro(""); ocupado(b, true, "Enviando…");
   try{ const {data, error} = await SB.rpc("fonte_sugere", {p_url:url, p_nome:$("#sfnome").value.trim() || null, p_motivo:$("#sfmot").value.trim() || null});
     ocupado(b, false); if (error) return formErro(erroAuth(error));
@@ -6023,7 +6024,7 @@ const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t;
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
     ${ME.user ? `<div class="field"><label for="nsen">Nova senha</label>${senhaCampo("nsen")}</div>
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="novasenha">Salvar nova senha</button>`
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="novasenha" data-trava>Salvar nova senha</button>`
     : `<p class="empty">Abra o link que enviamos por e-mail para criar uma nova senha.</p>`}</div>`;
 }
 const formErro = t => { const e = $("#layer .ferr") || $("#main .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
@@ -6041,7 +6042,7 @@ function senhaAvalia(v, extras=[]){ const low = v.toLowerCase();
   const n = v.length >= 16 || (v.length >= 12 && tipos >= 3) ? 4 : v.length >= 12 || tipos >= 3 ? 3 : 2;
   return {ok:true, n, msg:["","","Senha aceita. Mais longa fica mais forte.","Senha boa.","Senha forte."][n]}; }
 const senhaBoa = (v, extras) => senhaAvalia(v, extras).ok;
-const senhaCampo = (id, auto="new-password") => `<div class="pw"><input id="${id}" type="password" autocomplete="${auto}" minlength="${SENHA_MIN}" maxlength="72" data-senha aria-describedby="${id}h"><button class="linkbtn" type="button" data-act="versenha" data-for="${id}">Mostrar</button></div>
+const senhaCampo = (id, auto="new-password") => `<div class="pw"><input id="${id}" type="password" required autocomplete="${auto}" minlength="${SENHA_MIN}" maxlength="72" data-senha aria-describedby="${id}h"><button class="linkbtn" type="button" data-act="versenha" data-for="${id}">Mostrar</button></div>
   <div class="pwm" data-n="0" aria-hidden="true"><i></i><i></i><i></i><i></i></div><small class="hint" id="${id}h" aria-live="polite">No mínimo ${SENHA_MIN} caracteres, com letras e números ou símbolos.</small>`;
 document.addEventListener("input", e=>{ const i = e.target; if (!i.matches || !i.matches("input[data-senha]")) return;
   const f = i.closest(".field") || i.parentNode.parentNode, nome = ($("#cnome") || {}).value || (ME.perfil && ME.perfil.nome) || "", mail = (($("#cmail") || {}).value || (ME.user && ME.user.email) || "").split("@")[0];
@@ -6058,7 +6059,31 @@ const ERROS_AUTH = [[/sem_conta/i,"Entre na sua conta para sugerir uma fonte."],
   [/weak|pwned|leaked|compromised/i,"Essa senha já apareceu em vazamentos de outros sites. Escolha outra."],
   [/password/i,"A senha não foi aceita: use no mínimo 10 caracteres, com letras e números ou símbolos."],[/fetch|network/i,"Sem conexão com o servidor. Verifique a internet."]];
 const erroAuth = e => { const m = (e && e.message) || String(e); const f = ERROS_AUTH.find(([re])=>re.test(m)); return f ? f[1] : "Não deu certo: " + m; };
-const ocupado = (b, on, txt) => { if (!b) return; if (on){ b.dataset.txt = b.innerHTML; b.disabled = true; b.textContent = txt || "Aguarde…"; } else { b.disabled = false; if (b.dataset.txt) b.innerHTML = b.dataset.txt; } };
+const ocupado = (b, on, txt) => { if (!b) return; if (on){ b.dataset.ocupado = "1"; b.dataset.txt = b.innerHTML; b.disabled = true; b.textContent = txt || "Aguarde…"; } else { delete b.dataset.ocupado; b.disabled = false; if (b.dataset.txt) b.innerHTML = b.dataset.txt; travaLogo(); } };
+/* 18/11 (Amanda): o botão que envia só libera quando tudo o que é obrigatório está preenchido, em todos os fluxos.
+   Regra única: campo obrigatório leva o atributo required (caixa de aceite também) e o botão leva data-trava.
+   Valem só os campos à vista (ex.: o link da fonte some quando a publicação é autoral). minlength pede um mínimo de letras;
+   data-igual pede um texto exato (ex.: APAGAR). O escopo é a folha aberta, o bloco com data-tform ou a tela.
+   As conferências dentro de cada ação continuam valendo: a trava é a primeira barreira, não a única. */
+const travaVisivel = e => { const r = e.closest("label") || e; return r.getClientRects().length > 0; };
+function travaCampoOk(e, sc){
+  if (e.type === "checkbox") return e.checked;
+  if (e.type === "radio") return !!sc.querySelector(`input[type="radio"][name="${CSS.escape(e.name)}"]:checked`);
+  const v = String(e.value || "").trim(), min = +e.getAttribute("minlength") || 1;
+  if (v.length < min) return false;
+  if (e.dataset.igual && v.toUpperCase() !== e.dataset.igual.toUpperCase()) return false;
+  if (e.type === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  if (e.type === "url") return /^\S+\.\S+$/.test(v);
+  return true; }
+function travaConfere(){ document.querySelectorAll("[data-trava]").forEach(b=>{ if (b.dataset.ocupado) return;
+  const sc = b.closest("[data-tform]") || b.closest(".sheet") || b.closest(".container") || document.body;
+  const ok = [...sc.querySelectorAll("[required]")].filter(e=>!e.disabled && travaVisivel(e)).every(e=>travaCampoOk(e, sc));
+  if (b.disabled === ok) b.disabled = !ok; }); }
+let travaT = 0; const travaLogo = () => { cancelAnimationFrame(travaT); travaT = requestAnimationFrame(travaConfere); };
+["input","change"].forEach(t=>document.addEventListener(t, travaLogo, true));
+new MutationObserver(travaLogo).observe(document.documentElement, {childList:true, subtree:true});
+setInterval(()=>{ if (document.querySelector("[data-trava]")) travaConfere(); }, 800);   /* preenchimento automático do navegador nem sempre avisa */
+
 
 /* comprime a foto no aparelho antes de enviar (até 1600 px, JPEG) */
 /* 16/11 (custos, passo 3): fotos em WebP quando o aparelho sabe gerar (cerca de 30% menores que JPEG na mesma qualidade);
@@ -6080,13 +6105,13 @@ function sheetCriarReal(k, ed){ const nome = TIPOS_REAIS[k], pf = ME.perfil || {
   openSheet(shead(ed ? "Editar " + nome.toLowerCase() : nome) + (ed ? `<div class="note">${ic("lapis")}<span>Quem já viu a publicação passa a ver a versão nova, marcada como <b>editada</b>.</span></div>` : `
     <div class="note">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)})}<span>Publicando como <b>${esc(pf.nome || ME.user.email)}</b> · conta real. Fica visível para quem acessa a rede.</span></div>
     ${minhasPaginas("aprovada").length ? `<div class="field"><label for="rcomo">Publicar como</label><select id="rcomo"><option value="">Você (${esc(pf.nome || "sua conta")})</option>${minhasPaginas("aprovada").map(p=>`<option value="${p.id}"${route() === "pg-" + p.id ? " selected" : ""}>Página: ${esc(limpo(p.nome))}</option>`).join("")}</select><small class="hint">Pela página, seu nome aparece como responsável pelo que for publicado.</small></div>` : ""}`) + `
-    <div class="field"><label for="rtit">Título</label><input id="rtit" type="text" maxlength="140" value="${ed ? v(ed.titulo) : ""}"></div>
+    <div class="field"><label for="rtit">Título</label><input id="rtit" type="text" maxlength="140" value="${ed ? v(ed.titulo) : ""}" required minlength="3"></div>
     ${k==="evento" ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="rdata">Data</label><input id="rdata" type="date" min="${ed && ex.data && ex.data < new Date().toISOString().slice(0,10) ? ex.data : new Date().toISOString().slice(0,10)}" value="${v(ex.data)}"></div><div class="field" style="flex:1"><label for="rhora">Hora</label><input id="rhora" type="time" value="${horaInput(ex.hora)}"></div></div>
-      <div class="field"><label for="rlocal">Local</label><input id="rlocal" type="text" maxlength="120" placeholder="Ex.: Praça da Sé" value="${v(ex.local)}"></div>` : ""}
+      <div class="field"><label for="rlocal">Local</label><input id="rlocal" type="text" maxlength="120" placeholder="Ex.: Praça da Sé" value="${v(ex.local)}" required></div>` : ""}
     ${k==="chamado" || k==="abaixo" ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="rmeta">${k==="abaixo" ? "Meta de assinaturas" : "Quantas pessoas"}</label><input id="rmeta" type="number" min="1" inputmode="numeric" value="${ex.meta || (k==="abaixo" ? 300 : 20)}"></div><div class="field" style="flex:1"><label for="rprazo">Prazo</label><input id="rprazo" type="text" maxlength="40" placeholder="Ex.: até 30 nov" value="${v(ex.prazo)}"></div></div>` : ""}
     <fieldset class="rorig"><legend>De onde vem</legend>
       <div class="seg rorigseg" role="radiogroup" aria-label="De onde vem"><label><input type="radio" name="rorig" value="fonte"${ed && ex.autoral ? "" : " checked"}><span>Tem fonte</span></label><label><input type="radio" name="rorig" value="autoral"${ed && ex.autoral ? " checked" : ""}><span>É autoral</span></label></div>
-      <div class="field rfontebox"><label for="rfonte">Link da fonte</label><input id="rfonte" type="url" inputmode="url" maxlength="500" autocapitalize="none" spellcheck="false" placeholder="https://" value="${v(ex.fonte_url)}">
+      <div class="field rfontebox"><label for="rfonte">Link da fonte</label><input id="rfonte" type="url" inputmode="url" maxlength="500" autocapitalize="none" spellcheck="false" placeholder="https://" value="${v(ex.fonte_url)}" required>
         <small class="hint">A notícia, o documento ou o dado público de onde veio a informação. A publicação leva o selo da fonte. Fonte que a rede ainda não conhece aparece como <b>não verificada</b> e vai para a curadoria.</small></div>
       <div class="rautbox">${(()=>{ const pg0 = PAGS.lista.find(x=>route() === "pg-" + x.id), pa = pg0 ? PG_AUTORAL[modeloDe(pg0)] : null, a1 = autN1(ex.autoral) || (pa ? pa[0] : "arte"), a2 = ex.autoral_sub || (pa && !ed ? pa[1] : "");
         return `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="raut">O que é</label><select id="raut">${Object.entries(AUTORAL).map(([k, [n]])=>`<option value="${k}"${k===a1 ? " selected" : ""}>${n}</option>`).join("")}</select></div>
@@ -6100,8 +6125,8 @@ function sheetCriarReal(k, ed){ const nome = TIPOS_REAIS[k], pf = ME.perfil || {
       <div class="field" style="flex:1"><label for="rtemasub">Subtema <small>(opcional)</small></label><select id="rtemasub">${subtemaOps(ed ? temaNovo(ed.tema) : TEMAS[0], ex.tema_sub)}</select></div>
       <div class="field" style="flex:1"><label for="rcid">Cidade</label><input id="rcid" type="text" maxlength="80" value="${esc(ed ? (ed.cidade || "") : (pf.cidade || ""))}"></div></div>
     <p class="ferr" role="alert" hidden></p>
-    ${ed ? `<button class="btn primary block" type="button" data-act="publicarreal" data-k="${k}" data-ed="${ed.id}">Salvar alterações</button>
-      <button class="btn ghost block" type="button" data-act="close">Cancelar</button>` : `<button class="btn primary block" type="button" data-act="publicarreal" data-k="${k}">Publicar</button>`}`, ed ? "Editar publicação" : "Criar " + nome);
+    ${ed ? `<button class="btn primary block" type="button" data-act="publicarreal" data-k="${k}" data-ed="${ed.id}" data-trava>Salvar alterações</button>
+      <button class="btn ghost block" type="button" data-act="close">Cancelar</button>` : `<button class="btn primary block" type="button" data-act="publicarreal" data-k="${k}" data-trava>Publicar</button>`}`, ed ? "Editar publicação" : "Criar " + nome);
 }
 /* =====================================================================
    11. Folhas (bottom sheet no celular, diálogo no tablet/desktop)
@@ -6230,12 +6255,12 @@ function sheetInscricao(uid, k){
     : `<div class="field"><label for="i-${id}">${lab}</label><input id="i-${id}" type="text" data-campo="${id}" placeholder="${esc(x||"")}"></div>`;
   openSheet(shead(titulo) + topo
     + (k==="evento" && INSCR[it.id] ? `<p class="imot">${ic("info","sm")} ${esc(INSCR[it.id].motivo)}</p>` : "")
-    + `<div class="field"><label for="inome">${assina ? "Nome completo" : "Seu nome"}</label><input id="inome" type="text" autocomplete="name" value="${esc(S.inscrNome || store.get("inscrNome",""))}"></div>
+    + `<div class="field"><label for="inome">${assina ? "Nome completo" : "Seu nome"}</label><input id="inome" type="text" autocomplete="name" required minlength="2" value="${esc(S.inscrNome || store.get("inscrNome",""))}"></div>
     <div class="field"><label for="icont">Como a organização fala com você</label><select id="icont"><option>Pelas Mensagens da rede</option><option>WhatsApp</option><option>E-mail</option></select></div>
     ${campos.map(campo).join("")}
-    <label class="ichk"><input type="checkbox" id="iok"><span>Autorizo ${esc(o.nome)} a usar estes dados só para ${k==="evento" ? "organizar este evento" : "este chamado"}. Posso sair quando quiser.</span></label>
+    <label class="ichk"><input type="checkbox" id="iok" required><span>Autorizo ${esc(o.nome)} a usar estes dados só para ${k==="evento" ? "organizar este evento" : "este chamado"}. Posso sair quando quiser.</span></label>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="inscrever" data-uid="${uid}" data-k="${k}">${k==="evento" ? "Fazer inscrição" : assina ? "Assinar" : "Quero ajudar"}</button>
+    <button class="btn primary block" type="button" data-act="inscrever" data-uid="${uid}" data-k="${k}" data-trava>${k==="evento" ? "Fazer inscrição" : assina ? "Assinar" : "Quero ajudar"}</button>
     <p class="inota">${k==="evento" ? "O evento fica salvo na sua agenda, no perfil." : "O chamado fica salvo na sua agenda, no perfil. A organização responde pelo contato que você escolheu."}</p>`, titulo);
 }
 function sheetMsgs(){
@@ -6394,9 +6419,9 @@ const A = {
   desisteverif: async b => { const dp = ((ME.acesso || {}).pedido || {}).doc_path; if (dp) await SB.storage.from("verificacao-docs").remove([dp]).catch(()=>{});
     const {error} = await SB.from("verificacao_pedidos").delete().eq("user_id", ME.user.id); if (error) return toast(erroAuth(error)); await perfilCarrega(); toast("Pedido retirado."); render(); },
   trocasenha: () => openSheet(shead("Trocar a senha") + `<div class="cform sform">
-      <div class="field"><label for="tsat">Senha atual</label><div class="pw"><input id="tsat" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="tsat">Mostrar</button></div></div>
+      <div class="field"><label for="tsat">Senha atual</label><div class="pw"><input id="tsat" type="password" autocomplete="current-password" required><button class="linkbtn" type="button" data-act="versenha" data-for="tsat">Mostrar</button></div></div>
       <div class="field"><label for="tsno">Nova senha</label>${senhaCampo("tsno")}</div>
-      <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="trocasenhaok">Salvar nova senha</button>
+      <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="trocasenhaok" data-trava>Salvar nova senha</button>
       <p class="inota">${ic("info","sm")}<span>Depois de trocar, a conta sai dos outros aparelhos. Neste, você continua dentro.</span></p></div>`, "Trocar a senha"),
   trocasenhaok: async b => { const at = $("#tsat").value, no = $("#tsno").value, mail = ME.user.email, sa = senhaAvalia(no, [mail.split("@")[0], ...((ME.perfil && ME.perfil.nome) || "").split(/\s+/)]);
     if (!at) return sheetErro("Escreva a senha atual."); if (!sa.ok) return sheetErro("Nova senha: " + sa.msg); if (at===no) return sheetErro("A nova senha precisa ser diferente da atual.");
@@ -6418,9 +6443,9 @@ const A = {
     document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); ocupado(b, false); toast("Arquivo baixado."); },
   apagaconta: () => openSheet(shead("Apagar minha conta") + `<div class="cform sform">
       <div class="note">${ic("info")}<span><b class="ntit">Você tem 15 dias para voltar atrás</b>Sua conta some na hora para todo mundo e sai de todos os aparelhos. Para reativar, entre de novo em até 15 dias. Depois disso, tudo é apagado de vez: perfil, publicações e imagens, contas de outras redes, pedidos (com conversas e horários), avaliações e histórico de leitura. Se quiser guardar uma cópia, baixe seus dados antes.</span></div>
-      <div class="field"><label for="apsen">Sua senha</label><div class="pw"><input id="apsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="apsen">Mostrar</button></div></div>
-      <div class="field"><label for="aptxt">Para confirmar, escreva APAGAR</label><input id="aptxt" type="text" autocomplete="off" autocapitalize="characters" maxlength="10"></div>
-      <p class="ferr" role="alert" hidden></p><button class="btn perigo block" type="button" data-act="apagacontaok">Apagar minha conta</button></div>`, "Apagar minha conta"),
+      <div class="field"><label for="apsen">Sua senha</label><div class="pw"><input id="apsen" type="password" autocomplete="current-password" required><button class="linkbtn" type="button" data-act="versenha" data-for="apsen">Mostrar</button></div></div>
+      <div class="field"><label for="aptxt">Para confirmar, escreva APAGAR</label><input id="aptxt" type="text" autocomplete="off" autocapitalize="characters" maxlength="10" required data-igual="APAGAR"></div>
+      <p class="ferr" role="alert" hidden></p><button class="btn perigo block" type="button" data-act="apagacontaok" data-trava>Apagar minha conta</button></div>`, "Apagar minha conta"),
   apagacontaok: async b => { const sen = $("#apsen").value, uid = ME.user.id, dp = ((ME.acesso || {}).pedido || {}).doc_path;
     if (!sen) return sheetErro("Escreva sua senha."); if ($("#aptxt").value.trim().toUpperCase()!=="APAGAR") return sheetErro("Escreva APAGAR para confirmar.");
     sheetErro(""); ocupado(b, true, "Apagando…");
@@ -7295,7 +7320,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 08:29";
+const VERSAO = "v1 registrada · 18/11 08:36";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

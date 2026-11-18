@@ -121,11 +121,11 @@ img,svg{max-width:100%}
 /* MARCA "arede.online" (10 nov 2026), sempre em minúsculas: "arede" em peso forte; o ponto é um nó da rede,
    na cor de destaque; "online" mais leve. O nome é também o endereço: https://arede.online/
    Símbolo compacto (trilho lateral e ícone do app): "a" + o mesmo nó. */
-.logo{display:inline-flex;align-items:baseline;padding:10px 0;border:0;background:none;cursor:pointer;font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.035em;line-height:1;white-space:nowrap;color:var(--ink);text-decoration:none}
+.logo{display:inline-flex;align-items:baseline;padding:10px 0;min-height:44px;border:0;background:none;cursor:pointer;font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.035em;line-height:1;white-space:nowrap;color:var(--ink);text-decoration:none}
 .logo .com{font-weight:500;letter-spacing:-.02em}
 .ldot{display:inline-block;flex:none;width:.23em;height:.23em;margin:0 .05em 0 .07em;border-radius:50%;background:var(--brand)}
 .logo .ext{display:inline-flex;align-items:baseline}
-@media (max-width:429px){ .top .toprow{gap:4px} .logo{font-size:21px} }
+@media (max-width:429px){ .top .toprow{gap:8px} .logo{font-size:21px} }   /* 18/11 (Amanda): 8px entre os alvos de toque, cada um com 44px */
 @media (max-width:359px){ .logo{font-size:20px} .lchev{width:14px;height:14px;margin-left:2px} }
 .semsobre .navfoot[href="#manifesto"]{display:none}
 .marcape{margin:14px 0 2px;text-align:center;font-size:12.5px;line-height:1.5;color:var(--muted)}.marcape p{margin:6px 0}.marcape a{color:inherit;text-decoration:underline;text-underline-offset:2px}.marcape .rterc{font-size:11px;opacity:.85;max-width:46ch;margin-left:auto;margin-right:auto}.marcape .ver{margin:6px 0 0}
@@ -173,7 +173,7 @@ img,svg{max-width:100%}
 .iconbtn.solid{background:var(--surface);box-shadow:var(--shadow)}
 .dot{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:#E0592A;border:2px solid var(--bg)}
 .ncount{position:absolute;top:3px;right:1px;min-width:9px;height:15px;padding:0 3px;border-radius:8px;background:#E0592A;color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;border:1.5px solid var(--bg);box-sizing:content-box;pointer-events:none}
-.topconta{display:inline-flex;gap:2px;align-items:center}
+.topconta{display:inline-flex;gap:8px;align-items:center}
 .nlist{display:flex;flex-direction:column;gap:6px;margin:8px 0 24px}
 .nitem{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:0;background:var(--surface,rgba(127,127,127,.06));color:inherit;font:inherit;cursor:pointer}
 .nitem.nova{background:color-mix(in srgb,var(--brand) 16%,transparent)}
@@ -265,6 +265,7 @@ span.selo{cursor:default}.selolin{align-items:flex-start;flex-direction:column;g
 .btn.block{width:100%}
 .btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);box-shadow:none}
 .btn:disabled{opacity:.7;cursor:default}
+.btn[data-trava]:disabled{opacity:.42;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row > .btn{flex:1 1 140px}
 .linkbtn{border:0;background:none;padding:10px 2px;min-height:44px;color:var(--accent);font-weight:500;font-size:var(--fs-sm);white-space:nowrap}
@@ -2136,7 +2137,8 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .apoiebtn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px;margin-right:6px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
 .apoiebtn .icon{width:15px;height:15px;color:var(--brand)}
 .apoiebtn:hover{background:var(--surface)}
-@media (max-width:339px){ .apoiebtn{padding:0 10px;gap:0} .apoiebtn span{display:none} }
+@media (max-width:339px){ .apoiebtn{padding:0;width:44px;justify-content:center;gap:0} .apoiebtn span{display:none} }
+.apoiebtn{position:relative;margin-right:0}.apoiebtn::after{content:"";position:absolute;inset:-4px 0}   /* o desenho fica com 36px; a área de toque, com 44px */
 .apfreq{margin:14px 0 0;padding:0;border-bottom:0}
 .apvals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0 10px}
 .apvals button{height:44px;padding:0 2px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
