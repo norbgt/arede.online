@@ -58,6 +58,7 @@ const ICON = {
   sort:'<path d="M8 4.5v15M4.5 8 8 4.5 11.5 8M16 19.5v-15M12.5 16l3.5 3.5 3.5-3.5"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  etiqueta:'<path d="M3.5 4.5a1 1 0 0 1 1-1h6.6a1 1 0 0 1 .7.3l8.6 8.6a1 1 0 0 1 0 1.4l-6.6 6.6a1 1 0 0 1-1.4 0l-8.6-8.6a1 1 0 0 1-.3-.7z"/><circle cx="8" cy="8" r="1.3"/>',
   people:'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.5" cy="8.5" r="2.5"/><path d="M16 13.6c2.4 0 4.2 1.6 4.6 4.6"/>',
   lapis:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
   tatmaq:'<path d="M3.500 5H16a4 4 0 0 1 4 4v3.500h-6.500V9.500h-10z"/><path d="M6.500 9.500V14"/><path d="M4.500 14h4l-2 7z"/><path d="M16.800 12.500V16"/>',
@@ -2590,12 +2591,21 @@ const MSGS = {ses:null, pede:0};
 /* ORÇAMENTO NA CONVERSA (18/11, Amanda): a página envia um cartão de orçamento; o cliente aceita ou pede ajuste ali mesmo.
    Só o aceite fixa o valor combinado (o vínculo). Depois do aceite, o próximo passo é a página propor o horário. */
 const ORC = {l:null, pede:0};
+/* 18/11 (Amanda): etiquetas próprias de quem atende, para organizar as conversas da página. Só a própria pessoa vê; o cliente nunca. */
+const ETQ = {l:null, pede:0, ex:new Map()};   /* ex: etiquetas tiradas nesta visita; seguem na folha para dar para voltar atrás */
+function etqCarrega(){ if (!SB || !ME.user || ETQ.pede) return; ETQ.pede = 1; SB.from("conversa_etiquetas").select("pedido_id,nome").then(({data})=>{ ETQ.l = data || []; ETQ.pede = 0; render(); }, ()=>{ ETQ.l = []; ETQ.pede = 0; }); }
+const etqDe = id => (ETQ.l || []).filter(e=>e.pedido_id === id).map(e=>e.nome).sort((a, b)=>a.localeCompare(b, "pt-BR"));
+const etqTodas = () => { const m = new Map(); (ETQ.l || []).forEach(e=>{ const k = e.nome.toLowerCase(), v = m.get(k) || {nome:e.nome, n:0}; v.n++; m.set(k, v); }); return [...m.values()].sort((a, b)=>b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR")); };
+const etqAtende = () => (PED.lista || []).some(pedSouPagina);
+const etqChips = l => l.map(n=>`<span class="etqchip">${esc(limpo(n))}</span>`).join("");
 const orcsDe = id => (ORC.l || []).filter(o=>o.pedido_id === id).sort((a, b)=>new Date(a.criado_em) - new Date(b.criado_em));
 const orcUltimo = id => { const l = orcsDe(id); return l[l.length - 1] || null; };
+const orcAceito = id => orcsDe(id).some(o=>o.status === "aceito");   /* com orçamento aceito, o sinal vem dele; sem orçamento (pedido pela tabela), é decidido ao marcar o horário */
 function orcCarrega(){ if (!SB || !ME.user || ORC.pede) return; ORC.pede = 1; SB.from("tat_orcamentos").select("*").order("criado_em").then(({data})=>{ ORC.l = data || []; ORC.pede = 0; render(); }, ()=>{ ORC.l = []; ORC.pede = 0; }); }
 function msgsDados(){ if (!SB || !ME.user) return false; let ok = true;
   if (!PED.lista){ ok = false; if (!MSGS.ped){ MSGS.ped = 1; pedCarrega().then(()=>{ MSGS.ped = 0; render(); }); } }
   if (!ORC.l){ ok = false; orcCarrega(); }
+  if (!ETQ.l && PED.lista && etqAtende()) etqCarrega();
   if (!MSGS.ses){ ok = false; if (!MSGS.pede){ MSGS.pede = 1; SB.from("tat_sessoes").select("*").then(({data})=>{ MSGS.ses = data || []; MSGS.pede = 0; render(); }, ()=>{ MSGS.pede = 0; }); } }
   return ok; }
 function msgSituacao(x){ const eu = pedSouPagina(x), l = (MSGS.ses || []).filter(y=>y.pedido_id === x.id && y.status !== "cancelada"), p = pedPagina(x);
@@ -2617,13 +2627,13 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
-    + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
+    + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${eu ? (l => `<button class="convetq" type="button" data-act="etqabre" data-id="${id}" aria-label="${l.length ? "Etiquetas: " + esc(l.join(", ")) + ". Editar" : "Adicionar etiqueta"}">${ic("etiqueta","sm")}${l.length ? etqChips(l) : `<span class="etqvazio">Adicionar etiqueta</span>`}</button>`)(etqDe(id)) : ""}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
       ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`}))
         .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
       <div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Toque no + para enviar o orçamento: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
+      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? "Toque no + para enviar o orçamento." : "O orçamento da página aparece aqui para você aceitar ou pedir ajuste."}</p>`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -2688,19 +2698,20 @@ function sesHTML(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "
    cada checkout registra o valor pago daquela sessão; o sinal entra no 1º checkout. */
 function pedProgresso(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "";
   const l = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada"), pago = l.reduce((t, y)=>t + (+y.valor_pago || 0), 0), feitas = l.filter(y=>y.checkout_em).length, prev = Math.max(+x.sessoes_prev || 1, l.length), tot = +x.valor_combinado || 0;
-  return `${tot ? `<div class="finbar" style="margin:10px 0 6px"><i style="width:${Math.min(100, Math.round(pago*100/tot))}%;background:var(--ok)"></i></div><span class="pedprog"><span>Pago ${finBRL(pago)} de ${finBRL(tot)}</span><span>${feitas} de ${prev} ${feitas === 1 ? "feita" : "feitas"}</span></span>` : ""}
-    ${eu ? `<button class="btn sm" type="button" data-act="orcenvia" data-id="${x.id}" style="align-self:flex-start;margin-top:12px">${tot ? "Enviar orçamento novo" : "Enviar orçamento"}</button>` : ""}`; }
+  return `${tot ? `<div class="finbar" style="margin:10px 0 6px"><i style="width:${Math.min(100, Math.round(pago*100/tot))}%;background:var(--ok)"></i></div><span class="pedprog"><span>Pago ${finBRL(pago)} de ${finBRL(tot)}</span><span>${feitas} de ${prev} ${feitas === 1 ? "feita" : "feitas"}</span></span>` : ""}`; }
 const sesSug = (x, y) => { const tot = +(x && x.valor_combinado) || 0; if (!tot) return sesComb(x, y);
   const l = (SES.pedido[x.id] || []).filter(z=>z.status !== "cancelada"), pago = l.filter(z=>z.id !== y.id).reduce((t, z)=>t + (+z.valor_pago || 0), 0), rest = Math.max(1, (+x.sessoes_prev || 1) - l.filter(z=>z.checkout_em && z.id !== y.id).length);
   return Math.max(0, Math.round((tot - pago) / rest * 100) / 100) || null; };
+/* 18/11 (Amanda): o sinal é decidido no orçamento. O mesmo campo serve ao horário marcado sem orçamento (pedido pela tabela). */
+const sinalCampo = sv => { const on = sv != null; return `<div class="setting l1 oesinal"><span class="t"><b>Cobrar sinal</b><small>Valor adiantado para reservar o horário. Faz parte do total.</small></span><button class="switch" type="button" role="switch" data-act="oesinal" aria-checked="${on}" aria-label="Cobrar sinal"></button></div>
+      <div class="field" id="oesinalf"${on ? "" : " hidden"}><label for="oesinalv">Valor do sinal (R$)</label><input id="oesinalv" inputmode="decimal" maxlength="14" required value="${on ? String((+sv).toFixed(2)).replace(".", ",") : ""}"></div>`; };
+const sinalLido = () => { const b = $("[data-act=oesinal]"); return b && b.getAttribute("aria-checked") === "true" ? (finValor($("#oesinalv").value) || 0) : null; };   /* null: sem sinal; 0: ligado e sem valor */
 function sheetOrcEnvia(x){ const o = orcUltimo(x.id); openSheet(shead(o && o.status === "proposto" ? "Trocar orçamento" : "Enviar orçamento") + `<p class="lnote osub">Vai como um cartão na conversa. ${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste ali, e só o aceite vale como combinado.</p>
     <div class="row" style="gap:10px"><div class="field" style="flex:2"><label for="oevalor">Valor total (R$)</label><input id="oevalor" inputmode="decimal" maxlength="14" required value="${o ? String((+o.valor).toFixed(2)).replace(".", ",") : x.valor_combinado ? String((+x.valor_combinado).toFixed(2)).replace(".", ",") : finValor(x.preco) ? String(finValor(x.preco).toFixed(2)).replace(".", ",") : ""}"></div>
       <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" required value="${o ? +o.sessoes : +x.sessoes_prev || 1}"></div></div>
     ${(()=>{ const pg = PAGS.lista.find(y=>y.id === x.pagina_id), M = MODELOS[modeloDe(pg)] || {}, l = ((tatDe(pg) || {}).estilos || []).length ? tatDe(pg).estilos : (M.esp || []);
       return l.length ? `<div class="field"><label for="oeestilo">${M.espRot === "Estilos" ? "Estilo do trabalho" : (M.espRot || "Tipo do trabalho")} (opcional)</label><select id="oeestilo"><option value="">Não informar</option>${l.map(e=>`<option${e === x.estilo ? " selected" : ""}>${esc(e)}</option>`).join("")}</select><small class="hint">Entra no passaporte de quem foi atendido.</small></div>` : ""; })()}
-    ${(()=>{ const sv = o ? o.sinal : null, on = sv != null;   /* 18/11 (Amanda): o sinal é decidido no orçamento */
-      return `<div class="setting l1 oesinal"><span class="t"><b>Cobrar sinal</b><small>Valor adiantado para reservar o horário. Faz parte do total.</small></span><button class="switch" type="button" role="switch" data-act="oesinal" aria-checked="${on}" aria-label="Cobrar sinal"></button></div>
-      <div class="field" id="oesinalf"${on ? "" : " hidden"}><label for="oesinalv">Valor do sinal (R$)</label><input id="oesinalv" inputmode="decimal" maxlength="14" required value="${on ? String((+sv).toFixed(2)).replace(".", ",") : ""}"></div>`; })()}
+    ${sinalCampo(o ? o.sinal : null)}
     <div class="field"><label for="oenota">O que está incluído (opcional)</label><textarea id="oenota" rows="2" maxlength="300" placeholder="Retoque, material, tempo de cada sessão">${o && o.nota ? esc(o.nota) : ""}</textarea></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}" data-trava>Enviar na conversa</button>`, "Orçamento"); }
 const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
@@ -2727,6 +2738,31 @@ function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); co
     l.filter(y=>y.status === "verificada" && !y.avaliada).forEach(y=>out.push(["sesavalia", `data-s="${y.id}"`, "star", "Avaliar", "Conta para a reputação da página"]));
   }
   return out; }
+function sheetEtq(x){ const minhas = etqDe(x.id), todas = etqTodas(), mk = new Set(minhas.map(n=>n.toLowerCase()));
+  [...minhas, ...ETQ.ex.values()].forEach(n=>{ if (!todas.some(t=>t.nome.toLowerCase() === n.toLowerCase())) todas.push({nome:n, n:0}); });
+  openSheet(shead("Etiquetas") + `<p class="lnote osub">Só você vê. Cada etiqueta vira um filtro em Notificações.</p>
+    ${todas.length ? `<div class="etqopts" role="group" aria-label="Suas etiquetas">${todas.map(t=>`<button class="etqopt" type="button" data-act="etqliga" data-id="${x.id}" data-n="${esc(t.nome)}" aria-pressed="${mk.has(t.nome.toLowerCase())}">${mk.has(t.nome.toLowerCase()) ? ic("check","sm") : ""}${esc(limpo(t.nome))}</button>`).join("")}</div>` : ""}
+    <div class="field"><label for="etqnova">Nova etiqueta</label><input id="etqnova" maxlength="24" required placeholder="Retoque, VIP, Indicação"><small class="hint">Até 5 por conversa.</small></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="etqcria" data-id="${x.id}" data-trava>Criar e marcar esta conversa</button>
+    ${etqTodas().length ? `<button class="btn ghost block" type="button" data-act="etqedita" data-id="${x.id}" style="margin-top:8px">Editar etiquetas</button>` : ""}`, "Etiquetas"); }
+function sheetEtqLista(x){ const l = etqTodas();
+  openSheet(shead("Editar etiquetas") + (l.length ? `<div class="list">${l.map(t=>`<button class="setting l1" type="button" data-act="etquma" data-id="${x.id}" data-n="${esc(t.nome)}"><span class="t"><b>${esc(limpo(t.nome))}</b><small>${t.n} ${t.n === 1 ? "conversa" : "conversas"}</small></span>${ic("back","sm flip")}</button>`).join("")}</div>` : `<p class="empty">Nenhuma etiqueta.</p>`)
+    + `<button class="btn ghost block" type="button" data-act="etqabre" data-id="${x.id}" style="margin-top:12px">Voltar</button>`, "Editar etiquetas"); }
+function sheetEtqUma(x, nome){ const t = etqTodas().find(y=>y.nome.toLowerCase() === nome.toLowerCase()); if (!t) return sheetEtqLista(x);
+  openSheet(shead("Etiqueta") + `<div class="field"><label for="etqnome">Nome</label><input id="etqnome" maxlength="24" required value="${esc(t.nome)}"><small class="hint">Muda em ${t.n === 1 ? "1 conversa" : t.n + " conversas"}.</small></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="etqsalva" data-id="${x.id}" data-n="${esc(t.nome)}" data-trava>Salvar</button>
+    <button class="btn ghost block perigo" type="button" data-act="etqapaga" data-id="${x.id}" data-n="${esc(t.nome)}" style="margin-top:8px">Apagar de todas as conversas</button>
+    <button class="btn ghost block" type="button" data-act="etqedita" data-id="${x.id}" style="margin-top:8px">Voltar</button>`, "Etiqueta"); }
+async function etqEdita(de, para){ const k = de.toLowerCase(), {error} = await SB.rpc("conversa_etiqueta_edita", {p_de:de, p_para:para}); if (error) return msgErr(error);
+  ETQ.l = para ? (ETQ.l || []).map(e=>e.nome.toLowerCase() === k ? {...e, nome:para} : e) : (ETQ.l || []).filter(e=>e.nome.toLowerCase() !== k); ETQ.ex.delete(k);
+  if (NOTIF.f && NOTIF.f.toLowerCase() === "etq:" + k) NOTIF.f = para ? "etq:" + para : "conversas"; return null; }
+async function etqMuda(x, nome, liga){ const k = nome.toLowerCase(), antes = (ETQ.l || []).slice();
+  ETQ.l = liga ? antes.concat([{pedido_id:x.id, nome}]) : antes.filter(e=>!(e.pedido_id === x.id && e.nome.toLowerCase() === k));
+  const {error} = await SB.rpc("conversa_etiqueta", {p_pedido:x.id, p_nome:nome, p_liga:liga});
+  if (error){ ETQ.l = antes; return msgErr(error); }
+  if (!liga) ETQ.ex.set(k, nome);
+  if (!liga && NOTIF.f && NOTIF.f.toLowerCase() === "etq:" + k && !etqTodas().some(t=>t.nome.toLowerCase() === k)) NOTIF.f = "tudo";
+  return null; }
 function sheetConvMais(x, eu){ const l = convMais(x, eu);
   openSheet(shead("Nesta conversa") + `<div class="list">${l.map(([a, at, i, t, sub])=>`<button class="setting l1" type="button" data-act="convfaz" data-a="${a}" ${at}><span class="cmic" aria-hidden="true">${ic(i)}</span><span class="t"><b>${t}</b><small>${sub}</small></span>${ic("back","sm flip")}</button>`).join("")}</div>`, "Nesta conversa"); }
 function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", ses = tat ? "sessões" : "horários", n = +o.sessoes || 1, ult = orcUltimo(x.id), vivo = ult && ult.id === o.id;
@@ -2744,12 +2780,12 @@ function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tat
     ${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}${ac ? `<div class="sesac">${ac}</div>` : ""}<small class="orcq">${quando(o.criado_em)}</small></div>`; }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-  openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
+  openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">${esc(limpo(x.cliente_nome || "A cliente"))} recebe a proposta na conversa e confirma.</p>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date" required></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time" required></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
       </div>
-    ${sesDoPedido(x.id).length ? "" : x.valor_combinado ? (x.sinal_combinado != null ? `<p class="lnote">Sinal combinado no orçamento: ${finBRL(+x.sinal_combinado)}.</p>` : "")
-      : `<div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>`}
+    ${sesDoPedido(x.id).length ? "" : orcAceito(x.id) ? (x.sinal_combinado != null ? `<p class="lnote">Sinal combinado no orçamento: ${finBRL(+x.sinal_combinado)}.</p>` : "")
+      : sinalCampo(null)}
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}" data-trava>Propor</button>`, "Marcar"); }
 async function sheetSesQR(y){ if (!y.codigo && sesJanela(y)){ try{ const {data} = await SB.rpc("tat_sessao_codigo", {p_sessao:y.id}); if (data) y.codigo = data; }catch(e){} }   /* 15/11: o código fica no servidor; só a página o recebe */
   const url = location.origin + location.pathname + "#checkin-" + y.id + "-" + y.codigo, ok = sesJanela(y), cod = String(y.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
@@ -4719,6 +4755,14 @@ function mockSB(o = {}){
       let e = a.p_id && tab("cultura_eventos").find(x=>x.id === a.p_id); if (!e){ e = {id:novoId(), pagina_id:a.p_pagina}; tab("cultura_eventos").push(e); }
       Object.assign(e, {tipo:a.p_tipo, titulo:a.p_titulo, descricao:a.p_descricao, inicio:a.p_inicio, fim:a.p_fim, local:a.p_local}); salva(); return e.id; },
     evento_apaga:a=>{ const l = tab("cultura_eventos"), i = l.findIndex(x=>x.id === a.p_id); if (i >= 0) l.splice(i, 1); salva(); return true; },
+    conversa_etiqueta:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só quem atende pela página usa etiquetas nesta conversa"};
+      const l = tab("conversa_etiquetas"), n = String(a.p_nome || "").replace(/\s+/g, " ").trim(), k = n.toLowerCase();
+      if (!a.p_liga){ for (let i = l.length - 1; i >= 0; i--) if (l[i].pedido_id === x.id && l[i].nome.toLowerCase() === k) l.splice(i, 1); salva(); return false; }
+      if (l.some(e=>e.pedido_id === x.id && e.nome.toLowerCase() === k)) return true;
+      if (l.filter(e=>e.pedido_id === x.id).length >= 5) throw {message:"valor: cada conversa leva até 5 etiquetas"};
+      const ja = l.find(e=>e.dono === eu() && e.nome.toLowerCase() === k); l.push({pedido_id:x.id, dono:eu(), nome:ja ? ja.nome : n, criado_em:agora()}); salva(); return true; },
+    conversa_etiqueta_edita:a=>{ const l = tab("conversa_etiquetas"), k = String(a.p_de || "").toLowerCase(); let n = 0;
+      for (let i = l.length - 1; i >= 0; i--) if (l[i].dono === eu() && l[i].nome.toLowerCase() === k){ n++; if (a.p_para) l[i].nome = a.p_para; else l.splice(i, 1); } salva(); return n; },
     orc_envia:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só a página envia o orçamento"};
       tab("tat_orcamentos").forEach(o=>{ if (o.pedido_id === x.id && o.status === "proposto"){ o.status = "substituido"; o.respondido_em = agora(); } });
       const id = novoId(); tab("tat_orcamentos").push({id, pedido_id:x.id, valor:+a.p_valor, sessoes:Math.max(1, Math.min(20, +a.p_sessoes || 1)), nota:a.p_nota || null, estilo:a.p_estilo || null, sinal:a.p_sinal > 0 ? +a.p_sinal : null, status:"proposto", criado_em:agora(), respondido_em:null});
@@ -4911,35 +4955,38 @@ async function notifCarrega(){ if (!$("#nlist")) return; if (!SB || !ME.user) re
 function notifPinta(){ if (route() === "notificacoes" || route() === "conversas"){ const y = scrollY; render(); scrollTo(0, y); } }
 const notifQuando = d => { const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? "agora" : m < 60 ? "há " + m + " min" : m < 1440 ? "há " + Math.round(m/60) + " h" : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", ""); };
 /* o cartão único */
-const ncard = ({tag, attrs, marca, titulo, texto, meta, acao, nova}) => `<${tag} class="ncard${nova ? " nova" : ""}" ${attrs}>${marca}<span class="ntx"><b>${titulo}</b>${texto ? `<span>${texto}</span>` : ""}<small>${meta}</small></span>${acao ? `<span class="pgsit ${acao[1]} nacao">${acao[0]}</span>` : nova ? `<span class="nponto" aria-label="Nova"></span>` : ""}</${tag}>`;
+const ncard = ({tag, attrs, marca, titulo, texto, meta, acao, nova, etq}) => `<${tag} class="ncard${nova ? " nova" : ""}" ${attrs}>${marca}<span class="ntx"><b>${titulo}</b>${texto ? `<span>${texto}</span>` : ""}<small>${meta}</small>${etq && etq.length ? `<span class="netqs">${etqChips(etq)}</span>` : ""}</span>${acao ? `<span class="pgsit ${acao[1]} nacao">${acao[0]}</span>` : nova ? `<span class="nponto" aria-label="Nova"></span>` : ""}</${tag}>`;
 function convCard(x){ const p = pedPagina(x), eu = pedSouPagina(x), o = eu ? {nome:x.cliente_nome || "Cliente", sigla:siglaDe(x.cliente_nome || "C"), cor:"#5B6B7A", pessoa:true} : (ORG["pg-" + p.id] || {nome:p.nome || "Página", sigla:siglaDe(p.nome || "P"), cor:"#888"});
   const st = msgSituacao(x), nova = convNaoLida(x.id);
   const aba = st && /^(Avaliar|Confirmar horário|Encerrar atendimento)$/.test(st[0]) ? "atendimento" : "conversa";   /* abre onde está a ação: avaliar, confirmar horário, encerrar e orçamento ficam em Atendimento */
   return ncard({tag:"button", attrs:`type="button" data-act="convabre" data-id="${x.id}" data-tab="${aba}"`, marca:avatar(o), titulo:esc(limpo(eu ? x.cliente_nome || "Cliente" : p.nome || "Página")),
-    texto:esc(pedResumo(x)) + (eu ? ` · ${esc(limpo(p.nome || ""))}` : ""), meta:(x.status === "fechado" ? "Encerrada" : "Conversa") + " · " + notifQuando(x.atualizado_em), acao:st || (nova ? ["Mensagem nova","ok"] : null), nova}); }
+    texto:esc(pedResumo(x)) + (eu ? ` · ${esc(limpo(p.nome || ""))}` : ""), meta:(x.status === "fechado" ? "Encerrada" : "Conversa") + " · " + notifQuando(x.atualizado_em), acao:st || (nova ? ["Mensagem nova","ok"] : null), nova, etq:eu ? etqDe(x.id) : []}); }
 function avisoCard(x){ const t = x.titulo || x.texto || "Aviso", tx = x.titulo ? x.texto : "";   /* sem título, o texto vira o título */
   return ncard({tag:"button", attrs:`type="button" data-act="notifabre" data-id="${x.id}"`, marca:`<span class="nic" aria-hidden="true">${ic(NOTIF_IC[x.tipo] || "info","sm")}</span>`,
   titulo:esc(t), texto:tx ? esc(tx) : "", meta:"Aviso · " + notifQuando(x.criada_em), nova:!x.lida_em}); }
 function screenNotif(f){ if (f) NOTIF.f = f; f = NOTIF.f || "tudo";
+  const etqF = /^etq:/.test(f) ? f.slice(4).toLowerCase() : null, minhasEtq = ME.user && etqAtende() ? etqTodas() : [];
+  if (etqF && ETQ.l && !minhasEtq.some(t=>t.nome.toLowerCase() === etqF)){ f = NOTIF.f = "conversas"; }
   const topo = header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Notificações</h1><div class="spacer"></div>
-    ${ME.user && f !== "conversas" && avisosNaoLidos() ? `<button class="linkbtn" type="button" data-act="notiftodas">Marcar como lidas</button>` : ""}</div>`);
+    ${ME.user && f !== "conversas" && !/^etq:/.test(f) && avisosNaoLidos() ? `<button class="linkbtn" type="button" data-act="notiftodas">Marcar como lidas</button>` : ""}</div>`);
   if (!ME.user) return topo + `<div class="container"><p class="nvazio">Entre na sua conta para ver suas notificações e conversas.</p><button class="btn primary block" type="button" data-act="acessar">Entrar ou criar conta</button></div>`;
   const okC = msgsDados(), convs = (PED.lista || []).slice(), avisos = (NOTIF.lista || []).filter(n=>!convDoLink(n.link));
   const nC = convs.filter(convAtencao).length, nA = avisos.filter(n=>!n.lida_em).length;
-  const pil = (k, nm, n) => `<button class="rdf" type="button" data-act="notiff" data-f="${k}" aria-pressed="${f === k}">${nm}${n ? `<span class="rdn">${n > 99 ? "99+" : n}</span>` : ""}</button>`;
+  const pil = (k, nm, n, e) => `<button class="rdf${e ? " rdetq" : ""}" type="button" data-act="notiff" data-f="${esc(k)}" aria-pressed="${f.toLowerCase() === k.toLowerCase()}">${e ? ic("etiqueta","sm") : ""}${nm}${n ? `<span class="rdn">${n > 99 ? "99+" : n}</span>` : ""}</button>`;
   const quando = it => new Date(it.c ? it.x.atualizado_em : it.x.criada_em).getTime();
   let lista = [];
-  if (f !== "avisos") lista = lista.concat(convs.map(x=>({c:1, x})));
-  if (f !== "conversas") lista = lista.concat(avisos.map(x=>({c:0, x})));
+  const fe = /^etq:/.test(f) ? f.slice(4).toLowerCase() : null;
+  if (f !== "avisos") lista = lista.concat(convs.filter(x=>!fe || etqDe(x.id).some(n=>n.toLowerCase() === fe)).map(x=>({c:1, x})));
+  if (f !== "conversas" && !fe) lista = lista.concat(avisos.map(x=>({c:0, x})));
   const espera = lista.filter(it=>it.c && convAtencao(it.x)).sort((a, b)=>quando(b) - quando(a)), resto = lista.filter(it=>!(it.c && convAtencao(it.x))).sort((a, b)=>quando(b) - quando(a));
   const card = it => it.c ? convCard(it.x) : avisoCard(it.x);
-  const carregando = (f !== "avisos" && !okC) || (f !== "conversas" && !NOTIF.lista);
-  const vazio = f === "conversas" ? "Nenhuma conversa ainda." : f === "avisos" ? "Nenhum aviso por enquanto." : "Nada por aqui ainda.";
-  return topo + `<div class="container"><div class="lvlist rdfil nfil" role="group" aria-label="Mostrar">${pil("tudo","Tudo", 0)}${pil("conversas","Conversas", nC)}${pil("avisos","Avisos", nA)}</div>
+  const carregando = (f !== "avisos" && !okC) || (f !== "conversas" && !fe && !NOTIF.lista);
+  const vazio = fe ? "Nenhuma conversa com esta etiqueta." : f === "conversas" ? "Nenhuma conversa ainda." : f === "avisos" ? "Nenhum aviso por enquanto." : "Nada por aqui ainda.";
+  return topo + `<div class="container"><div class="lvlist rdfil nfil" role="group" aria-label="Mostrar">${pil("tudo","Tudo", 0)}${pil("conversas","Conversas", nC)}${pil("avisos","Avisos", nA)}${minhasEtq.map(t=>pil("etq:" + t.nome, esc(limpo(t.nome)), convs.filter(x=>convAtencao(x) && etqDe(x.id).some(n=>n.toLowerCase() === t.nome.toLowerCase())).length, 1)).join("")}</div>
     <div id="nlist">${carregando && !lista.length ? `<p class="nvazio">Carregando…</p>` : !lista.length ? `<p class="nvazio">${vazio}</p>`
       : (espera.length ? `<h2 class="nsec">Esperando você</h2><div class="nlist">${espera.map(card).join("")}</div>` : "")
       + (resto.length ? `${espera.length ? `<h2 class="nsec">Recentes</h2>` : ""}<div class="nlist">${resto.map(card).join("")}</div>` : "")}</div>
-    ${f === "conversas" ? `<p class="lnote nnota">${ic("message","sm")} As conversas começam com um pedido de orçamento a uma página. Ninguém manda mensagem solta para você.</p>`
+    ${fe ? `<p class="lnote nnota">${ic("etiqueta","sm")} Só você vê suas etiquetas. Para mudar, abra a conversa.</p>` : f === "conversas" ? `<p class="lnote nnota">${ic("message","sm")} As conversas começam com um pedido de orçamento a uma página. Ninguém manda mensagem solta para você.</p>`
       : `<div class="list"><button class="setting l1" type="button" data-act="notifprefs"><span class="t"><b>Escolher o que receber</b><small>Você decide quais avisos quer ver</small></span>${ic("back","sm flip")}</button></div>`}</div>`; }
 async function notifPrefs(){ if (!SB || !ME.user) return A.acessar();
   try{ const [t, p] = await Promise.all([SB.from("notif_tipos").select("chave,grupo,nome,descricao,padrao,ordem").eq("existe", true).order("ordem"), SB.from("notif_prefs").select("tipo,quer")]);
@@ -6934,7 +6981,9 @@ const A = {
   sescria: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), d = $("#sesdia").value, h = $("#seshora").value; if (!x) return;
     if (!d || !h) return formErro("Escolha o dia e a hora."); const quando0 = new Date(d + "T" + h + ":00");
     if (quando0.getTime() < Date.now() - 36e5) return formErro("Escolha um horário que ainda não passou.");
-    ocupado(b, true, "Propondo…"); const sn = sesDoPedido(x.id).length ? null : x.valor_combinado ? (x.sinal_combinado != null ? +x.sinal_combinado : null) : $("#sessinal") && $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
+    const sn = sesDoPedido(x.id).length ? null : orcAceito(x.id) ? (x.sinal_combinado != null ? +x.sinal_combinado : null) : sinalLido();
+    if (sn === 0) return formErro("Informe o valor do sinal."); const teto = +x.valor_combinado || finValor(x.preco); if (sn && teto && sn > teto) return formErro("O sinal não pode passar do valor total.");
+    ocupado(b, true, "Propondo…");
     const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:x.valor_combinado ? finBRL(x.valor_combinado) : (x.preco || null), sinal:sn, status:"proposta"});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await sesSistema(x.id, `Horário proposto: ${dataHora(quando0)}.`); ocupado(b, false); closeSheet(); toast("Proposta enviada na conversa."); sesRecarrega(); },
@@ -7037,17 +7086,35 @@ const A = {
   orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
   orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
-    const comSinal = $("[data-act=oesinal]") && $("[data-act=oesinal]").getAttribute("aria-checked") === "true", sn = comSinal ? finValor($("#oesinalv").value) : null;
-    if (comSinal && !(sn > 0)) return formErro("Informe o valor do sinal."); if (sn && sn > v) return formErro("O sinal não pode passar do valor total.");
+    const sn = sinalLido(); if (sn === 0) return formErro("Informe o valor do sinal."); if (sn && sn > v) return formErro("O sinal não pode passar do valor total.");
     ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null, nota = ($("#oenota").value || "").trim() || null;
     const {error} = await SB.rpc("orc_envia", {p_pedido:x.id, p_valor:v, p_sessoes:n, p_nota:nota, p_estilo:est, p_sinal:sn}); ocupado(b, false); if (error) return formErro(msgErr(error));
     if (x.status === "aberto") x.status = "respondido"; ORC.l = null; closeSheet(); S.convTab = "conversa"; toast("Orçamento enviado na conversa."); orcCarrega(); },
+  etqabre: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetEtq(x); },
+  etqliga: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const liga = b.getAttribute("aria-pressed") !== "true";
+    if (liga && etqDe(x.id).length >= 5) return formErro("Cada conversa leva até 5 etiquetas. Tire uma para marcar outra.");
+    b.disabled = true; const e = await etqMuda(x, b.dataset.n, liga); if (e){ b.disabled = false; return formErro(e); } sheetEtq(x); render(); },
+  etqcria: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const n = ($("#etqnova").value || "").replace(/\s+/g, " ").trim();
+    if (!n) return formErro("Escreva o nome da etiqueta."); if (n.length > 24) return formErro("Use até 24 caracteres.");
+    const ja = etqTodas().find(t=>t.nome.toLowerCase() === n.toLowerCase()), nome = ja ? ja.nome : n;
+    if (etqDe(x.id).some(t=>t.toLowerCase() === nome.toLowerCase())) return formErro("Esta conversa já tem essa etiqueta.");
+    if (etqDe(x.id).length >= 5) return formErro("Cada conversa leva até 5 etiquetas. Tire uma para marcar outra.");
+    if (!ja && etqTodas().length >= 20) return formErro("Você já tem 20 etiquetas. Apague uma para criar outra.");
+    ocupado(b, true, "Criando…"); const e = await etqMuda(x, nome, true); ocupado(b, false); if (e) return formErro(e); sheetEtq(x); render(); },
+  etqedita: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetEtqLista(x); },
+  etquma: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetEtqUma(x, b.dataset.n); },
+  etqsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const n = ($("#etqnome").value || "").replace(/\s+/g, " ").trim(), de = b.dataset.n;
+    if (!n) return formErro("Escreva o nome da etiqueta."); if (n === de){ return sheetEtqLista(x); }
+    if (n.toLowerCase() !== de.toLowerCase() && etqTodas().some(t=>t.nome.toLowerCase() === n.toLowerCase())) return formErro("Você já tem uma etiqueta com esse nome.");
+    ocupado(b, true, "Salvando…"); const e = await etqEdita(de, n); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta renomeada."); sheetEtqLista(x); render(); },
+  etqapaga: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar: apagar de todas"; return; }
+    ocupado(b, true, "Apagando…"); const e = await etqEdita(b.dataset.n, null); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta apagada."); etqTodas().length ? sheetEtqLista(x) : sheetEtq(x); render(); },
   convmais: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetConvMais(x, pedSouPagina(x)); },
   convfaz: b => { const a = b.dataset.a; closeSheet(); setTimeout(()=>{ if (A[a]) A[a](b); }, 60); },
   orcver: () => { const c = [...document.querySelectorAll(".orccard:not(.velho)")].pop(); if (c){ c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add("pisca"); setTimeout(()=>c.classList.remove("pisca"), 1600); } },
   orcaceita: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), o = (ORC.l || []).find(z=>z.id === b.dataset.o); if (!x || !o) return; const p = pedPagina(x), n = +o.sessoes || 1;
     openSheet(shead("Aceitar orçamento") + `<div class="orccard"><b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? n + " sessões" : "1 sessão"} com ${esc(limpo(p.nome || "a página"))}</small>${o.sinal != null ? `<small class="orcsinal">Sinal de ${finBRL(+o.sinal)} para reservar o horário</small>` : ""}${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}</div>
-      <p class="lnote">Ao aceitar, vocês combinam este valor. O pagamento é acertado direto com ${esc(limpo(p.nome || "a página"))}, fora da rede.online. ${mod(p, "agenda") ? "O próximo passo é a página propor o horário, e você confirma na conversa." : ""}</p>
+      <p class="lnote">O pagamento é acertado direto com ${esc(limpo(p.nome || "a página"))}, fora da rede.online.${mod(p, "agenda") ? " Depois, a página propõe o horário." : ""}</p>
       <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcaceitaok" data-o="${o.id}">Aceitar orçamento</button><button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Agora não</button>`, "Aceitar orçamento"); },
   orcaceitaok: async b => { ocupado(b, true, "Aceitando…"); const {error} = await SB.rpc("orc_responde", {p_orc:b.dataset.o, p_aceita:true}); ocupado(b, false); if (error) return formErro(msgErr(error));
     closeSheet(); ORC.l = null; PED.msgs = {}; PED.lista = null; toast("Orçamento aceito. O valor está combinado."); orcCarrega(); pedCarrega().then(render); },
@@ -7475,7 +7542,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 11:01";
+const VERSAO = "v1 registrada · 18/11 11:33";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
