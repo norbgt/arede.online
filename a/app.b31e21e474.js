@@ -2849,7 +2849,7 @@ function paginaCorpoTab(o, p, t){
     ${o.cnpj ? `<button class="setting l1" type="button" data-act="cnpjinfo" style="width:100%"><span class="t"><b>CNPJ conferido</b><small>A curadoria conferiu o CNPJ desta página</small></span>${ic("back","sm flip")}</button>` : ""}
     ${o.site ? `<a class="setting l1" href="${esc(o.site)}" target="_blank" rel="noopener nofollow"><span class="t"><b>Site</b><small>${esc(o.site.replace(/^https:\/\//, ""))}</small></span>${ic("ext","sm")}</a>` : ""}
     ${o.contato ? `<div class="setting l1"><span class="t"><b>Contato</b><small>${esc(o.contato)}</small></span></div>` : ""}
-    <div class="setting l1"><span class="t"><b>Responsabilidade declarada</b><small>${esc(DECL_PAGINA)}</small></span></div></div>`; }
+    <details class="setting l1 decl2"><summary><b>Responsabilidade declarada</b>${ic("chev","sm")}</summary><small>${esc(DECL_PAGINA)}</small></details></div>`; }
   if (t === "pastas"){ if (S.pgPasta && S.pgPasta.p === p.id) return pgPastaHTML(o, p);   /* 15/11: como no perfil, o feed numa aba e as pastas, em seções, noutra */
     if (!PAGS.secoes[p.id]) return `<p class="empty">Carregando…</p>`;
     return pgSecoesHTML(p) || `<p class="empty">${pgMeu(p) ? "Organize a página em seções e pastas." : "Nada organizado em pastas ainda."}</p>`; }
@@ -2926,7 +2926,7 @@ function sheetPaginaNova(){
     <div class="field"><label for="pgcont">Contato (opcional)</label><input id="pgcont" maxlength="300" placeholder="WhatsApp, e-mail ou outro canal"></div>
     <div class="field pgcnpj" id="pgcnpjbox"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"><small class="hint">Não é obrigatório para ter vitrine. Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere, e isso dá mais credibilidade. O número só a curadoria vê.</small></div>
     <label class="chk"><input type="checkbox" id="pgnaoel"><span>Esta página <b>não</b> é de candidato, partido ou campanha eleitoral.</span></label>
-    <div class="decl"><b>Declaração de responsabilidade</b><br>${esc(DECL_PAGINA)}</div>
+    <details class="decl"><summary><b>Declaração de responsabilidade</b>${ic("chev","sm")}</summary><p>${esc(DECL_PAGINA)}</p></details>
     <label class="chk"><input type="checkbox" id="pgdecl"><span>Li e aceito a declaração. Meu nome aparece na página como responsável.</span></label>
     <p class="ferr" role="alert" hidden></p>
     <button class="btn primary block" type="button" data-act="paginacria">Enviar para a curadoria</button>
@@ -6960,7 +6960,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:35";
+const VERSAO = "v1 registrada · 17/11 21:40";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
