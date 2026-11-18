@@ -3383,7 +3383,7 @@ function decidirHTML(aba){ const tipos = aba === "eventos" ? IRJUNTO : DECIDE, t
 function orgFeed(f){ const eu = ME.user ? ME.user.id : null, nicho = !!MODELOS[f], cm = f !== "paginas" && !nicho, pg = f !== "comunidades";
   const C = !cm ? [] : CMNS.map(c=>cmnCard(ORG[c.id], c)).concat(ORGS.filter(o=>isOrg(o) && S.follow.has(o.id)).map(o=>cmnCard(o)), cmnParaVoce(ORGS.filter(o=>isOrg(o) && !S.follow.has(o.id))).map(o=>cmnCard(o)));
   const ar = PAGS.lista.filter(p=>p.status === "aprovada" && (!nicho || modeloDe(p) === f)), segue = p => p.dono === eu || S.follow.has("pg-" + p.id);
-  const P = !pg ? [] : PAGS.lista.filter(p=>p.dono === eu && p.status !== "aprovada" && (!nicho || modeloDe(p) === f)).concat(ar.filter(segue), ar.filter(p=>!segue(p))).map(pgOrgCard);
+  const P = !pg ? [] : PAGS.lista.filter(p=>p.dono === eu && p.status !== "aprovada" && (!nicho || modeloDe(p) === f)).concat(ar.filter(segue), ar.filter(p=>!segue(p))).map((p, i)=>[p, i]).sort((a, b)=>pgPrio(a[0]) - pgPrio(b[0]) || a[1] - b[1]).map(a=>pgOrgCard(a[0]));   /* 18/11: oficial e reais primeiro */
   const l = []; for (let i = 0; i < Math.max(C.length, P.length); i++){ if (i < C.length) l.push(C[i]); if (i < P.length) l.push(P[i]); }   /* uma de cada, alternando */
   return l; }
 const orgCols = () => innerWidth >= 768 ? 3 : 2;
@@ -3417,17 +3417,21 @@ const PGRAP = {tudo:[["segue","Que sigo","seguindo"],["perto","Por perto","pin"]
   orgs:[["segue","Que participo","seguindo"],["perto","Por perto","pin"],["oficiais","Oficiais","vfy"]]};
 const PGORDS = [["voce","Para você","Quem você segue primeiro, depois o que tem a ver com você"],["perto","Mais perto","Sua cidade, depois seu estado"],["maiores","Mais membros","Comunidades maiores primeiro"],["az","De A a Z","Pelo nome"]];
 function pertoDe(cid){ const R = minhaRegiao(), oc = semAcento(cid || ""); if (R.cidade.length > 2 && oc.startsWith(R.cidade)) return 2; if (R.uf && oc.endsWith(", " + R.uf.toLowerCase())) return 1; return 0; }
+const pgPrio = p => ehContaRede(p.dono) && p.status === "aprovada" ? 0 : p.status === "aprovada" && !exPagId(p.id) ? 1 : 2;
 function pgItens(t, f){ const eu = ME.user ? ME.user.id : null, l = [];
   const comOrgs = t === "tudo" || t === "orgs", comPags = t === "tudo" || t === "paginas", nicho = t === "paginas" && MODELOS[f];
   if (comOrgs){
     CMNS.forEach(c=>{ const o = ORG[c.id] || {}; l.push({k:"org", nome:c.nome, cid:o.cidade || "", tema:c.tema, membros:1, segue:true, oficial:false, h:cmnCard(o, c)}); });
     ORGS.filter(o=>isOrg(o) && S.follow.has(o.id)).forEach(o=>l.push({k:"org", nome:o.nome, cid:o.cidade, tema:o.tema, membros:o.membros || 0, segue:true, oficial:!!o.real, h:cmnCard(o)}));
-    cmnParaVoce(ORGS.filter(o=>isOrg(o) && !S.follow.has(o.id))).forEach(o=>l.push({k:"org", nome:o.nome, cid:o.cidade, tema:o.tema, membros:o.membros || 0, segue:false, oficial:!!o.real, h:cmnCard(o)})); }
+    cmnParaVoce(ORGS.filter(o=>isOrg(o) && !S.follow.has(o.id))).forEach(o=>l.push({k:"org", nome:o.nome, cid:o.cidade, tema:o.tema, membros:o.membros || 0, segue:false, oficial:!!o.real, h:cmnCard(o)}));
+    l.forEach(x=>{ x.prio = x.oficial ? 1 : 2; }); }
   const P = []; if (comPags){ const ar = PAGS.lista.filter(p=>p.status === "aprovada" && (!nicho || modeloDe(p) === f)), segue = p => p.dono === eu || S.follow.has("pg-" + p.id);
     PAGS.lista.filter(p=>p.dono === eu && p.status !== "aprovada" && (!nicho || modeloDe(p) === f)).concat(ar.filter(segue), ar.filter(p=>!segue(p)))
-      .forEach(p=>P.push({k:"pag", nome:p.nome || "", cid:p.cidade || "", tema:p.tema || "", membros:0, segue:segue(p), oficial:false, h:pgOrgCard(p)})); }
+      .forEach(p=>P.push({k:"pag", nome:p.nome || "", cid:p.cidade || "", tema:p.tema || "", membros:0, segue:segue(p), oficial:false, prio:pgPrio(p), h:pgOrgCard(p)})); }
   /* páginas e organizações uma de cada, alternando (como antes) */
   const O = l.splice(0), mix = []; for (let i = 0; i < Math.max(O.length, P.length); i++){ if (i < O.length) mix.push(O[i]); if (i < P.length) mix.push(P[i]); }
+  /* 18/11 (Amanda): enquanto há pouco conteúdo real, a página oficial vem sempre primeiro e as organizações reais vêm antes dos exemplos */
+  mix.forEach((x, i)=>{ x.ord = i; if (x.prio === undefined) x.prio = 2; }); mix.sort((a, b)=>a.prio - b.prio || a.ord - b.ord);
   if (t === "tudo"){ const part = partDestaques().filter(it=>(DECIDE.includes(it.tipo) || IRJUNTO.includes(it.tipo)) && !partFeito(it)).map(it=>{ const o = ORG[it.org] || {};
       return {k:"part", nome:it.titulo || "", cid:o.cidade || "", tema:it.tema || o.tema || "", membros:0, segue:S.follow.has(it.org), oficial:false, h:partCard(it)}; });
     const out = []; mix.forEach((x, i)=>{ out.push(x); if ((i + 1) % 3 === 0 && part.length) out.push(part.shift()); }); return out.concat(part); }
@@ -7946,7 +7950,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:20";
+const VERSAO = "v1 registrada · 18/11 19:23";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
