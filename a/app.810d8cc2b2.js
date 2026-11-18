@@ -645,7 +645,7 @@ const S = {
 if (!FTABS.some(t=>t[0]===S.tab)) S.tab = "tudo";
 /* DADOS DA CONTA NO SERVIDOR (11 nov 2026): curtidas, salvos, pastas, votos, apoios, presenças e afins seguem a conta entre aparelhos.
    Quem está fora da conta continua só com o aparelho. Ao entrar, o que já está no servidor vale; o que ainda não está sobe do aparelho. */
-const CONTA_SYNC = ["liked","saved","savedIn","pastas","secoes","shared","follow","pollVote","support","formalDone","rsvp","help","inscr","canaisSalvos","aprendido"];
+const CONTA_SYNC = ["liked","saved","savedIn","pastas","secoes","shared","follow","pollVote","support","formalDone","rsvp","help","inscr","canaisSalvos","aprendido","interesses","orgsVisiveis","publico"];   /* 18/11: interesses, comunidades no perfil e perfil público acompanham a conta */
 let CD_FILA = new Set(), CD_T = null, CD_DE = null;
 /* SEÇÕES DO PERFIL (14/11, referência Pinterest): até 3 seções, até 5 pastas em cada, com salvos e publicações.
    O cadeado da seção vale para as pastas dela; uma pasta pode ficar secreta dentro de uma seção aberta, nunca o contrário.
@@ -667,15 +667,18 @@ function vitItem(it){ if (!it) return null; const o = ORG[it.org] || {}; if (o.c
   return {id:String(it.id), tipo:it.tipo || "texto", titulo:String(it.titulo || "").slice(0, 160), tema:it.tema || undefined, org:o.nome || undefined,
     foto:https(it.foto) || https(it.poster), yt:/^[A-Za-z0-9_-]{6,20}$/.test(it.yt || "") ? it.yt : undefined, url:it.ext ? https(it.ext.url) : undefined}; }
 function vitrineMonta(){ secLimpa(); let n = 30, v;
-  do { v = {publico:!!S.publico, secoes:S.secoes.filter(x=>x.aberta).map(x=>({id:x.id, nome:x.nome,
+  const redes = (S.redes || []).filter(c=>c.tipo==="minha" && REDES[c.rede]).map(c=>({rede:c.rede, url:c.perfil || redeEndereco(c.rede, c.usuario) || ""})).filter(x=>/^https:\/\//.test(x.url));
+  const comunidades = S.orgsVisiveis ? ORGS.filter(o=>S.follow.has(o.id)).map(o=>limpo(o.nome)).slice(0, 12) : [];
+  do { v = {publico:!!S.publico, interesses:S.interesses.slice(0, MAX_INT), comunidades, redes, secoes:S.secoes.filter(x=>x.aberta).map(x=>({id:x.id, nome:x.nome,
       pastas:x.pastas.map(k=>FOLDERS.find(f=>f[0]===k)).filter(f=>f && !f[3] && f[0] !== "salvos").map(f=>({k:f[0], nome:f[1], itens:folderItems(f[0]).map(vitItem).filter(Boolean).slice(0, n)}))}))};
     n = Math.floor(n * .7); } while (JSON.stringify(v).length > 90000 && n > 2);   /* cabe no limite de 64 KB da linha */
   return v; }
 function vitrineAgenda(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return; clearTimeout(VIT_T); VIT_T = setTimeout(vitrineEnvia, 2000); }
 async function vitrineEnvia(){ if (!SB || !ME.user || CD_DE !== ME.user.id) return;
   try{ await SB.from("conta_dados").upsert({user_id:ME.user.id, chave:"vitrine", valor:vitrineMonta(), atualizada_em:new Date().toISOString()}); }catch(e){} }
-const persist = k => { store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); if (CONTA_SYNC.includes(k)) contaDadosAgenda(k); if (k === "publico") vitrineAgenda(); };
-const cdValor = k => k==="pastas" ? (store.get("pastas", []) || []) : k==="aprendido" ? apResumo() : (S[k] instanceof Set ? [...S[k]] : (S[k] || {}));
+const persist = k => { store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); if (CONTA_SYNC.includes(k)) contaDadosAgenda(k); if (VIT_CHAVES.includes(k)) vitrineAgenda(); };
+const VIT_CHAVES = ["publico","interesses","orgsVisiveis","redes","follow","secoes","pastas"];   /* o que muda o que quem visita vê */
+const cdValor = k => k==="pastas" ? (store.get("pastas", []) || []) : k==="aprendido" ? apResumo() : (S[k] instanceof Set ? [...S[k]] : Array.isArray(S[k]) || typeof S[k]==="boolean" ? S[k] : (S[k] || {}));
 function contaDadosAgenda(k){ if (!SB || !ME.user || CD_DE!==ME.user.id) return; CD_FILA.add(k); if (["saved","savedIn","secoes","pastas"].includes(k)) vitrineAgenda(); clearTimeout(CD_T); CD_T = setTimeout(contaDadosEnvia, 1200); }
 async function contaDadosEnvia(){ if (!SB || !ME.user || CD_DE!==ME.user.id || !CD_FILA.size) return; const ks = [...CD_FILA], uid = ME.user.id; CD_FILA = new Set();
   try{ const {error} = await SB.from("conta_dados").upsert(ks.map(k=>({user_id:uid, chave:k, valor:cdValor(k), atualizada_em:new Date().toISOString()})));
@@ -691,6 +694,8 @@ async function contaDadosCarrega0(){ if (!SB || !ME.user || CD_DE===ME.user.id) 
       ps.forEach(f=>{ if (!FOLDERS.some(x=>x[0]===f[0])){ FOLDERS.push([f[0], f[1], [], !!f[3]]); mudou = true; } }); return; }
     if (k==="secoes"){ if (Array.isArray(v)){ S.secoes = v.filter(x=>x && Array.isArray(x.pastas)).slice(0, MAX_SEC); store.set("secoes", S.secoes); mudou = true; } return; }
     if (k==="aprendido"){ apAplica(v); return; }
+    if (k==="interesses"){ S.interesses = Array.isArray(v) ? v.filter(t=>TEMAS.includes(t)).slice(0, MAX_INT) : S.interesses; store.set(k, S.interesses); mudou = true; return; }
+    if (k==="orgsVisiveis" || k==="publico"){ S[k] = v === true; store.set(k, S[k]); mudou = true; return; }
     if (S[k] instanceof Set) S[k] = new Set(Array.isArray(v) ? v : []); else S[k] = (v && typeof v==="object" && !Array.isArray(v)) ? v : {};
     store.set(k, S[k] instanceof Set ? [...S[k]] : S[k]); mudou = true; });
   CD_DE = uid; contaDadosEnvia(); vitrineAgenda(); if (mudou) render(); }
@@ -3496,6 +3501,16 @@ function secoesHTML(){ secLimpa();
   const fora = FOLDERS.filter(f=>!secDe(f[0]));
   return (S.secoes.length < MAX_SEC ? `<button class="btn ghost secnova secnovatopo" type="button" data-act="secnova">${ic("plus","sm")} Nova seção <small>${S.secoes.length} de ${MAX_SEC}</small></button>` : "") + S.secoes.map(bloco).join("")
     + (fora.length ? `<section class="psecao" aria-label="Pastas fora das seções"><div class="psechead"><h3>Fora das seções</h3><span class="seclock" role="img" aria-label="Só você vê" title="Só você vê">${ic("lock","sm")}</span><span class="psecn">só você vê</span></div><div class="pboards prow" role="list">${fora.map(boardHTML).join("")}</div></section>` : ""); }
+/* 18/11: a pasta que a pessoa criou pode ser renomeada, ficar secreta ou ser apagada. Apagar a pasta não apaga nada salvo: os itens voltam para Salvos. */
+const pastaMinha = k => /^p[a-z0-9]{5,}$/.test(k);
+const pastasGuarda = () => { store.set("pastas", FOLDERS.filter(f=>pastaMinha(f[0])).map(f=>[f[0], f[1], [], f[3]])); contaDadosAgenda("pastas"); vitrineAgenda(); };
+function sheetPastaEdita(k){ const f = FOLDERS.find(x=>x[0]===k); if (!f) return;
+  openSheet(shead("Editar pasta") + `<div class="rform"><label class="olbl" for="pastanome">Nome da pasta</label><input id="pastanome" class="input" type="text" maxlength="40" value="${esc(f[1])}">
+    <div class="setting l1"><span class="t"><b>Pasta secreta</b><small>Só você vê, mesmo numa seção aberta</small></span><button class="switch" type="button" role="switch" data-act="pastasec" aria-checked="${!!f[3]}" aria-label="Pasta secreta"></button></div>
+    <p id="pastamsg" class="rmsg" role="alert"></p>
+    <button class="btn primary block" type="button" data-act="pastasalva" data-f="${k}">Salvar</button>
+    <button class="btn ghost block perigo" type="button" data-act="pastaapaga" data-f="${k}" style="margin-top:8px">Apagar pasta</button>
+    <p class="lnote">Apagar a pasta não apaga o que está nela: os itens voltam para Salvos.</p></div>`, "Editar pasta"); }
 function sheetSecao(x){ const nova = !x, tit = nova ? "Nova seção" : "Editar seção", sel = new Set(x ? x.pastas : []);
   const pastas = FOLDERS.map(f=>{ const o = secDe(f[0]), outra = o && (!x || o.id!==x.id), n = folderCount(f[0]);
     return `<label class="setting secpasta"><input type="checkbox" value="${f[0]}"${sel.has(f[0]) ? " checked" : ""}><span class="t"><b>${esc(f[1])}${f[3] ? " " + ic("lock","sm") : ""}</b><small>${n} ${n===1 ? "item" : "itens"}${f[3] ? " · secreta" : ""}${outra ? " · hoje em " + esc(o.nome) : ""}</small></span></label>`; }).join("");
@@ -3539,7 +3554,7 @@ function intBody(){ const d = S.intDraft, full = d.length >= MAX_INT;
   return shead("Interesses públicos") + `<p style="color:var(--muted);font-size:14px">Escolha até ${MAX_INT} temas para mostrar no seu perfil. Eles não mudam o seu algoritmo.</p>
     <p class="intcount"><b>${d.length} de ${MAX_INT}</b>${full?" · limite atingido":""}</p>
     <div class="chips">${TEMAS.map(t=>{ const on = d.includes(t); return `<button class="chip" type="button" data-act="intchip" data-t="${t}" aria-pressed="${on}" ${!on && full?"disabled":""}>${on?ic("check","sm"):""}${t}</button>`; }).join("")}</div>
-    <div class="note">${ic("info")}<span>${S.publico ? "Seu perfil é público: qualquer pessoa vê seus interesses." : "Seu perfil é privado: só quem participa das mesmas comunidades vê seus interesses."}</span></div>
+    <div class="note">${ic("info")}<span>${S.publico ? "Seu perfil é público: quem visita vê seus interesses." : "Seu perfil é privado: seus interesses ficam só com você."}</span></div>
     <button class="btn primary block" type="button" data-act="intsave">Salvar</button>`; }
 /* PERFIL — mesma lógica do Início: uma linha de abas, uma linha de status e a mesma grade de blocos.
    Abas: Publicações (o que você publicou) · Compartilhadas · Curtidas · Salvos (pastas). */
@@ -3554,8 +3569,8 @@ const PFILT_TIT = {tudo:"Tudo o que você salvou", curtidas:"Suas curtidas", com
 /* o que pode aparecer no perfil público (Publicações e as pastas que não são secretas) e o que é sempre só seu */
 const PRIVADAS = new Set(["agenda","compartilhadas","curtidas","algoritmo"]);
 function visOf(t){
-  const pub = S.publico ? ["globe","pub","Aparece no seu perfil público"] : ["people","org","Suas comunidades veem"];
-  if (t==="publicacoes") return pub;
+  const pub = S.publico ? ["globe","pub","Aparece no seu perfil público"] : ["lock","priv","Com o perfil privado, só você vê"];
+  if (t==="publicacoes") return ["globe","pub","Todo mundo vê"];   /* 18/11: publicações são sempre públicas */
   if (t==="salvos" && !S.profFolder && (S.profFiltro || "tudo") !== "tudo") return ["lock","priv","Só você vê"];
   if (t==="salvos"){ if (S.profFolder){ const f = FOLDERS.find(x=>x[0]===S.profFolder); if (!f) return ["lock","priv","Só você vê"];
       if (f[3]) return ["lock","priv","Pasta secreta: só você vê"];
@@ -3566,7 +3581,7 @@ function visOf(t){
 const visTag = t => { const [i, c, x] = visOf(t); return `<span class="vis ${c}">${ic(i,"sm")}${x}</span>`; };
 /* cadeado ao lado de cada aba (14/11): aberto = aparece no perfil público; fechado = não aparece */
 const tabVis = aberto => `<span class="tvis" role="img" aria-label="${aberto ? "aparece no perfil público" : "não aparece no perfil público"}" title="${aberto ? "Aparece no perfil público" : "Não aparece no perfil público"}">${ic(aberto ? "cadaberto" : "lock","sm")}</span>`;
-const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(S.publico && (k==="publicacoes" || (k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha")) || (k==="passaporte" && PASS.publico)))}</button>`).join("");
+const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(k==="publicacoes" || (S.publico && ((k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha")) || (k==="passaporte" && PASS.publico))))}</button>`).join("");   /* 18/11: publicações são sempre públicas */
 function screenProfile(){
   if (S.profTab === "agenda"){ S.profFiltro = "agenda"; S.profTab = "salvos"; }   /* abas antigas viram filtros de Salvos */
   if (S.profTab === "curtidas" || S.profTab === "compartilhadas"){ S.histTipo = S.profTab; S.profTab = "algoritmo"; }   /* 15/11: agora no histórico */
@@ -3580,7 +3595,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -3681,7 +3696,7 @@ function profStatus(){ const n = profList().length, pl = (k, a, b) => `${k} ${k=
   if (S.profTab==="compartilhadas" || S.profTab==="curtidas") return `<span class="txt"><b>${pl(n,"conteúdo","conteúdos")}</b></span>${v}`;
   if (S.profTab==="algoritmo") return `<span class="txt"><b>Como o seu algoritmo funciona</b></span>${v}`;
   if (S.profFolder){ const f = FOLDERS.find(x=>x[0]===S.profFolder);
-    return `<button class="iconbtn tool" type="button" data-act="openfolder" data-f="" aria-label="Voltar para as pastas">${ic("back")}</button><span class="txt"><b>${f[1]}</b> · ${pl(n,"item","itens")}</span>${v}`; }
+    return `<button class="iconbtn tool" type="button" data-act="openfolder" data-f="" aria-label="Voltar para as pastas">${ic("back")}</button><span class="txt"><b>${esc(f[1])}</b> · ${pl(n,"item","itens")}</span>${v}${pastaMinha(f[0]) ? `<button class="iconbtn tool" type="button" data-act="pastaedita" data-f="${f[0]}" aria-label="Editar a pasta ${esc(f[1])}" title="Editar pasta">${ic("lapis")}</button>` : ""}`; }
   return "";
 }
 function profBody(){
@@ -3708,7 +3723,7 @@ function profShow(){ $$('[data-act="ptab"]').forEach(t=>t.setAttribute("aria-sel
    Engrenagem (Configurações) = como a rede funciona para você: notificações, feed, aparência, ajuda e regras. */
 const PERFIL_MOSTRA = () => `<h2 class="sectitle">O que o seu perfil mostra</h2>
     <div class="list">
-      ${switchRow("publico","Perfil público", S.publico ? "Todo mundo vê seu nome e publicações" : "Só quem participa das mesmas comunidades vê você")}
+      ${switchRow("publico","Perfil público", S.publico ? "Quem visita vê pastas, interesses e outras redes" : "Quem visita vê só publicações e selos")}
       <button class="setting l1" type="button" data-act="interesses"><span class="t"><b>Interesses públicos</b><small>${S.interesses.length} de ${MAX_INT} · aparecem no seu perfil</small></span>${ic("back","sm flip")}</button>
       ${switchRow("orgsVisiveis","Mostrar minhas comunidades no perfil","Filiação política é dado sensível")}
       <button class="setting l1" type="button" data-act="pgperfilabre"><span class="t"><b>Páginas no seu perfil</b><small>${(()=>{ const l = minhasPaginas("aprovada"), n = l.filter(p=>p.no_perfil).length; return l.length ? n + " de " + l.length + " aparecem" : "Você ainda não tem página"; })()}</small></span>${ic("back","sm flip")}</button>
@@ -3843,8 +3858,8 @@ function redeBloco(c){ const R = REDES[c.rede], url = c.perfil || redeEndereco(c
     ${temPrevia(c) ? (its.length ? `<div class="rbstrip${c.rede==="pinterest" ? " rpin" : ""}">${its.map(card).join("")}</div>` : `<p class="lnote">Carregando a prévia…</p>`) : `<p class="lnote">Só o link aparece no perfil.</p>`}</section>`; }
 function pubShow(){ $$('[data-act="pubtab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.pubTab)); { const ps = pubStatus(), pe = $("#pubstatus"); pe.innerHTML = ps; pe.hidden = !ps; } $("#pubbody").innerHTML = pubBody(); fillPublic(); }
 function visBox(){ const m = S.redes.filter(c=>c.tipo==="minha"), li = t => `<li>${t}</li>`;
-  const sim = ["Nome, iniciais e cidade", "Até " + MAX_INT + " interesses que você escolhe", "Suas publicações", ...m.map(c=>(c.destino==="link" ? "O link do seu " : "O link e a prévia do seu ") + REDES[c.rede].nome), S.publico ? "Pastas das seções abertas, menos as secretas" : "", S.orgsVisiveis ? "Comunidades de que você participa" : "", "Quantas pessoas seguem você e quantas você segue", "As páginas que você escolheu mostrar"].filter(Boolean);
-  const nao = ["Algoritmo, temas e tudo o que alimenta o seu feed", "Curtidas e compartilhadas", "Agenda: eventos e chamados", "Pastas secretas" + (S.publico ? "" : " (e, com o perfil privado, todas as pastas)"), "Perfis que você acompanha em outras redes", "Quem você segue e quem segue você", "Seu e-mail", S.orgsVisiveis ? "" : "Comunidades de que você participa (você escolheu ocultar)"].filter(Boolean);
+  const sim = ["Nome, iniciais e cidade, se você escolher mostrar", "Suas publicações e comentários", "Seus selos", S.publico ? "Até " + MAX_INT + " interesses que você escolhe" : "", ...(S.publico ? m.map(c=>"O link do seu " + REDES[c.rede].nome) : []), S.publico ? "Pastas das seções abertas, menos as secretas" : "", S.publico && S.orgsVisiveis ? "Comunidades de que você participa" : "", "Quantas pessoas seguem você e quantas você segue", "As páginas que você escolheu mostrar"].filter(Boolean);
+  const nao = ["Algoritmo, temas e tudo o que alimenta o seu feed", "Curtidas e compartilhadas", "Agenda: eventos e chamados", "Pastas secretas" + (S.publico ? "" : " e, com o perfil privado, pastas, interesses, comunidades e outras redes"), "Perfis que você acompanha em outras redes", "Quem você segue e quem segue você", "Seu e-mail", S.orgsVisiveis ? "" : "Comunidades de que você participa (você escolheu ocultar)"].filter(Boolean);
   /* 12 nov 2026: o detalhe saiu da página e abre numa janela própria, pelo selo "Perfil privado/público" */
   return `<div class="visbox"><div class="vcol pub"><h3>${ic("globe","sm")} Aparece</h3><ul>${sim.map(li).join("")}</ul></div>
     <div class="vcol priv"><h3>${ic("lock","sm")} Nunca aparece</h3><ul>${nao.map(li).join("")}</ul></div></div>
@@ -3854,7 +3869,7 @@ const perfilNums = uid => uid ? `<p class="segnum pfnums" data-segnum="${uid}" h
 const pfNumsPreenche = () => setTimeout(()=>$$(".sheet .pfnums").forEach(el=>segNumeros(el.dataset.segnum, el)), 0);
 function sheetVis(){   /* 15/11: simples. Uma escolha (público ou privado), uma frase; o resto o cadeado de cada aba já mostra */
   const op = (v, t, d) => `<button class="setting l1 visop" type="button" data-act="pubmuda" data-v="${v}" aria-pressed="${S.publico === (v === "1")}"><span class="visrad" aria-hidden="true"></span><span class="t"><b>${t}</b><small>${d}</small></span></button>`;
-  openSheet(shead("Quem vê seu perfil") + `<div class="list">${op("1", "Público", "Qualquer pessoa")}${op("0", "Privado", "Só quem participa das mesmas comunidades")}</div>
+  openSheet(shead("Quem vê seu perfil") + `<div class="list">${op("1", "Público", "Quem visita vê pastas, interesses e outras redes")}${op("0", "Privado", "Quem visita vê só publicações e selos")}</div>
     <p class="lnote" style="margin-top:12px">O cadeado ao lado de cada aba mostra o que aparece. Algoritmo, curtidas e agenda são sempre só seus.</p>${perfilNums(ME.user && ME.user.id)}`, "Quem vê seu perfil"); pfNumsPreenche(); }
 function sheetPessoa(uid){ const o = ORG["u-" + uid] || {nome:"Perfil"};   /* só o que não está no cabeçalho */
   openSheet(shead(limpo(o.nome)) + perfilNums(uid) + `<p class="lnote">Quem segue e quem é seguido nunca aparece; só os números.</p>`, "Perfil"); pfNumsPreenche(); }
@@ -3881,9 +3896,20 @@ const pgChips = uid => paginasDoPerfil(uid).map(p=>{ const o = ORG["pg-" + p.id]
 function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu = ME.user && ME.user.id === uid;
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
   return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
-    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips:pgChips(uid)})}
-      <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"],["pastas","Pastas"]].concat(PASS_DE[uid] ? [["passaporte","Passaporte"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
-      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+    + `<div class="container">${(()=>{ const vt = PESS_VIT[uid] || (pessVitCarrega(uid), {}), pfv = {nome:o.nome, colaborador:vt.colaborador, selos:vt.selos};
+        const chips = (vt.interesses || []).map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (vt.comunidades || []).map(n=>`<span class="chip static">${ic("people","sm")}${esc(n)}</span>`).join("") + pgChips(uid);
+        return pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, selo:seloResumo(pfv, uid), linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips}); })()}
+      <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"]].concat((PESS_VIT[uid] || {}).publico ? [["pastas","Pastas"]] : [], PASS_DE[uid] ? [["passaporte","Passaporte"]] : [], ((PESS_VIT[uid] || {}).redes || []).length ? [["redes","Outras redes"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
+      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], uid) : pessAba(uid) === "redes" ? pessRedesHTML(uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+/* 18/11 (Amanda): o que quem visita vê vem do servidor (perfil_vitrine). Selos sempre; interesses, comunidades,
+   pastas e outras redes só com o perfil público. Publicações e comentários são sempre públicos. */
+const PESS_VIT = {};
+async function pessVitCarrega(uid){ if (PESS_VIT[uid] !== undefined) return; PESS_VIT[uid] = {carregando:true};
+  try{ const {data} = SB ? await SB.rpc("perfil_vitrine", {p_user:uid}) : {data:null}; PESS_VIT[uid] = data || {}; }catch(e){ PESS_VIT[uid] = {}; }
+  if (route() === "org-u-" + uid) render(); }
+function pessRedesHTML(uid){ const l = (PESS_VIT[uid] || {}).redes || [];
+  if (!l.length) return `<p class="empty">Nenhuma rede à mostra.</p>`;
+  return `<div class="chips rlks">${l.filter(x=>REDES[x.rede]).map(x=>`<a class="chip static rlk" href="${esc(x.url)}" target="_blank" rel="noopener nofollow">${redeBadge(x.rede, "mini")}<span>${REDES[x.rede].nome}</span>${ic("ext","sm")}</a>`).join("")}</div><p class="lnote">Os links abrem a outra rede.</p>`; }
 /* PASTAS NO PERFIL DE OUTRA PESSOA (15/11): só as seções abertas, sem as pastas secretas, e só se o perfil é público.
    Quem decide é o servidor (perfil_pastas). Um item que existe aqui abre na rede; os outros, no link de origem. */
 const PESS_PASTAS = {};
@@ -3917,10 +3943,10 @@ function screenPublic(){
   return capaTopo(null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
   + `<div class="container">
     ${(()=>{ const pf = (ME.user && ME.perfil) || {nome:"Você"}, vis = `<button class="phvis" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="Perfil ${S.publico ? "público" : "privado"}: ver o que aparece" title="Perfil ${S.publico ? "público" : "privado"}">${ic(S.publico ? "cadaberto" : "lock","sm")}</button>`;
-      const chips = S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") + (ME.user ? pgChips(ME.user.id) : "");
-      return pessoaHead({capa:true, nome:pf.nome, verificado:pf.verificado, linhas:[vis + (pf.cidade ? " · " + esc(pf.cidade) : "")], bio:pf.bio,
+      const chips = (S.publico ? S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") : "") + (ME.user ? pgChips(ME.user.id) : "");
+      return pessoaHead({capa:true, nome:pf.nome, verificado:pf.verificado, selo:ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[vis + (pf.cidade ? " · " + esc(pf.cidade) : "")], bio:pf.bio,
         chips}); })()}
-    <div class="tabs pubtabs" role="tablist" aria-label="Perfil público">${[["publicacoes","Publicações"],["pastas","Pastas"],["redes","Outras redes"]].map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pubtab" data-tab="${k}" aria-selected="${S.pubTab===k}">${n}${tabVis(S.publico && (k!=="pastas" || pubFolders().length > 0))}</button>`).join("")}</div>
+    <div class="tabs pubtabs" role="tablist" aria-label="Perfil público">${[["publicacoes","Publicações"]].concat(S.publico ? [["pastas","Pastas"],["redes","Outras redes"]] : []).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pubtab" data-tab="${k}" aria-selected="${S.pubTab===k}">${n}${tabVis(S.publico && (k!=="pastas" || pubFolders().length > 0))}</button>`).join("")}</div>
     <div class="status" id="pubstatus"${pubStatus() ? "" : " hidden"}>${pubStatus()}</div>
     <div id="pubbody">${pubBody()}</div></div>`;
 }
@@ -4667,7 +4693,7 @@ function mockSB(o = {}){
     const pg = (k, nome, de, n) => ({k, nome, itens:ids.slice(de, de + n)});
     tab("conta_dados").push({user_id:TESTE_M, chave:"secoes", valor:[{id:"m1", nome:"Para a horta", aberta:true, pastas:["mh1","mh2","mh3"]}, {id:"m2", nome:"Sala de aula", aberta:true, pastas:["mh4"]}, {id:"m3", nome:"Rascunhos", aberta:false, pastas:["mh5"]}]},
       {user_id:TESTE_M, chave:"pastas", valor:[["mh1","Sementes",[],false],["mh2","Feiras e trocas",[],false],["mh3","Só minha",[],true],["mh4","Leituras com a turma",[],false],["mh5","Ideias soltas",[],false]]},
-      {user_id:TESTE_M, chave:"vitrine", valor:{publico:true, secoes:[{id:"m1", nome:"Para a horta", pastas:[pg("mh1","Sementes",0,6), pg("mh2","Feiras e trocas",6,5), pg("mh3","Só minha",11,3)]}, {id:"m2", nome:"Sala de aula", pastas:[pg("mh4","Leituras com a turma",14,4)]}, {id:"m3", nome:"Rascunhos", pastas:[pg("mh5","Ideias soltas",18,3)]}]}});
+      {user_id:TESTE_M, chave:"vitrine", valor:{publico:true, interesses:["Educação","Alimentação e campo","Meio ambiente e clima"], comunidades:["Rede de Hortas da Zona Leste"], redes:[{rede:"letterboxd", url:"https://letterboxd.com/jim"}], secoes:[{id:"m1", nome:"Para a horta", pastas:[pg("mh1","Sementes",0,6), pg("mh2","Feiras e trocas",6,5), pg("mh3","Só minha",11,3)]}, {id:"m2", nome:"Sala de aula", pastas:[pg("mh4","Leituras com a turma",14,4)]}, {id:"m3", nome:"Rascunhos", pastas:[pg("mh5","Ideias soltas",18,3)]}]}});
     db.vitMig = 1; salva(); }
   if (!db.agMig){ const f8 = tab("pagina_tatuagem").find(f=>f.pagina_id === "00000000-0000-4000-8000-0000000000a8"); if (f8 && f8.agenda_aberta === undefined) f8.agenda_aberta = false; db.agMig = 1; salva(); }   /* exemplo de agenda fechada */
   if (!db.arvMig){ const P0 = "00000000-0000-4000-8000-0000000000a", map = {[P0+"6"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"7"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"8"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"9"]:["arte","Tatuagem","Corpo e tatuagem"], [P0+"d"]:["arte","Tatuagem","Corpo e tatuagem"],
@@ -4879,6 +4905,8 @@ function mockSB(o = {}){
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
+    perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
+      return {selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
       if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
       const ab = Object.fromEntries(sec.filter(x=>x && x.aberta === true && Array.isArray(x.pastas)).map(x=>[x.id, x.pastas])), secr = ps.filter(f=>Array.isArray(f) && f[3] === true).map(f=>f[0]);
@@ -6094,15 +6122,13 @@ function screenConta(){
       <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
       <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`;
     return topo + `<div class="container cform">${tabs}
-      <div class="cme">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
+      <div class="cme">${avatar({cor:comCor(ME.user.id), sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
       <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
       <p class="ferr" role="alert" hidden></p>
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
-      <h2 class="sectitle">Passaporte</h2>
-      <div class="list"><button class="setting l1" type="button" data-act="passaporte"><span class="t"><b>Meu passaporte</b><small>Um carimbo por atendimento verificado · só você vê</small></span>${ic("back","sm flip")}</button></div>
       ${PERFIL_MOSTRA()}</div>`; }
   const t = S.contaTab || "entrar";
   return topo + `<div class="container cform">
@@ -6346,7 +6372,7 @@ async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.d
     <div class="hbar" aria-hidden="true"><i style="width:${h.nota}%"></i></div>
     ${h.removidos ? `<p class="inota">${ic("info","sm")}<span>${h.removidos} ${h.removidos === 1 ? "comentário removido" : "comentários removidos"} pela moderação nos últimos 90 dias. Cada um tira pontos.</span></p>` : `<p class="inota">${ic("check","sm")}<span>A nota só desce quando a moderação remove um comentário seu.</span></p>`}
     <h3 class="hsel">Selos · ${selos.length} de 4</h3><ul class="rsls">${linhas.map(x=>`<li class="${x.sim ? "sim" : "nao"}"><span class="rsic">${ic(SI[x.k],"sm")}</span><span><b>${x.nome}</b><small>${esc(x.de)}</small>${x.p !== undefined && !x.sim ? `<span class="rsbar"><i style="width:${x.p}%"></i></span>` : ""}</span><span class="rsst">${x.st}</span></li>`).join("")}</ul>
-    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome nos comentários.</span></p></section>`; }
+    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome e no seu perfil.</span></p></section>`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
@@ -6794,14 +6820,15 @@ const A = {
     try{ await SB.auth.signOut({scope:"others"}); }catch(e){} ocupado(b, false); closeSheet(); toast("Senha trocada. Os outros aparelhos saíram da conta."); },
   sairtodos: async () => { try{ await SB.auth.signOut({scope:"global"}); }catch(e){} ME.user = null; ME.perfil = null; ME.acesso = null; toast("Você saiu da conta em todos os aparelhos."); go("conta"); },
   baixadados: async b => { ocupado(b, true); const uid = ME.user.id, q = (t, c, col="user_id") => SB.from(t).select(c).eq(col, uid).then(r=>r.data || []).catch(()=>[]);
-    const [perfil, publicacoes, contas, orgs, aceites, verif, comentarios, guardados, sigo] = await Promise.all([q("perfis","id,nome,usuario,cidade,bio,criado_em,verificado,verificado_em,colaborador","id"), q("publicacoes","*","autor"), q("contas_externas","*"), q("org_pedidos","*"), q("aceites","*"), q("verificacao_pedidos","*"), q("comentarios","id,noticia_id,publicacao_id,texto,marca,fonte_url,uteis,status,criado_em","autor"), q("conta_dados","chave,valor,atualizada_em"), q("seguidores","seguido,criado_em","seguidor")]);
+    const [perfil, publicacoes, contas, orgs, aceites, verif, comentarios, guardados, sigo] = await Promise.all([q("perfis","id,nome,usuario,cidade,bio,criado_em,verificado,verificado_em,colaborador,selos","id"), q("publicacoes","*","autor"), q("contas_externas","*"), q("org_pedidos","*"), q("aceites","*"), q("verificacao_pedidos","*"), q("comentarios","id,noticia_id,publicacao_id,texto,marca,fonte_url,uteis,status,criado_em","autor"), q("conta_dados","chave,valor,atualizada_em"), q("seguidores","seguido,criado_em","seguidor")]);
     const [pedidos, mensagens, horarios, avaliacoes] = await Promise.all([q("tat_pedidos","id,pagina_id,tipo,item,preco,descricao,local,tamanho,cor,status,criado_em","cliente"), q("tat_mensagens","pedido_id,de,texto,criado_em","autor"), q("tat_sessoes","id,pagina_id,quando,duracao_min,valor,status,checkin_em,avaliada","cliente"),
       SB.rpc("minhas_avaliacoes").then(r=>r.data || []).catch(()=>[])]);   /* 15/11 */
-    const dadosPessoais = await SB.rpc("meus_dados_pessoais").then(r=>r.data || {}).catch(()=>({}));   /* 18/11: nome, sobrenome e nascimento (o CPF não é guardado) */
+    const dadosPessoais = await SB.rpc("meus_dados_pessoais").then(r=>r.data || {}).catch(()=>({}));
+    const [reputacao, passaporte] = await Promise.all([SB.rpc("minha_reputacao").then(r=>r.data || null).catch(()=>null), SB.rpc("passaporte_de", {p_user:uid}).then(r=>r.data || null).catch(()=>null)]);   /* 18/11: nota, selos e passaporte também */   /* 18/11: nome, sobrenome e nascimento (o CPF não é guardado) */
     const local = {}; try{ for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith("arede-")) local[k] = store.get(k.slice(6), null); } }catch(e){}
     const doc = {arquivo:"Dados da sua conta na rede.online", gerado_em:new Date().toISOString(), dados_pessoais:dadosPessoais,
       conta:{id:uid, email:ME.user.email, criada_em:ME.user.created_at, email_confirmado_em:ME.user.email_confirmed_at || null, ultimo_acesso:ME.user.last_sign_in_at || null, nivel:nivel()},
-      perfil:perfil[0] || null, publicacoes, comentarios, contas_de_outras_redes:contas, pedidos_de_organizacao:orgs, aceites, pedido_de_verificacao:verif[0] || null, curtidas_pastas_e_votos:guardados, contas_que_voce_segue:sigo, pedidos_de_orcamento:pedidos, mensagens_que_voce_escreveu:mensagens, horarios_de_atendimento:horarios, avaliacoes_que_voce_fez:avaliacoes,
+      perfil:perfil[0] || null, publicacoes, comentarios, contas_de_outras_redes:contas, pedidos_de_organizacao:orgs, aceites, pedido_de_verificacao:verif[0] || null, curtidas_pastas_e_votos:guardados, contas_que_voce_segue:sigo, reputacao_e_selos:reputacao, passaporte, pedidos_de_orcamento:pedidos, mensagens_que_voce_escreveu:mensagens, horarios_de_atendimento:horarios, avaliacoes_que_voce_fez:avaliacoes,
       guardado_so_neste_aparelho:local, nota:"A senha não está aqui: o servidor guarda só uma versão embaralhada, que ninguém consegue ler."};
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], {type:"application/json"})); a.download = "arede.online-meus-dados.json";
     document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000); ocupado(b, false); toast("Arquivo baixado."); },
@@ -7543,6 +7570,16 @@ const A = {
     if (route()==="perfil"){ S.profTab = "salvos"; S.profFolder = null; S.profFiltro = "tudo"; profShow(); } },
   secapaga: b => { const x = S.secoes.find(y=>y.id===b.dataset.s); if (!x) return; S.secoes = S.secoes.filter(y=>y!==x); persist("secoes"); closeSheet();
     toast(`Seção “${x.nome}” desfeita. As pastas ficaram fora das seções.`); if (route()==="perfil") profShow(); },
+  pastaedita: b => sheetPastaEdita(b.dataset.f),
+  pastasalva: b => { const f = FOLDERS.find(x=>x[0]===b.dataset.f), nome = (($("#pastanome") || {}).value || "").trim(), m = $("#pastamsg"); if (!f) return;
+    if (nome.length < 2){ if (m) m.textContent = "Dê um nome à pasta."; return; }
+    if (FOLDERS.some(x=>x !== f && x[1].toLowerCase()===nome.toLowerCase())){ if (m) m.textContent = "Já existe uma pasta com esse nome."; return; }
+    f[1] = nome; f[3] = ($('#layer [data-act="pastasec"]') || {getAttribute:()=>""}).getAttribute("aria-checked")==="true"; pastasGuarda(); closeSheet(); toast("Pasta salva."); if (route()==="perfil") profShow(); },
+  pastaapaga: b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para apagar a pasta"; return; }
+    const k = b.dataset.f, i = FOLDERS.findIndex(x=>x[0]===k); if (i < 0) return; const nome = FOLDERS[i][1];
+    Object.keys(S.savedIn).forEach(u=>{ if (S.savedIn[u]===k) S.savedIn[u] = "salvos"; }); persist("savedIn");
+    S.secoes.forEach(x=>{ x.pastas = x.pastas.filter(y=>y!==k); }); persist("secoes");
+    FOLDERS.splice(i, 1); pastasGuarda(); S.profFolder = null; closeSheet(); toast(`Pasta “${nome}” apagada. Os itens continuam em Salvos.`); if (route()==="perfil") profShow(); },
   pastacria: b => { const nome = (($("#pastanome") || {}).value || "").trim(), m = $("#pastamsg");
     if (nome.length < 2){ if (m) m.textContent = "Dê um nome à pasta."; return; }
     if (FOLDERS.some(f=>f[1].toLowerCase()===nome.toLowerCase())){ if (m) m.textContent = "Já existe uma pasta com esse nome."; return; }
@@ -7753,7 +7790,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 16:53";
+const VERSAO = "v1 registrada · 18/11 17:05";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

@@ -2216,6 +2216,7 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .orow .ot small,.ohint{font-size:13px;color:var(--muted);line-height:1.4}
 .oflags{display:flex;flex-wrap:wrap;gap:3px;font-size:17px;line-height:1.2}
 .olbl{font-size:14px;font-weight:600}
+.rform .input{display:block;width:100%;min-height:48px;padding:11px 12px;margin:0 0 12px;border:0;border-radius:var(--r-sm);background:var(--surface-2,var(--surface));box-shadow:inset 0 0 0 1.5px var(--line);font:inherit;font-size:16px;color:var(--ink)}.rform .input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 .orow .input{width:100%;min-height:46px;padding:10px 12px;border:0;border-radius:var(--r-sm);background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--line);font:inherit;font-size:16px;color:var(--ink)}
 .orow .input:disabled{opacity:.5}
 .oref{flex-shrink:0;display:flex;gap:12px;align-items:flex-start;margin:16px 0 4px;padding:12px 14px;border-radius:14px;background:var(--surface-2);font-size:13.5px;line-height:1.45}
@@ -2226,7 +2227,7 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .osub .indtag{margin:0 2px}
 .rbadge{flex:none;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;color:#fff;font-weight:800;font-size:15px;line-height:1}
 .rlks{margin:0 0 8px;gap:6px}.chip.rlk{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
-.chip.rlk .icon{width:13px;height:13px;color:var(--muted)}.chip.rlk .rbadge.mini{margin:0;box-shadow:none}
+.chip.rlk .icon{width:13px;height:13px;color:var(--muted)}.chip.rlk .rbadge.mini{margin:0;box-shadow:none;position:static}
 .rbadge.mini{width:18px;height:18px;border-radius:5px;font-size:10.5px;margin-right:-2px;box-shadow:0 0 0 1.5px var(--bg)}
 .rrow.off .rbadge{opacity:.45}
 .rrow .ot{min-width:0}
