@@ -4406,14 +4406,14 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.nodeType!
    ===================================================================== */
 const NAV = [], SCROLL = {}; let lastRoute = null, PENDING = null;
 const ARROBA = {};   /* 18/11 (Amanda): o endereço mostra o @ sem # (arede.online/@nome); por dentro, a rota continua sendo a da página ou do perfil */
-const pathArroba = () => { const m = /^\/@([a-z0-9_.]{3,30})\/?$/i.exec(location.pathname); return m ? m[1].toLowerCase() : ""; };
+const pathArroba = () => { let pn = location.pathname; try{ pn = decodeURIComponent(pn); }catch(e){} const m = /^\/@([a-z0-9_.]{3,30})\/?$/i.exec(pn);   /* o @ pode chegar como %40 */ return m ? m[1].toLowerCase() : ""; };
 const route = () => { let h = (location.hash || "").slice(1); if (!h){ const pa = pathArroba(); if (pa) h = "@" + pa; } h = h || "inicio"; if (h.charAt(0) === "@"){ const n = decodeURIComponent(h.slice(1)).toLowerCase(); if (ARROBA[n]) return ARROBA[n]; return "@" + n; }
   return /^(organizacoes|paginas)(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };
 const arrobaDe = r => { if (r.startsWith("pg-")){ const p = PAGS.lista.find(x=>"pg-" + x.id === r); return p && p.status === "aprovada" && p.usuario || ""; }
   if (r.startsWith("org-u-")){ const uid = r.slice(6); return (ME.user && uid === ME.user.id && ME.perfil && ME.perfil.usuario) || (PESS_VIT[uid] || {}).usuario || ""; } return ""; };
 function arrobaMostra(r){ const n = arrobaDe(r);
   try{ if (n){ ARROBA[n] = r; if (location.pathname !== "/@" + n || location.hash) history.replaceState(null, "", "/@" + n + location.search); }
-    else if (location.pathname.startsWith("/@")) history.replaceState(null, "", "/" + location.search + (location.hash || "#" + r)); }catch(e){} }   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
+    else if (pathArroba()) history.replaceState(null, "", "/" + location.search + (location.hash || "#" + r)); }catch(e){} }   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
 const go = r => { if (route()===r) render(); else location.hash = r; };
 /* 18/11: arede.online/#@nome abre o perfil de quem tem esse nome de usuário */
 async function arrobaAbre(n = 0){ let h = decodeURIComponent((location.hash || "").slice(1)); if (!h && pathArroba()) h = "@" + pathArroba(); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false; if (ARROBA[h.slice(1).toLowerCase()]) return true;
@@ -7966,7 +7966,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:35";
+const VERSAO = "v1 registrada · 18/11 19:38";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
