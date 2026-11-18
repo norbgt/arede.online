@@ -624,7 +624,7 @@ const kindOf = it => it.opiniao ? "Opinião" : it.oficial ? it.doc : it.autoral 
 const KIND = {video:"Vídeo", imagem:"Publicação", texto:"Publicação", evento:"Evento", enquete:"Consulta", votacao:"Votação", chamado:"Chamado", documento:"Documento"};
 /* cada aba tem o leiaute que melhor serve ao seu tipo (4º campo):
    blocos (Início misto) · video (1 coluna) · agenda (eventos e chamados, pelo que acontece ou vence primeiro) · cedula (voto no cartão) · arquivo (lista de documentos) */
-const FTABS = [["tudo","Tudo",null,"blocos"],["publicacoes","Publicações",["imagem","texto","video"],"blocos"],["videos","Canais",["video"],"video"],["documentos","Documentos",["documento"],"arquivo"],["arte","Arte","arte","blocos"]];
+const FTABS = [["tudo","Tudo",null,"blocos"],["publicacoes","Publicações",["imagem","texto","video"],"blocos"],["videos","Canais",["video"],"video"],["arte","Cultura","arte","blocos"],["documentos","Documentos",["documento"],"arquivo"]];
 
 /* =====================================================================
    3. Estado (preferências ficam salvas no navegador)
@@ -3084,11 +3084,11 @@ function arteBase(){ const box = $("#artebase"); if (!box) return;
   if (S.tab !== "arte" || S.rapido || route() !== "inicio"){ box.hidden = true; box.innerHTML = ""; return; }
   if (ARTESUB === "ativista" && !veArte()) ARTESUB = "cultura";
   box.hidden = false; box.innerHTML = arteCorpo(); }
-function artePinta(){ if (S.tab === "arte" && route() === "inicio"){ const m = $("#artemus"), a = $("#arteag"); if (m) m.innerHTML = museusModHTML(); if (a) a.innerHTML = agendaModHTML(); } }
+function artePinta(){ if (S.tab === "arte" && route() === "inicio"){ const m = $("#artemus"), a = $("#arteag"), e = $("#arteed"); if (m) m.innerHTML = museusModHTML(); if (a) a.innerHTML = agendaModHTML(); if (e) e.innerHTML = editaisModHTML(); } }
 /* no molde de Canais: módulos no alto (Museus e Agenda) e, abaixo, o feed com o seu título */
 function arteCorpo(){
   const adm = veArte(), at = ARTESUB === "ativista";
-  return `<div class="canaistopo artetopo"><section class="cmod" id="artemus" aria-label="Museus">${museusModHTML()}</section><section class="cmod" id="arteag" aria-label="Agenda cultural">${agendaModHTML()}</section></div>
+  return `<div class="canaistopo artetopo"><section class="cmod" id="artemus" aria-label="Museus">${museusModHTML()}</section><section class="cmod" id="arteed" aria-label="Editais de cultura">${editaisModHTML()}</section><section class="cmod" id="arteag" aria-label="Agendas oficiais">${agendaModHTML()}</section></div>
     <div class="vidhead artehead"><div class="cmh"><span class="cmic" aria-hidden="true">${ic(at ? "lock" : "doc")}</span><h2>${at ? "Acervo ativista" : "Notícias de cultura"}</h2><span class="cmsub">${at ? "Só você vê" : "Feed das fontes"}</span></div>
       ${adm ? `<div class="lvlist rdfil artesw" role="group" aria-label="O que o feed mostra"><button class="rdf" type="button" data-act="artesub" data-v="cultura" aria-pressed="${!at}">Notícias</button><button class="rdf" type="button" data-act="artesub" data-v="ativista" aria-pressed="${at}">${ic("lock","sm")}Acervo ativista</button></div>` : ""}</div>`; }
 /* 18/11 (Amanda): cada museu tem o seu cartão, com a prévia da agenda dentro. O módulo segue o molde de Canais (título, filtro em pílulas, faixa que rola). */
@@ -3109,6 +3109,20 @@ function museusModHTML(){ if (!MUS.lista) musBusca(); if (!MUS.agenda) agendaCar
     <div class="field musq"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Buscar museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div>
     ${MUS.semCidade ? `<p class="lnote" style="margin:0 0 8px">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${faixa}</div>
     <p class="lnote lvnota">${ic("qrselo","sm")} Nos parceiros, a visita vira carimbo no seu passaporte. Guia com dados abertos do Wikidata.</p>`; }
+/* 18/11 (Amanda): editais de cultura de várias fontes, com link direto para a página oficial. Abertos: lidos das páginas de editais
+   do Ministério da Cultura e da Funarte (duas vezes por dia). Nas notícias: matérias recentes sobre editais, das fontes da rede. */
+const ED = {d:null, pedindo:false};
+async function editaisCarrega(){ if (ED.d || ED.pedindo || !SB) return; ED.pedindo = true;
+  try{ const {data} = await SB.rpc("editais_cultura", {p_lim:20}); ED.d = data || {abertos:[], noticias:[]}; }catch(e){ ED.d = {abertos:[], noticias:[]}; } ED.pedindo = false; artePinta(); }
+function editaisModHTML(){ const cab = `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("doc")}</span><h2>Editais</h2><span class="cmsub">Inscrições abertas e chamadas</span></div>`;
+  if (!ED.d){ editaisCarrega(); return cab + `<p class="lnote">Carregando…</p>`; }
+  const ab = (ED.d.abertos || []).filter(e=>urlOk(e.url)), no = (ED.d.noticias || []).filter(n=>urlOk(n.url));
+  const lin = (t, u, sub) => `<a class="setting l1" href="${esc(u)}" target="_blank" rel="noopener"><span class="t"><b>${esc(limpo(t))}</b><small>${sub}</small></span>${ic("ext","sm")}</a>`;
+  return cab + (ab.length ? `<p class="agrot">Inscrições abertas</p><div class="list">${ab.slice(0, ED.mais ? 40 : 5).map(e=>lin(e.titulo, e.url, esc(limpo(e.orgao || "")) + " · página oficial")).join("")}</div>
+      ${ab.length > 5 ? `<button class="btn ghost block sm" type="button" data-act="edmais">${ED.mais ? "Mostrar menos" : `Ver mais ${ab.length - 5}`}</button>` : ""}` : "")
+    + (no.length ? `<p class="agrot" style="margin-top:12px">Nas notícias</p><div class="list">${no.slice(0, 4).map(n=>lin(n.titulo, n.url, esc(limpo(n.fonte)) + " · " + evDia(n.em))).join("")}</div>` : "")
+    + (!ab.length && !no.length ? `<p class="lnote">Nenhum edital aberto encontrado agora.</p>` : "")
+    + `<p class="lnote lvnota">Inscrições abertas lidas das páginas oficiais do Ministério da Cultura e da Funarte. Confira prazos e regras no edital.</p>`; }
 function agendaModHTML(){ const cab = `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("calplus")}</span><h2>Agendas oficiais</h2><span class="cmsub">Ibram, Ministério da Cultura, Iphan e Funarte</span></div>`;
   if (!MUS.agenda){ agendaCarrega(); return cab + `<p class="lnote">Carregando…</p>`; }
   const ofi = (MUS.agenda.oficiais || []).filter(n=>urlOk(n.url));
@@ -5614,7 +5628,7 @@ async function curadoriaArtes(box){
   if (error){ box.innerHTML = `<p class="empty">${esc(erroAuth(error))}</p>`; return; }
   const cont = await SB.from("artes").select("campanha,status");
   const porCamp = {}; (cont.data || []).forEach(a=>{ const c = porCamp[a.campanha] = porCamp[a.campanha] || {fila:0, publicada:0, recusada:0}; c[a.status]++; });
-  box.innerHTML = `<p class="curnota">Peças do acervo do Design Ativista, lidas a cada hora e publicadas direto: aparecem na aba Arte e, no feed geral, 1 a cada 5 conteúdos, sempre com crédito a quem criou. Se uma peça não combinar com a rede, retire.</p>
+  box.innerHTML = `<p class="curnota">Peças do acervo do Design Ativista, lidas a cada hora e publicadas direto: aparecem na aba Cultura (Acervo ativista) e, no feed geral, 1 a cada 5 conteúdos, sempre com crédito a quem criou. Se uma peça não combinar com a rede, retire.</p>
     <div class="ogrp">${Object.entries(porCamp).map(([c, n])=>`<div class="orow"><span class="ot"><b>${esc(c)}</b><small>${n.fila} na fila · ${n.publicada} publicadas · ${n.recusada} recusadas</small></span>${n.fila ? `<button class="btn sm" type="button" data-act="artecamp" data-c="${esc(c)}">Publicar as ${n.fila}</button>` : ""}</div>`).join("")}</div>
     ${data.length ? `<div class="artgrid">${data.map(a=>`<article class="artcard" data-id="${a.id}"><img src="${esc(a.imagem_url)}" alt="${esc(a.titulo)}" loading="lazy" referrerpolicy="no-referrer">
       <div><b>${esc(a.titulo)}</b><small>${esc(a.artista || "sem autoria")} · ${CAT_ARTE[a.categoria] || "Arte"} · ${esc(a.campanha || "")}</small>
@@ -6375,10 +6389,10 @@ const A = {
   curtab: b => { S.curTab = b.dataset.t; render(); },
   arterev: async b => { const id = b.dataset.id, st = b.dataset.s; ocupado(b, true, "…");
     const {error} = await SB.from("artes").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); const c = b.closest(".artcard"); if (c) c.remove(); toast(st==="publicada" ? "Publicada na aba Arte." : "Retirada da rede."); artesCarrega(); },
+    if (error) return toast(erroAuth(error)); const c = b.closest(".artcard"); if (c) c.remove(); toast(st==="publicada" ? "Publicada no Acervo ativista, na aba Cultura." : "Retirada da rede."); artesCarrega(); },
   artecamp: async b => { const c = b.dataset.c; ocupado(b, true, "Publicando…");
     const {error} = await SB.from("artes").update({status:"publicada", revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("campanha", c).eq("status","fila"); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); toast(`Campanha “${c}” publicada na aba Arte.`); artesCarrega(); curadoriaCarrega(); },
+    if (error) return toast(erroAuth(error)); toast(`Campanha “${c}” publicada no Acervo ativista, na aba Cultura.`); artesCarrega(); curadoriaCarrega(); },
   orgrevisa: async b => { const id = b.dataset.id, st = b.dataset.s, mot = (($("#mot-" + id) || {}).value || "").trim();
     if (st==="recusada" && !mot) return toast("Escreva o motivo da recusa: quem pediu vai ver.");
     ocupado(b, true, "…"); const {error} = await SB.from("org_pedidos").update({status:st, motivo:mot || null, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id); ocupado(b, false);
@@ -6573,6 +6587,7 @@ const A = {
     $$('[data-act="rapido"]').forEach(x=>x.setAttribute("aria-pressed", x.dataset.k===S.rapido));
     if (route()!=="inicio"){ go("inicio"); return; } window.scrollTo(0,0); resetFeed(); },
   artesub: b => { ARTESUB = b.dataset.v === "ativista" && veArte() ? "ativista" : "cultura"; store.set("arteSub", ARTESUB); arteBase(); resetFeed(); },
+  edmais: () => { ED.mais = !ED.mais; artePinta(); },
   musonde: b => { MUS.onde = b.dataset.v; MUS.lista = null; MUS.chave = ""; artePinta(); },
   musativa: b => sheetMusAtiva(b.dataset.p),
   musativaok: async b => { const pid = b.dataset.p, r = $('#layer input[name="mavm"]:checked'), uf = ($("#mavuf").value || "").trim().toUpperCase(), pais = ($("#mavpais").value || "").trim() || "Brasil";
@@ -7352,7 +7367,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:09";
+const VERSAO = "v1 registrada · 18/11 09:17";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
