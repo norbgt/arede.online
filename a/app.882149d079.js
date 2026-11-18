@@ -1392,14 +1392,16 @@ const feedMode = () => S.algo ? "algo" : "amplo";
 const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.pais, S.tab, S.tab==="arte" ? ARTESUB : "", S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
 const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) + (cobForte(it) ? .15 : 0) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
-function amplo(list){
+/* 18/11 (Amanda): o rodízio de temas não traz coisa antiga para cima. Primeiro gira o que é das últimas 24 horas; o resto vem depois, no mesmo rodízio. */
+function amplo(list){ const novo = list.filter(it=>(it.min || 0) <= 1440), velho = list.filter(it=>(it.min || 0) > 1440); return amploGira(novo).concat(amploGira(velho)); }
+function amploGira(list){
   const by = {}; list.slice().sort((a,b)=>a.min-b.min).forEach(it=>{ (by[it.tema]=by[it.tema]||[]).push(it); });
   const keys = Object.keys(by).sort((a,b)=>by[a][0].min-by[b][0].min); const out = []; let last = null;
   while (out.length < list.length){ for (const k of keys){ const q = by[k]; if(!q.length) continue;
     let i = q.findIndex(it=>ORG[it.org].cidade!==last); if(i<0) i=0; const it = q.splice(i,1)[0]; out.push(it); last = ORG[it.org].cidade; } }
   return out;
 }
-const ofTab = types => types==="arte" ? (it => ARTESUB==="ativista" ? !!it.arte : it.tema==="Cultura" && !!it.coletada && !it.arte && !it.daArte) : (it => !types || types.includes(it.tipo));
+const ofTab = types => types==="arte" ? (it => ARTESUB==="ativista" ? !!it.arte : it.tema==="Cultura" && !!it.coletada && !it.arte && !it.daArte && !ehEsporte(it)) : (it => !types || types.includes(it.tipo));
 const inProfile = it => (S.follow.has(it.org)&&S.usarOrgs) || S.temas.includes(it.tema);
 /* filtros e ordenação: valem só para a navegação atual, não mudam o algoritmo */
 const CIDADES = [...new Set(ORGS.map(o=>o.cidade))];
@@ -1999,7 +2001,7 @@ function statusLine(){
 function screenHome(){
   /* topo: marca e mensagens · abas · linha de controles do feed (algoritmo e ajuste à esquerda, filtrar e ordenar à direita) */
   return header(`<div class="toprow">${LOGO}<div class="spacer"></div>
-      <button class="apoiebtn" type="button" data-act="apoie" aria-haspopup="dialog">${ic("raio","sm")}<span>Apoie</span></button>
+      <button class="apoiebtn" type="button" data-act="apoie" aria-haspopup="dialog" aria-label="Apoie">${ic("raio","sm")}<span>Apoie</span></button>
       <button class="iconbtn origbtn" type="button" data-act="origens" aria-label="Origem das notícias: ${origensNomes()}">${ic("globe")}</button>
       <span id="topconta" class="topconta">${topContaHTML()}</span></div>
     <div class="tabs" role="tablist" aria-label="Tipos de conteúdo">${ftabs().map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ftab" data-tab="${k}" aria-selected="${S.tab===k}">${n}</button>`).join("")}</div>
@@ -3066,32 +3068,47 @@ function gerBotao(p){ const n = gerDados(p) ? gerTarefas(p).length : 0;
    Cultura = notícias com o tema Cultura · Museus = guia (Wikidata, dados abertos; parceiros com check-in por QR na entrada)
    Agenda = exposições e eventos dos parceiros + publicações das agendas oficiais (Ibram, MinC, Iphan, Funarte) · Ativista = acervo Design Ativista, só da administradora.
    Só o QR de museu parceiro vira carimbo no passaporte; os outros museus ficam como guia. ===== */
-let ARTESUB = store.get("arteSub", "cultura");
-const arteSubs = () => [["cultura","Cultura","doc"],["museus","Museus","predio"],["agenda","Agenda","calplus"]].concat(veArte() ? [["ativista","Ativista","lock"]] : []);
-const MUS = {q:"", onde:"br", lista:null, chave:"", semCidade:false, agenda:null, agPedindo:false, meu:{}, busT:0};
+let ARTESUB = store.get("arteSub", "cultura"); if (ARTESUB !== "ativista") ARTESUB = "cultura";   /* 18/11: o feed da Arte é Notícias de cultura; a administradora troca para o Acervo ativista */
+const MUS = {q:"", onde:"br", lista:null, chave:"", semCidade:false, agenda:null, agPedindo:false, meu:{}, busT:0, mais:false, agMais:false};
 const urlOk = u => /^https?:\/\/[^\s"<>]+$/i.test(String(u || "")) ? u : "";
 const evDia = d => new Date(String(d).slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
 const evPeriodo = e => e.fim && e.fim !== e.inicio ? evDia(e.inicio) + " a " + evDia(e.fim) : evDia(e.inicio);
+/* 18/11 (Amanda): o tema Cultura do classificador também pega esporte (Grande Prêmio, games, show). Na Arte, esporte fica de fora. */
+const ESPORTE = /\b(futebol\w*|neymar|messi|cristiano ronaldo|gols?|goleiro\w*|artilheir\w*|campeonato\w*|brasileir[aã]o|libertadores|sul-americana|copa do (mundo|brasil|nordeste)|eliminat[oó]rias|sele[cç][aã]o (brasileira|de futebol)|f[oó]rmula ?1|f1|bortoleto|grande pr[eê]mio|gp d[eo]|nba|nfl|ufc|t[eê]nis(ta)?|atletas?|ol[ií]mpi\w*|paral[ií]mpi\w*|jogador\w*|treinador\w*|flamengo|palmeiras|corinthians|vasco|botafogo|fluminense|cruzeiro|v[oô]lei\w*|basquete\w*|maratona|torcida\w*|est[aá]dio\w*|esporte\w*|esportiv\w*|futsal|surfista\w*|skatista\w*|lutador\w*|boxe)\b/i;
+const ehEsporte = it => ESPORTE.test((it.titulo || "") + " " + (it.resumo || it.chamada || ""));
 const feedVis = on => ["#feedwrap","#stop","#sentinel"].forEach(s=>{ const e = $(s); if (e) e.style.display = on ? "" : "none"; });
 function arteBase(){ const box = $("#artebase"); if (!box) return;
-  if (S.tab !== "arte" || S.rapido || route() !== "inicio"){ box.hidden = true; box.innerHTML = ""; feedVis(true); return; }
-  if (!arteSubs().some(x=>x[0] === ARTESUB)) ARTESUB = "cultura";
-  box.hidden = false; feedVis(ARTESUB === "cultura" || ARTESUB === "ativista");
-  box.innerHTML = `<div class="partchips artechips" role="group" aria-label="Arte e cultura">${arteSubs().map(([k, n, i])=>`<button class="chip" type="button" data-act="artesub" data-v="${k}" aria-pressed="${ARTESUB === k}">${ic(i, "sm")} ${n}</button>`).join("")}</div><div id="artecorpo">${arteCorpo()}</div>`; }
-function artePinta(){ const c = $("#artecorpo"); if (c && S.tab === "arte") c.innerHTML = arteCorpo(); }
+  if (S.tab !== "arte" || S.rapido || route() !== "inicio"){ box.hidden = true; box.innerHTML = ""; return; }
+  if (ARTESUB === "ativista" && !veArte()) ARTESUB = "cultura";
+  box.hidden = false; box.innerHTML = arteCorpo(); }
+function artePinta(){ if (S.tab === "arte" && route() === "inicio"){ const m = $("#artemus"), a = $("#arteag"); if (m) m.innerHTML = museusModHTML(); if (a) a.innerHTML = agendaModHTML(); } }
+/* no molde de Canais: módulos no alto (Museus e Agenda) e, abaixo, o feed com o seu título */
 function arteCorpo(){
-  if (ARTESUB === "museus"){ if (!MUS.lista) musBusca();
-    const lista = !MUS.lista ? `<p class="empty">Carregando…</p>` : MUS.lista.length ? `<div class="list muslist">${MUS.lista.map(musCard).join("")}</div>` : `<p class="empty">Nenhum museu com esse nome.</p>`;
-    return `<div class="musbusca"><div class="seg" role="radiogroup" aria-label="Onde">${[["br","Brasil"],["mundo","Mundo"]].map(([k, n])=>`<label><input type="radio" name="musonde" value="${k}"${MUS.onde === k ? " checked" : ""}><span>${n}</span></label>`).join("")}</div>
-      <div class="field"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div></div>
-      ${MUS.semCidade ? `<p class="lnote">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${lista}</div>
-      <p class="lnote">${ic("qrselo","sm")} Museus parceiros têm check-in por QR na entrada: a visita vira um carimbo no seu passaporte. Guia com dados abertos do Wikidata.</p>`; }
-  if (ARTESUB === "agenda"){ if (!MUS.agenda){ agendaCarrega(); return `<p class="empty">Carregando…</p>`; }
-    const par = MUS.agenda.parceiros || [], ofi = MUS.agenda.oficiais || [];
-    return `<h2 class="sectitle">Nos museus parceiros</h2>${par.length ? `<div class="list">${par.map(e=>`<a class="setting l1" href="#pg-${esc(e.pagina_id)}"><span class="t"><b>${esc(limpo(e.titulo))}</b><small>${e.tipo === "evento" ? "Evento" : "Exposição"} · ${evPeriodo(e)} · ${esc(limpo(e.museu))}${e.cidade ? " · " + esc(limpo(e.cidade)) : ""}</small></span>${ic("back","sm flip")}</a>`).join("")}</div>` : `<p class="empty">Nenhuma exposição ou evento de parceiro agora.</p>`}
-      <h2 class="sectitle">Agendas oficiais</h2>${ofi.length ? `<div class="list">${ofi.map(n=>urlOk(n.url) ? `<a class="setting l1" href="${esc(n.url)}" target="_blank" rel="noopener"><span class="t"><b>${esc(limpo(n.titulo))}</b><small>${esc(limpo(n.fonte))} · ${evDia(n.em)}</small></span>${ic("ext","sm")}</a>` : "").join("")}</div>` : `<p class="empty">Nada publicado nas últimas semanas.</p>`}
-      <p class="lnote">As agendas oficiais vêm dos sites do Ibram, do Ministério da Cultura, do Iphan e da Funarte. Confira data e horário na fonte.</p>`; }
-  return ""; }
+  const adm = veArte(), at = ARTESUB === "ativista";
+  return `<div class="canaistopo artetopo"><section class="cmod" id="artemus" aria-label="Museus">${museusModHTML()}</section><section class="cmod" id="arteag" aria-label="Agenda cultural">${agendaModHTML()}</section></div>
+    <div class="vidhead artehead"><div class="cmh"><span class="cmic" aria-hidden="true">${ic(at ? "lock" : "doc")}</span><h2>${at ? "Acervo ativista" : "Notícias de cultura"}</h2><span class="cmsub">${at ? "Só você vê" : "Feed das fontes"}</span></div>
+      ${adm ? `<div class="lvlist rdfil artesw" role="group" aria-label="O que o feed mostra"><button class="rdf" type="button" data-act="artesub" data-v="cultura" aria-pressed="${!at}">Notícias</button><button class="rdf" type="button" data-act="artesub" data-v="ativista" aria-pressed="${at}">${ic("lock","sm")}Acervo ativista</button></div>` : ""}</div>`; }
+/* 18/11 (Amanda): Museus e Agenda são módulos como Ao vivo e Rádio: filtro em pílulas, faixa de botões que rola, nota curta. */
+const musLink = m => m.parceiro ? "#pg-" + m.pagina_id : urlOk(m.site) || (/^Q\d+$/.test(m.wd || "") ? "https://www.wikidata.org/wiki/" + m.wd : "");
+const musPilula = m => { const h = musLink(m), ext = !m.parceiro, tag = m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "");
+  return `<a class="lvch muspil" href="${esc(h)}"${ext ? ' target="_blank" rel="noopener"' : ""} aria-label="${esc(limpo(m.nome))}${m.cidade ? ", " + esc(limpo(m.cidade)) : ""}${m.parceiro ? ", parceiro com check-in por QR" : ""}">${ic(m.parceiro ? "qrselo" : "predio", "sm")}${esc(limpo(m.nome))}${tag ? `<span class="lgtag">${esc(tag)}</span>` : ""}</a>`; };
+function museusModHTML(){ if (!MUS.lista) musBusca();
+  const l = MUS.lista || [];
+  const faixa = !MUS.lista ? `<p class="lnote">Carregando…</p>` : l.length ? `<div class="lvlist">${l.map(musPilula).join("")}</div>` : `<p class="lnote">Nenhum museu com esse nome.</p>`;
+  return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("predio")}</span><h2>Museus</h2><span class="cmsub">Guia do Brasil e do mundo</span></div>
+    <div class="lvlist rdfil" role="group" aria-label="Onde">${[["br","Brasil"],["mundo","Mundo"]].map(([k, nm])=>`<button class="rdf" type="button" data-act="musonde" data-v="${k}" aria-pressed="${MUS.onde === k}">${nm}</button>`).join("")}</div>
+    <div class="field musq"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Buscar museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div>
+    ${MUS.semCidade ? `<p class="lnote" style="margin:0 0 8px">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${faixa}</div>
+    <p class="lnote lvnota">${ic("qrselo","sm")} Parceiro: a visita vira carimbo no seu passaporte. Dados abertos do Wikidata.</p>`; }
+function agendaModHTML(){ const cab = `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("calplus")}</span><h2>Agenda</h2><span class="cmsub">Exposições e eventos</span></div>`;
+  if (!MUS.agenda){ agendaCarrega(); return cab + `<p class="lnote">Carregando…</p>`; }
+  const par = MUS.agenda.parceiros || [], ofi = (MUS.agenda.oficiais || []).filter(n=>urlOk(n.url));
+  const pp = e => `<a class="lvch" href="#pg-${esc(e.pagina_id)}" aria-label="${esc(limpo(e.titulo))}, ${evPeriodo(e)}, ${esc(limpo(e.museu))}">${ic("qrselo","sm")}${esc(limpo(e.titulo))}<span class="lgtag">${evPeriodo(e)}</span></a>`;
+  const po = n => `<a class="lvch" href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="${esc(limpo(n.titulo))}, ${esc(limpo(n.fonte))}">${esc(limpo(n.titulo))}<span class="lgtag">${evDia(n.em)}</span></a>`;
+  return cab + (par.length ? `<p class="agrot">Museus parceiros</p><div class="lvlist">${par.map(pp).join("")}</div>` : "")
+    + (ofi.length ? `<p class="agrot">Agendas oficiais</p><div class="lvlist">${ofi.map(po).join("")}</div>` : "")
+    + (!par.length && !ofi.length ? `<p class="lnote">Nada na agenda agora.</p>` : "")
+    + `<p class="lnote lvnota">Agendas do Ibram, do Ministério da Cultura, do Iphan e da Funarte. Confira data e horário na fonte.</p>`; }
 const musCard = m => `<div class="setting l1 muscard"><span class="music" aria-hidden="true">${ic("predio")}</span><span class="t"><b>${esc(limpo(m.nome))}</b><small>${esc([m.cidade, m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "")].filter(Boolean).join(" · "))}${m.km != null ? " · " + String(m.km).replace(".", ",") + " km" : ""}</small>
   ${m.parceiro ? `<a class="mustag" href="#pg-${esc(m.pagina_id)}">${ic("qrselo","sm")}Check-in por QR</a>` : ""}</span>${urlOk(m.site) ? `<a class="iconbtn" href="${esc(m.site)}" target="_blank" rel="noopener" aria-label="Site do museu ${esc(limpo(m.nome))}">${ic("ext")}</a>` : ""}</div>`;
 async function musBusca(){ const R = minhaRegiao(), q = MUS.q.trim() || (MUS.onde === "br" ? R.cidade : ""), k = MUS.onde + "|" + q;
@@ -3099,7 +3116,8 @@ async function musBusca(){ const R = minhaRegiao(), q = MUS.q.trim() || (MUS.ond
   const pede = async (qq) => { try{ const {data} = await SB.rpc("museus_busca", {p_q:qq || null, p_pais:MUS.onde === "br" ? "BR" : "*", p_lim:30}); return data || []; }catch(e){ return []; } };
   let l = SB ? await pede(q) : [];
   if (!l.length && !MUS.q.trim() && q && SB){ l = await pede(null); MUS.semCidade = !!l.length; }   /* sem museu no guia na sua cidade: os mais conhecidos do país */
-  if (MUS.chave !== k) return; MUS.lista = l; const box = $("#muslista"); if (box && !MUS.semCidade) box.innerHTML = l.length ? `<div class="list muslist">${l.map(musCard).join("")}</div>` : `<p class="empty">Nenhum museu com esse nome.</p>`; else artePinta(); }
+  if (MUS.chave !== k) return; MUS.lista = l; MUS.mais = false; const m = $("#artemus"), foco = document.activeElement && document.activeElement.id === "musq";
+  if (m){ m.innerHTML = museusModHTML(); if (foco){ const i = $("#musq"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
 async function agendaCarrega(){ if (MUS.agenda || MUS.agPedindo || !SB) return; MUS.agPedindo = true;
   try{ const {data} = await SB.rpc("agenda_cultural", {p_lim:40}); MUS.agenda = data || {parceiros:[], oficiais:[]}; }catch(e){ MUS.agenda = {parceiros:[], oficiais:[]}; }
   MUS.agPedindo = false; artePinta(); const r = route(); if (r.startsWith("pg-")) render(); }
@@ -3149,7 +3167,7 @@ document.addEventListener("input", e=>{ const t = e.target; if (!t) return;
   if (t.id === "musq"){ MUS.q = t.value; clearTimeout(MUS.busT); MUS.busT = setTimeout(()=>{ MUS.lista = null; const b = $("#muslista"); if (b) b.innerHTML = `<p class="empty">Carregando…</p>`; musBusca(); }, 350); }
   if (t.id === "mavq"){ clearTimeout(MUS.busT); MUS.busT = setTimeout(()=>mavBusca(t.value), 350); } });
 document.addEventListener("change", e=>{ const t = e.target; if (t && t.name === "mavm" && t.value){ const uf = $("#mavuf"), pa = $("#mavpais"); if (uf && t.dataset.uf) uf.value = t.dataset.uf; if (pa && t.dataset.pais) pa.value = t.dataset.pais; }
-  if (t && t.name === "musonde"){ MUS.onde = t.value; MUS.lista = null; MUS.chave = ""; artePinta(); } });
+ });
 const msgErr = e => e && e.message ? String(e.message).replace(/^valor: /, "") : "Sem conexão agora.";
 
 function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["pg-" + pid];
@@ -6079,7 +6097,15 @@ function travaConfere(){ document.querySelectorAll("[data-trava]").forEach(b=>{ 
   const sc = b.closest("[data-tform]") || b.closest(".sheet") || b.closest(".container") || document.body;
   const ok = [...sc.querySelectorAll("[required]")].filter(e=>!e.disabled && travaVisivel(e)).every(e=>travaCampoOk(e, sc));
   if (b.disabled === ok) b.disabled = !ok; }); }
-let travaT = 0; const travaLogo = () => { cancelAnimationFrame(travaT); travaT = requestAnimationFrame(travaConfere); };
+/* 18/11 (Amanda): a barra do topo nunca passa da largura da tela. Se não couber, o Apoie mostra só o raio (o nome segue no aria-label). */
+/* 18/11 (Amanda): as abas cabem inteiras sempre que possível (aperta o espaçamento); se ainda não couberem, rolam, com esmaecido no fim */
+function abasAjusta(){ document.querySelectorAll(".tabs").forEach(t=>{ t.classList.remove("apertado", "rola"); if (t.scrollWidth <= t.clientWidth + 1) return;
+  t.classList.add("apertado"); if (t.scrollWidth > t.clientWidth + 1) t.classList.add("rola"); }); }
+document.addEventListener("wheel", e=>{ const t = e.target.closest && e.target.closest(".tabs.rola, .lvlist, .partchips, .rapidos"); if (!t || Math.abs(e.deltaX) > Math.abs(e.deltaY) || t.scrollWidth <= t.clientWidth + 1) return;
+  const ant = t.scrollLeft; t.scrollLeft += e.deltaY; if (t.scrollLeft !== ant) e.preventDefault(); }, {passive:false});   /* com mouse, a rodinha também rola as faixas de abas e filtros */
+function topoAjusta(){ abasAjusta(); document.querySelectorAll(".top .toprow").forEach(r=>{ if (!r.querySelector(".apoiebtn")) return; r.classList.remove("apertado"); if (r.scrollWidth > r.clientWidth + 1) r.classList.add("apertado"); }); }
+addEventListener("resize", ()=>requestAnimationFrame(topoAjusta)); if (document.fonts && document.fonts.ready) document.fonts.ready.then(topoAjusta);
+let travaT = 0; const travaLogo = () => { cancelAnimationFrame(travaT); travaT = requestAnimationFrame(()=>{ travaConfere(); topoAjusta(); }); };
 ["input","change"].forEach(t=>document.addEventListener(t, travaLogo, true));
 new MutationObserver(travaLogo).observe(document.documentElement, {childList:true, subtree:true});
 setInterval(()=>{ if (document.querySelector("[data-trava]")) travaConfere(); }, 800);   /* preenchimento automático do navegador nem sempre avisa */
@@ -6541,7 +6567,8 @@ const A = {
   rapido: b => { const k = b.dataset.k; S.rapido = S.rapido===k ? null : k;
     $$('[data-act="rapido"]').forEach(x=>x.setAttribute("aria-pressed", x.dataset.k===S.rapido));
     if (route()!=="inicio"){ go("inicio"); return; } window.scrollTo(0,0); resetFeed(); },
-  artesub: b => { ARTESUB = b.dataset.v; store.set("arteSub", ARTESUB); window.scrollTo(0,0); arteBase(); if (ARTESUB === "cultura" || ARTESUB === "ativista") resetFeed(); },
+  artesub: b => { ARTESUB = b.dataset.v === "ativista" && veArte() ? "ativista" : "cultura"; store.set("arteSub", ARTESUB); arteBase(); resetFeed(); },
+  musonde: b => { MUS.onde = b.dataset.v; MUS.lista = null; MUS.chave = ""; artePinta(); },
   musativa: b => sheetMusAtiva(b.dataset.p),
   musativaok: async b => { const pid = b.dataset.p, r = $('#layer input[name="mavm"]:checked'), uf = ($("#mavuf").value || "").trim().toUpperCase(), pais = ($("#mavpais").value || "").trim() || "Brasil";
     if (uf && !/^[A-Z]{2}$/.test(uf)) return formErro("Use a sigla do estado, com 2 letras.");
@@ -7320,7 +7347,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 08:36";
+const VERSAO = "v1 registrada · 18/11 08:49";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

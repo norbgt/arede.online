@@ -297,7 +297,9 @@ span.selo{cursor:default}.selolin{align-items:flex-start;flex-direction:column;g
 
 /* abas de tipo de conteúdo: rolagem horizontal no celular */
 .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1*var(--gutter));padding:0 var(--gutter);scroll-snap-type:x proximity;
-  border-bottom:1px solid var(--line);-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+  border-bottom:1px solid var(--line)}
+.tabs.rola{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}   /* 18/11: o esmaecido só aparece quando há mais abas para rolar */
+.tabs.apertado{gap:0}.tabs.apertado .tab{padding:0 7px;font-size:13.5px}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;border:0;border-bottom:2.5px solid transparent;background:none;
   color:var(--muted);font-weight:500;font-size:14px;white-space:nowrap;scroll-snap-align:start}
@@ -2056,7 +2058,8 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .pstamp .icon{width:20px;height:20px}.pstamp b{font-size:12px;line-height:1.15;overflow-wrap:anywhere}.pstamp small{font-size:11px;line-height:1.2;opacity:.85}
 .pstamp.vazio{color:var(--muted);border-style:dashed;outline:0;transform:none}
 .pz-mus{color:#185FA5}:root[data-theme="dark"] .pz-mus{color:#85B7EB}
-.artebase{margin:2px 0 12px}.artechips{margin:4px 0 12px;flex-wrap:wrap;overflow:visible}.artechips .chip{display:inline-flex;align-items:center;gap:5px}
+.artebase{margin:2px 0 4px}.artebase[hidden]{display:none}@media (min-width:760px){ .artetopo{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start} }
+.artetopo .cmh{flex-wrap:wrap;row-gap:2px}.artetopo .cmsub,.artehead .cmsub{white-space:normal;overflow:visible}.artehead{margin-top:14px}.artesw{margin-top:10px}a.lvch{text-decoration:none}.cmod .musq{margin:0 0 10px}.cmod .agrot{margin:2px 0 6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent)}.cmod .agrot+.lvlist{margin-bottom:10px}
 .musbusca{display:grid;gap:8px;margin-bottom:6px}.musbusca .field{margin:0}.muscard{align-items:flex-start}.muscard .t{min-width:0}
 .music{flex:0 0 auto;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--chip,rgba(0,0,0,.05));color:#185FA5}
 .mustag{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(15,110,86,.12);color:#0F6E56;text-decoration:none;width:max-content}
@@ -2138,7 +2141,8 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .apoiebtn .icon{width:15px;height:15px;color:var(--brand)}
 .apoiebtn:hover{background:var(--surface)}
 @media (max-width:339px){ .apoiebtn{padding:0;width:44px;justify-content:center;gap:0} .apoiebtn span{display:none} }
-.apoiebtn{position:relative;margin-right:0}.apoiebtn::after{content:"";position:absolute;inset:-4px 0}   /* o desenho fica com 36px; a área de toque, com 44px */
+.top .toprow.apertado .apoiebtn{padding:0;width:44px;justify-content:center;gap:0}.top .toprow.apertado .apoiebtn span{display:none}   /* 18/11: sem espaço (tela estreita, letra grande no celular, fonte ainda carregando), o Apoie vira só o raio, sem espremer */
+.apoiebtn{position:relative;margin-right:0;flex-shrink:0}.apoiebtn::after{content:"";position:absolute;inset:-4px 0}   /* o desenho fica com 36px; a área de toque, com 44px */
 .apfreq{margin:14px 0 0;padding:0;border-bottom:0}
 .apvals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0 10px}
 .apvals button{height:44px;padding:0 2px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
