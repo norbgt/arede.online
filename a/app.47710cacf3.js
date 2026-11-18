@@ -3108,6 +3108,7 @@ function sheetPaginaNova(){
     <input type="radio" name="pgtipo" value="${emp0 ? "empresa" : "criador"}" checked hidden>
     ${M.papeis ? `<fieldset class="rorig"><legend>Quem é</legend><div class="seg" role="radiogroup" aria-label="Quem é"><label><input type="radio" name="pgpapel" value="tatuador" checked><span>${M.papeis[0]}</span></label><label><input type="radio" name="pgpapel" value="estudio"><span>${M.papeis[1]}</span></label></div></fieldset>` : ""}
     <div class="field"><label for="pgnome">Nome da página</label><input id="pgnome" maxlength="80" required minlength="2"></div>
+    <div class="field"><label for="pgcusu">Endereço da página (opcional)</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pgcusu" type="text" maxlength="30" autocapitalize="none" spellcheck="false" aria-describedby="pgcusudica"></div><small id="pgcusudica" class="hint">arede.online/@nome · dá para mudar depois</small></div>
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3" placeholder="O que a página oferece ou sobre o que ela fala"></textarea></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
     <div class="field"><label for="pgsite">Site (opcional)</label><input id="pgsite" type="url" inputmode="url" maxlength="300" placeholder="https://" autocapitalize="none" spellcheck="false"></div>
@@ -3142,7 +3143,7 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80" value="${v(p.cidade)}"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
     <div class="field"><label for="pgsite">Site</label><input id="pgsite" type="url" maxlength="300" value="${v(p.site)}" placeholder="https://"></div>
     <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div>
-    <div class="field"><label for="pgusu">Endereço da página</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pgusu" type="text" maxlength="30" autocapitalize="none" spellcheck="false" value="${v(p.usuario)}" aria-describedby="pgusudica"></div><small id="pgusudica" class="hint">arede.online/#@${v(p.usuario || "nome")}</small></div>
+    <div class="field"><label for="pgusu">Endereço da página</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pgusu" type="text" maxlength="30" autocapitalize="none" spellcheck="false" value="${v(p.usuario)}" aria-describedby="pgusudica"></div><small id="pgusudica" class="hint">arede.online/@${v(p.usuario || "nome")}</small></div>
     <button class="setting l1" type="button" data-act="pgdominio" data-id="${pid}" style="width:100%">${ic("globe")}<span class="t"><b>Domínio próprio</b><small>Um endereço seu, como www.seunegocio.com.br</small></span>${ic("back","sm flip")}</button></div>
     ${p.tipo === "empresa" ? `<div data-sec="negocio" hidden>` : `<div hidden>`}${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
     ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}</div>
@@ -4404,19 +4405,25 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.nodeType!
    10. Rotas e navegação (pilha própria: o voltar não depende do navegador)
    ===================================================================== */
 const NAV = [], SCROLL = {}; let lastRoute = null, PENDING = null;
-const ARROBA = {};   /* 18/11 (Amanda): o endereço mostra o @ (arede.online/#@nome); por dentro, a rota continua sendo a da página ou do perfil */
-const route = () => { let h = (location.hash || "#inicio").slice(1) || "inicio"; if (h.charAt(0) === "@"){ const n = decodeURIComponent(h.slice(1)).toLowerCase(); if (ARROBA[n]) return ARROBA[n]; return "@" + n; }
+const ARROBA = {};   /* 18/11 (Amanda): o endereço mostra o @ sem # (arede.online/@nome); por dentro, a rota continua sendo a da página ou do perfil */
+const pathArroba = () => { const m = /^\/@([a-z0-9_.]{3,30})\/?$/i.exec(location.pathname); return m ? m[1].toLowerCase() : ""; };
+const route = () => { let h = (location.hash || "").slice(1); if (!h){ const pa = pathArroba(); if (pa) h = "@" + pa; } h = h || "inicio"; if (h.charAt(0) === "@"){ const n = decodeURIComponent(h.slice(1)).toLowerCase(); if (ARROBA[n]) return ARROBA[n]; return "@" + n; }
   return /^(organizacoes|paginas)(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };
 const arrobaDe = r => { if (r.startsWith("pg-")){ const p = PAGS.lista.find(x=>"pg-" + x.id === r); return p && p.status === "aprovada" && p.usuario || ""; }
   if (r.startsWith("org-u-")){ const uid = r.slice(6); return (ME.user && uid === ME.user.id && ME.perfil && ME.perfil.usuario) || (PESS_VIT[uid] || {}).usuario || ""; } return ""; };
-function arrobaMostra(r){ const n = arrobaDe(r); if (!n) return; ARROBA[n] = r; if (decodeURIComponent(location.hash.slice(1)).toLowerCase() !== "@" + n){ try{ history.replaceState(null, "", location.pathname + location.search + "#@" + n); }catch(e){} } }   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
+function arrobaMostra(r){ const n = arrobaDe(r);
+  try{ if (n){ ARROBA[n] = r; if (location.pathname !== "/@" + n || location.hash) history.replaceState(null, "", "/@" + n + location.search); }
+    else if (location.pathname.startsWith("/@")) history.replaceState(null, "", "/" + location.search + (location.hash || "#" + r)); }catch(e){} }   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
 const go = r => { if (route()===r) render(); else location.hash = r; };
 /* 18/11: arede.online/#@nome abre o perfil de quem tem esse nome de usuário */
-async function arrobaAbre(n = 0){ const h = decodeURIComponent((location.hash || "").slice(1)); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false; if (ARROBA[h.slice(1).toLowerCase()]) return true;
+async function arrobaAbre(n = 0){ let h = decodeURIComponent((location.hash || "").slice(1)); if (!h && pathArroba()) h = "@" + pathArroba(); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false; if (ARROBA[h.slice(1).toLowerCase()]) return true;
   if (!SB && n < 40){ setTimeout(()=>arrobaAbre(n + 1), 250); return true; }   /* espera a conexão com o servidor */
   let x = null; try{ const r = SB ? await SB.rpc("rota_usuario", {p_usuario:h.slice(1)}) : {data:null}; x = r.data || null; }catch(e){}
   if (x && x.id){ ARROBA[h.slice(1).toLowerCase()] = (x.tipo === "pagina" ? "pg-" : "org-u-") + x.id; render(); } else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
-addEventListener("hashchange", ()=>arrobaAbre()); setTimeout(()=>arrobaAbre(), 0);
+/* 18/11: o endereço de exemplo embaixo do campo acompanha o que a pessoa digita */
+document.addEventListener("input", e=>{ const el = e.target; if (!el || !/^(pusu|pgusu|pgcusu)$/.test(el.id)) return; const d = $("#" + el.getAttribute("aria-describedby")); if (!d) return;
+  const v = el.value.trim().replace(/^@+/, "").toLowerCase(); d.textContent = d.textContent.replace(/arede\.online\/@[^\s·]*/, "arede.online/@" + (v || "nome")); });
+addEventListener("hashchange", ()=>arrobaAbre()); addEventListener("popstate", ()=>{ if (!location.hash && pathArroba()){ arrobaAbre(); render(); } }); setTimeout(()=>arrobaAbre(), 0);
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
 /* 16/11 (Amanda): voltar sai do módulo inteiro (Manifesto, Como funciona, Termos, Privacidade) e volta para a tela de antes, sem passar pelas abas */
@@ -6252,7 +6259,7 @@ function screenConta(){
       <div class="fotolin"><input id="pfotoin" type="file" accept="image/*" hidden>${pf.foto_em_analise ? `<p class="inota">${ic("info","sm")}<span>Sua foto está em análise pela moderação.</span></p>` : `<button class="linkbtn" type="button" data-act="fotoperfil">${pf.foto ? "Trocar foto" : "Pôr foto"}</button>${pf.foto ? `<button class="linkbtn" type="button" data-act="fototirap">Tirar foto</button>` : ""}`}</div>
       <button class="setting l1" type="button" data-act="capaedita" data-alvo="eu:${ME.user.id}" style="width:100%">${ic("lapis")}<span class="t"><b>Capa</b><small>Trocar a imagem do alto do seu perfil</small></span>${ic("back","sm flip")}</button>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
-      <div class="field"><label for="pusu">Nome de usuário</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pusu" type="text" maxlength="30" autocapitalize="none" autocomplete="username" spellcheck="false" value="${esc(pf.usuario || "")}" aria-describedby="pusudica"></div><small id="pusudica" class="hint">O endereço do seu perfil: arede.online/#@${esc(pf.usuario || "nome")}</small></div>
+      <div class="field"><label for="pusu">Nome de usuário</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pusu" type="text" maxlength="30" autocapitalize="none" autocomplete="username" spellcheck="false" value="${esc(pf.usuario || "")}" aria-describedby="pusudica"></div><small id="pusudica" class="hint">O endereço do seu perfil: arede.online/@${esc(pf.usuario || "nome")}</small></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
       <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
@@ -7186,8 +7193,8 @@ const A = {
   like: b => { const id = b.dataset.uid; if (!S.liked.has(id)) lugarSinal(findItem(id), "like"); S.liked.has(id) ? S.liked.delete(id) : S.liked.add(id); persist("liked"); refresh(id); },
   share: b => { if (b.dataset.uid && !S.shared.has(b.dataset.uid)){ lugarSinal(findItem(b.dataset.uid), "share"); S.shared.add(b.dataset.uid); persist("shared"); }
     const pu = b.dataset.perfil && /^u-/.test(b.dataset.perfil) ? b.dataset.perfil.slice(2) : "", pgp = b.dataset.perfil && /^pg-/.test(b.dataset.perfil) ? (PAGS.lista || []).find(x=>"pg-" + x.id === b.dataset.perfil) : null;
-    const usu = pu ? (ME.user && ME.user.id === pu ? (ME.perfil || {}).usuario : (PESS_VIT[pu] || {}).usuario) : pgp ? pgp.usuario : "";   /* 18/11: com @, o link é arede.online/#@nome */
-    const url = location.href.split("#")[0] + (b.dataset.uid ? "#pin-" + b.dataset.uid : usu ? "#@" + usu : b.dataset.perfil ? (/^pg-/.test(b.dataset.perfil) ? "#" : "#org-") + b.dataset.perfil : location.hash); try{ navigator.clipboard.writeText(url).then(()=>toast("Link copiado."), ()=>toast("Não foi possível copiar o link.")); }catch(e){ toast("Não foi possível copiar o link."); } },
+    const usu = pu ? (ME.user && ME.user.id === pu ? (ME.perfil || {}).usuario : (PESS_VIT[pu] || {}).usuario) : pgp ? pgp.usuario : "";   /* 18/11: com @, o link é arede.online/@nome */
+    const url = location.origin + (usu && !b.dataset.uid ? "/@" + usu : "/" + location.search) + (b.dataset.uid ? "#pin-" + b.dataset.uid : usu ? "" : b.dataset.perfil ? (/^pg-/.test(b.dataset.perfil) ? "#" : "#org-") + b.dataset.perfil : location.hash); try{ navigator.clipboard.writeText(url).then(()=>toast("Link copiado."), ()=>toast("Não foi possível copiar o link.")); }catch(e){ toast("Não foi possível copiar o link."); } },
   moretext: b => { const pin = b.closest(".pin"), t = pin.querySelector(".pintext"); const open = !t.classList.contains("open"); t.classList.toggle("open", open); S.textOpen[b.dataset.uid] = open;
     b.textContent = open ? "Mostrar menos" : "Mostrar mais"; b.setAttribute("aria-expanded", open); layoutPin(pin); },
   poll: b => { S.pollVote[b.dataset.uid] = +b.dataset.i; persist("pollVote"); refresh(b.dataset.uid); toast("Voto registrado na consulta."); },
@@ -7416,7 +7423,8 @@ const A = {
     const {error} = await SB.from("tat_mensagens").insert({pedido_id:id, de:pedSouPagina(x) ? "pagina" : "cliente", autor:ME.user.id, texto:tx, fotos:paths}); ocupado(b, false);
     if (error){ if (paths.length) B.remove(paths); return toast(erroAuth(error)); } delete FOTO.nova[id]; await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString(), status:pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto")}).eq("id", id);
     x.status = pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto"); delete PED.msgs[id]; t.value = ""; render(); },
-  paginacria: async b => { const tipo = ($('input[name="pgtipo"]:checked') || {}).value, nome = $("#pgnome").value.trim();
+  paginacria: async b => { const tipo = ($('input[name="pgtipo"]:checked') || {}).value, nome = $("#pgnome").value.trim(), cusu = (($("#pgcusu") || {}).value || "").trim().replace(/^@+/, "").toLowerCase();
+    if (cusu && !/^[a-z0-9_.]{3,30}$/.test(cusu)) return formErro("Endereço da página: de 3 a 30 letras minúsculas, números, ponto ou _.");
     if (nome.length < 2) return formErro("Dê um nome à página.");
     const cnpj = tipo === "empresa" ? $("#pgcnpj").value.replace(/\D/g, "") : ""; if (cnpj && cnpj.length !== 14) return formErro("Confira o CNPJ: são 14 números. Se não tiver, deixe em branco.");
     if (!$("#pgnaoel").checked) return formErro("Páginas não podem ser de candidato, partido ou campanha eleitoral. Marque a confirmação.");
@@ -7427,7 +7435,8 @@ const A = {
     ocupado(b, false); if (error) return formErro(erroAuth(error));
     if (S.pgModelo && S.pgModelo !== "pessoal"){ const papel = ($('input[name="pgpapel"]:checked') || {}).value || "tatuador", M = MODELOS[S.pgModelo];
       await SB.from("pagina_tatuagem").upsert({pagina_id:data.id, modelo:S.pgModelo, papel, modulos:M.mods.concat(papel === "estudio" ? ["equipe"] : []), estilos:[], preco:null, preco_un:"hora", orc_ref:true, orc_tabela:false, tabela:[], atualizado_em:new Date().toISOString()}); }
-    S.pgModelo = null; closeSheet(); await paginasCarrega(); toast(data && data.status === "aprovada" ? "Página no ar. Ajuste os módulos em Editar página." : "Página enviada. A curadoria avisa você no sino."); go("pg-" + data.id); },
+    let avisoUsu = ""; if (cusu){ const r = await SB.rpc("pagina_usuario_define", {p_pagina:data.id, p_usuario:cusu}); if (r.error) avisoUsu = " O endereço não foi salvo: " + msgErr(r.error) + ". Ajuste em Editar página."; }   /* 18/11 (Amanda): a página já nasce com o seu @ */
+    S.pgModelo = null; closeSheet(); await paginasCarrega(); toast((data && data.status === "aprovada" ? "Página no ar. Ajuste os módulos em Editar página." : "Página enviada. A curadoria avisa você no sino.") + avisoUsu); go("pg-" + data.id); },
   pgmodelo: b => { S.pgModelo = b.dataset.m || null; sheetPaginaNova(); },
   paginasalva: async b => { const pusu = (($("#pgusu") || {}).value || "").trim().replace(/^@+/, "").toLowerCase(), pg1 = PAGS.lista.find(x=>x.id === b.dataset.id) || {};
     if (pusu && !/^[a-z0-9_.]{3,30}$/.test(pusu)) return formErro("Endereço da página: de 3 a 30 letras minúsculas, números, ponto ou _.");
@@ -7957,7 +7966,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:28";
+const VERSAO = "v1 registrada · 18/11 19:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

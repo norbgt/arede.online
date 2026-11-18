@@ -7,7 +7,7 @@
   "assets": {
     "directory": "./",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none"
+    "not_found_handling": "single-page-application"   // 18/11 (Amanda): arede.online/@nome abre o site; quem lê o @ é o próprio site
   },
   // Só o endereço de verdade: arede.online/* (rota na zona, com "seguir para a origem" se falhar). Sem endereço provisório da Cloudflare.
   "workers_dev": false,
