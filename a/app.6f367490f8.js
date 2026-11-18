@@ -2490,9 +2490,23 @@ const SELOS_TAT = [
   {k:"casa", fam:"fato", ic:"clock", nome:n=>`${n} ${n===1 ? "ano" : "anos"}`, titulo:"Tempo de casa", como:"Anos de página ativa na rede, com sessão verificada no período.", porque:"Conta tempo em atividade, não tempo desde o cadastro.", tem:(r, p)=>r.sessoes > 0 ? tatAnos(p) : 0},
   {k:"bem", fam:"fato", ic:"star", nome:()=>"Bem avaliado", titulo:"Bem avaliado", como:"Média a partir de 4,7 com pelo menos 30 avaliações de quem foi tatuado.", porque:"Nota alta com cinco avaliações não diz nada.", tem:r=>r.n >= 30 && r.media >= 4.7 ? 1 : 0},
   {k:"pos", so:"tatuagem", fam:"fato", ic:"heart", nome:()=>"Orienta o pós", titulo:"Orienta o pós", como:"Mais de 90% das pessoas tatuadas disseram que saíram sabendo cuidar da tatuagem (com pelo menos 10 avaliações).", porque:"É o selo sobre saúde. Fica separado da satisfação: simpatia não compensa risco.", tem:r=>r.n >= 10 && r.pos >= 90 ? 1 : 0},
-  {k:"pares", fam:"par", ic:"people", nome:n=>`Referendado por ${n}`, titulo:"Referendado por tatuadores", como:"Outras tatuadoras e tatuadores com página na rede põem o nome junto ao trabalho. Quem referenda aparece com nome.", porque:"Dentro da profissão, todo mundo sabe quem é bom. Essa informação agora chega a quem vai se tatuar.", tem:r=>(r.referendos || []).length}];
+  {k:"dor", so:"tatuagem", fam:"fato", ic:"hand", nome:()=>"Prepara para a dor", titulo:"Prepara para a dor", como:"Mais de 90% das pessoas tatuadas disseram que a dor foi como a tatuadora preparou (com pelo menos 10 avaliações).", porque:"Saber o que esperar também é cuidado.", tem:r=>r.n >= 10 && r.dor >= 90 ? 1 : 0},
+  {k:"pares", fam:"par", ic:"people", nome:n=>`Referendado por ${n}`, titulo:"Referendado por tatuadores", como:"Outras tatuadoras e tatuadores com página na rede põem o nome junto ao trabalho. Quem referenda aparece com nome.", porque:"Dentro da profissão, todo mundo sabe quem é bom. Essa informação agora chega a quem vai se tatuar.", tem:r=>(r.referendos || []).length},
+  {k:"itin", so:"tatuagem", papel:"tatuador", fam:"par", ic:"globe", nome:n=>`Itinerante · ${n} estúdios`, titulo:"Itinerante", como:"Tatuou em 3 ou mais estúdios da rede, com o vínculo confirmado pelo estúdio e pela tatuadora. No detalhe, os estúdios por onde passou.", porque:"Quem viaja tatuando leva o trabalho a outros lugares, e o lugar confirma.", tem:(r, p)=>{ const n = tatEstudios(p).length; return n >= 3 ? n : 0; }}];
+/* 18/11 (Amanda): estúdios por onde a tatuadora já passou (vínculo aceito pelos dois) */
+const tatEstudios = p => TAT.equipe.filter(x=>x.tatuador_id === p.id && x.aceito_estudio && x.aceito_tatuador).map(x=>PAGS.lista.find(y=>y.id === x.estudio_id)).filter(Boolean);
+/* 18/11 (Amanda): o que falta para cada selo, à vista (texto e quanto já foi) */
+function seloFalta(x, r, p){ const fx = (t, f) => ({t, f:Math.max(0, Math.min(1, f))}), av = n => `falta${n === 1 ? "" : "m"} ${n} ${n === 1 ? "avaliação" : "avaliações"}`;
+  if (x.k === "sessoes") return fx("falta a primeira sessão verificada", 0);
+  if (x.k === "casa"){ if (!r.sessoes) return fx("conta depois da primeira sessão verificada", 0); const d = new Date(p.criada_em); d.setFullYear(d.getFullYear() + 1); return fx("completa 1 ano em " + d.toLocaleDateString("pt-BR", {month:"long", year:"numeric"}), (Date.now() - new Date(p.criada_em)) / 31557600000); }
+  if (x.k === "bem") return r.n < 30 ? fx(av(30 - r.n), r.n / 30) : fx("a média precisa chegar a 4,7", r.media / 4.7);
+  if (x.k === "pos" || x.k === "dor"){ const v = x.k === "pos" ? r.pos : r.dor; return r.n < 10 ? fx(av(10 - r.n), r.n / 10) : fx("precisa passar de 90%", v / 90); }
+  if (x.k === "pares") return fx("ninguém referendou ainda", 0);
+  if (x.k === "itin"){ const n = tatEstudios(p).length; return fx(`falta${3 - n === 1 ? "" : "m"} ${3 - n} ${3 - n === 1 ? "estúdio" : "estúdios"}`, n / 3); }
+  return fx("", 0); }
+const seloDiz = (x, v, r) => x.k === "bem" ? `média ${nota(r.media)} em ${r.n} avaliações` : x.k === "pos" ? `${r.pos}% saíram sabendo cuidar` : x.k === "dor" ? `${r.dor}% como foi preparada` : x.nome(v);
 const tatRep = p => TAT.rep[p.id] || {n:0, media:0, pos:0, dor:0, sessoes:0, referendos:[]};
-const selosDe = p => SELOS_TAT.filter(x=>!x.so || x.so === modeloDe(p));
+const selosDe = p => SELOS_TAT.filter(x=>(!x.so || x.so === modeloDe(p)) && (!x.papel || (tatDe(p) || {}).papel === x.papel));
 const tatSelos = p => { if (!mod(p, "reputacao")) return []; const r = tatRep(p); return selosDe(p).map(x=>({x, v:x.tem(r, p)})).filter(y=>y.v); };
 const seloHTML = ({x, v}) => `<button class="selo ${x.fam}" type="button" data-act="selocomo" data-k="${x.k}">${ic(x.ic,"sm")}${esc(x.nome(v))}</button>`;
 /* AGENDA ABERTA OU FECHADA (15/11): quem tem o módulo Agenda decide; aparece no cabeçalho, no cartão de Organizações e no pedido de orçamento */
@@ -2518,7 +2532,9 @@ function tatReputacaoHTML(p){ const r = tatRep(p), l = TAT.aval[p.id], eu = ME.u
   const tt0 = modeloDe(p) === "tatuagem";
   return `<div class="fatos tatfatos">${num(r.n ? nota(r.media) : "—", r.n ? `média de ${r.n} ${r.n===1 ? "avaliação" : "avaliações"}` : "sem avaliações")}${num(r.sessoes, tt0 ? "sessões verificadas" : "atendimentos verificados")}${tt0 ? num(r.n ? r.pos + "%" : "—", "saíram sabendo cuidar") + num(r.n ? r.dor + "%" : "—", "dor como foi preparada") : ""}</div>
     <p class="lnote">Só avalia quem foi tatuado: a avaliação abre depois do check-in confirmado pelas duas pessoas. Saúde e preparo são contados à parte da nota.</p>
-    <h3 class="psec">Selos</h3><div class="list">${selosDe(p).map(x=>{ const v = x.tem(r, p); return `<div class="setting l1 selolin${v ? "" : " nao"}"><span class="selo ${x.fam}">${ic(x.ic,"sm")}${esc(v ? x.nome(v) : x.titulo)}</span><span class="t"><small>${esc(x.como)}</small></span></div>`; }).join("")}</div>
+    <h3 class="psec">Selos</h3><div class="adesivos">${selosDe(p).map(x=>{ const v = x.tem(r, p), f = v ? null : seloFalta(x, r, p);
+      return `<button class="adesivo ${x.fam}${v ? "" : " nao"}" type="button" data-act="selocomo" data-k="${x.k}" aria-label="${esc(x.titulo)}: ${esc(v ? seloDiz(x, v, r) : f.t)}. Como se ganha">${ic(x.ic)}<b>${esc(x.titulo)}</b><small>${esc(v ? seloDiz(x, v, r) : f.t)}</small>${v ? "" : `<span class="adbar" aria-hidden="true"><i style="width:${Math.round(f.f * 100)}%"></i></span>`}</button>`; }).join("")}</div>
+    <p class="lnote">Toque num selo para ver como se ganha. Nenhum selo se compra ou se pede.</p>
     ${(r.referendos || []).length ? `<h3 class="psec">Quem referenda</h3><div class="tatref">${r.referendos.map(y=>`<a href="#pg-${y.por}">${avatar(ORG["pg-" + y.por] || {nome:y.nome})}<span>${esc(limpo(y.nome))}</span></a>`).join("")}</div>` : ""}
     ${eqp.length && !ja ? `<button class="btn" type="button" data-act="tatreferenda" data-p="${p.id}" style="margin-top:10px">${ic("people","sm")} Referendar este trabalho</button>` : ""}
     <h3 class="psec">Avaliações</h3>${!l ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.slice(0, S.tatMais ? 40 : 8).map(a=>`<div class="setting l1 aval"><span class="t"><b><span class="tstar">${"★".repeat(a.nota)}</span> ${a.autor ? `<a href="#org-u-${esc(a.autor)}">${esc(limpo(a.autor_nome || "Pessoa atendida"))}</a>` : esc(limpo(a.autor_nome || "Pessoa atendida"))}</b><small>${a.texto ? esc(a.texto) : ""}</small><small class="muted">${ic("check","sm")} sessão verificada · ${a.pos ? "saiu sabendo cuidar" : "saiu sem saber cuidar"} · dor ${a.dor === "igual" ? "como foi preparada" : a.dor === "mais" ? "maior que o preparado" : "menor que o preparado"} · ${quando(a.criado_em)}</small></span></div>`).join("")}</div>${l.length > 8 && !S.tatMais ? `<button class="btn ghost" type="button" data-act="tatmais" style="margin-top:10px">Ver mais avaliações</button>` : ""}` : `<p class="empty">Ainda sem avaliações.</p>`}`; }
@@ -2667,6 +2683,8 @@ const sesSug = (x, y) => { const tot = +(x && x.valor_combinado) || 0; if (!tot)
 function sheetOrcEnvia(x){ openSheet(shead(x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento") + `
     <div class="row" style="gap:10px"><div class="field" style="flex:2"><label for="oevalor">Valor combinado (R$)</label><input id="oevalor" inputmode="decimal" maxlength="14" value="${x.valor_combinado ? String((+x.valor_combinado).toFixed(2)).replace(".", ",") : finValor(x.preco) ? String(finValor(x.preco).toFixed(2)).replace(".", ",") : ""}"></div>
       <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" value="${+x.sessoes_prev || 1}"></div></div>
+    ${(()=>{ const pg = PAGS.lista.find(y=>y.id === x.pagina_id), M = MODELOS[modeloDe(pg)] || {}, l = ((tatDe(pg) || {}).estilos || []).length ? tatDe(pg).estilos : (M.esp || []);
+      return l.length ? `<div class="field"><label for="oeestilo">${M.espRot === "Estilos" ? "Estilo do trabalho" : (M.espRot || "Tipo do trabalho")} (opcional)</label><select id="oeestilo"><option value="">Não informar</option>${l.map(e=>`<option${e === x.estilo ? " selected" : ""}>${esc(e)}</option>`).join("")}</select><small class="hint">Entra no passaporte de quem foi atendido.</small></div>` : ""; })()}
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}">${x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento"}</button>`, "Orçamento"); }
 const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
 function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span class="sescl${ok ? " ok" : ""}">${ic(ok ? "check" : "clock","sm")}<span>${rot}</span><b>${val}</b></span>`;
@@ -2735,7 +2753,8 @@ function passaporteHTML(){ const l = SES.minhas; if (!l){ (async()=>{ SES.minhas
   return `<p class="lnote">Seu passaporte reúne os atendimentos com check-in: onde e com quem você se tatuou ou foi atendida. Só você vê.</p>
     ${prox.length ? `<h3 class="psec">Próximos</h3><div class="list">${prox.map(lin).join("")}</div>` : ""}
     <h3 class="psec">Com check-in</h3>${vf.length ? `<div class="list">${vf.map(lin).join("")}</div>` : `<p class="empty">Nenhum ainda. Quando fizer o check-in numa sessão, ela aparece aqui.</p>`}`; }
-function sheetSeloComo(k){ openSheet(shead("Como se ganham os selos") + `<p class="lnote osub">Nenhum selo se compra ou se pede. Verde vem de fato confirmado; azul, de outros profissionais que assinam junto. Selo pago, se existir, virá marcado como “Destaque”.</p>
+function sheetSeloComo(k){ const pg = route().startsWith("pg-") ? PAGS.lista.find(x=>x.id === route().slice(3)) : null, est = pg && k === "itin" ? tatEstudios(pg) : [];
+  openSheet(shead("Como se ganham os selos") + `${est.length ? `<p class="olbl">Estúdios por onde passou</p><div class="tatref" style="margin-bottom:14px">${est.map(e=>`<a href="#pg-${e.id}">${avatar(ORG["pg-" + e.id] || {nome:e.nome})}<span>${esc(limpo(e.nome))}${e.cidade ? ` · ${esc(e.cidade)}` : ""}</span></a>`).join("")}</div>` : ""}<p class="lnote osub">Nenhum selo se compra ou se pede. Verde vem de fato confirmado; azul, de outros profissionais que assinam junto. Selo pago, se existir, virá marcado como “Destaque”.</p>
   <div class="list">${SELOS_TAT.map(x=>`<div class="setting l1 selolin"${x.k === k ? ' style="background:var(--surface-2)"' : ""}><span class="selo ${x.fam}">${ic(x.ic,"sm")}${esc(x.titulo)}</span><span class="t"><small><b>Como se ganha:</b> ${esc(x.como)}</small><small><b>Por que existe:</b> ${esc(x.porque)}</small></span></div>`).join("")}</div>`, "Selos"); }
 function tatFichaCampos(p, md0){ const f = (p && fichaDe(p)) || {}, md = md0 || modeloDe(p), M = MODELOS[md], ms = md0 ? M.mods.concat(f.papel === "estudio" ? ["equipe"] : []) : modsDe(p);
   const sw = ([k, n, d]) => `<div class="orow"><span class="ot"><b>${n}</b><small>${d}</small></span><button class="switch" type="button" role="switch" data-act="modliga" data-mod="${k}" aria-checked="${ms.includes(k)}" aria-label="${n}"></button></div>`;
@@ -3452,6 +3471,41 @@ const PERFIL_MOSTRA = () => `<h2 class="sectitle">O que o seu perfil mostra</h2>
       <button class="setting l1" type="button" data-act="pgperfilabre"><span class="t"><b>Páginas no seu perfil</b><small>${(()=>{ const l = minhasPaginas("aprovada"), n = l.filter(p=>p.no_perfil).length; return l.length ? n + " de " + l.length + " aparecem" : "Você ainda não tem página"; })()}</small></span>${ic("back","sm flip")}</button>
       <button class="setting l1" type="button" data-act="redes"><span class="t"><b>Outras redes</b><small>${(()=>{ const m = S.redes.filter(c=>c.tipo==="minha").length, a = S.redes.length - m; return m || a ? [m ? m + " no perfil" : "", a ? a + " no feed" : ""].filter(Boolean).join(" · ") : "Traga publicações de outras redes"; })()}</small></span>${ic("back","sm flip")}</button>
     </div>`;
+/* PASSAPORTE (18/11, Amanda): cada sessão com check-in confirmado pelas duas pessoas vira um carimbo. As coleções seguem só o que a rede confere.
+   Só a própria pessoa vê. Sem ranking, sem sequência diária, sem prêmio. */
+const PASS = {lista:null};
+async function passaporteCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.rpc("meu_passaporte"); PASS.lista = Array.isArray(data) ? data : []; }catch(e){ PASS.lista = []; }
+  if (route() === "passaporte"){ const m = $("#main") || document.querySelector("main"); const b = $("#passbody"); if (b) b.innerHTML = passaporteCorpo(); } }
+const PASS_PRIMEIRA = {tatuagem:"Primeira tatuagem", beleza:"Primeiro cuidado de beleza", artesanato:"Primeira peça feita à mão"};
+const PASS_COR = {tatuagem:"pz-tat", beleza:"pz-bel", artesanato:"pz-art"};
+function passLugar(c){ const t = String(c || "").trim(), m = t.match(/^(.*?),\s*([A-Za-z]{2})$/); if (m && UF_NOME[m[2].toUpperCase()]) return {cidade:m[1].trim(), uf:m[2].toUpperCase(), pais:"Brasil"};
+  const k = t.match(/^(.*?),\s*(.+)$/); return k ? {cidade:k[1].trim(), uf:"", pais:k[2].trim()} : {cidade:t, uf:"", pais:t ? "Brasil" : ""}; }
+function passColecoes(l){ const cont = (f) => { const m = {}; l.forEach(c=>{ const k = f(c); if (k) m[k] = (m[k] || 0) + 1; }); return m; }, dist = f => new Set(l.map(f).filter(Boolean)).size;
+  const porCid = {}; l.forEach(c=>{ const g = passLugar(c.cidade); if (g.cidade){ (porCid[g.cidade] = porCid[g.cidade] || new Set()).add(c.pagina_id); } });
+  const rota = Object.entries(porCid).sort((a, b)=>b[1].size - a[1].size)[0], volta = Math.max(0, ...Object.values(cont(c=>c.pagina_id)));
+  const ufs = dist(c=>passLugar(c.cidade).uf), paises = dist(c=>passLugar(c.cidade).pais), nivel = (n, ns) => ns.find(x=>n < x) || ns[ns.length - 1];
+  const out = [], col = (ic, nome, desc, n, meta) => out.push({ic, nome, desc, n:Math.min(n, meta), meta, ok:n >= meta});
+  const mods = new Set(l.map(c=>c.modelo));
+  Object.keys(PASS_PRIMEIRA).forEach(m=>col(m === "tatuagem" ? "lapis" : m === "beleza" ? "heart" : "bookmark", PASS_PRIMEIRA[m], "Primeira vez nesse serviço", mods.has(m) ? 1 : 0, 1));
+  col("pin", "Rota da cidade", rota ? `Lugares diferentes em ${rota[0]}` : "5 lugares diferentes na mesma cidade", rota ? rota[1].size : 0, 5);
+  col("predio", "Negócio local", "Páginas diferentes com selo MEI", dist(c=>c.mei ? c.pagina_id : ""), 3);
+  col("check", "Volta sempre", "Voltas à mesma página", volta, 3);
+  col("flag", "Pelo Brasil", "Estados diferentes", ufs, nivel(ufs, [3, 5, 10]));
+  col("globe", "Pelo mundo", "Países diferentes", paises, nivel(paises, [2, 3, 5]));
+  col("star", "Com uma referência", "Página com Bem avaliado e 5 anos de casa", l.some(c=>c.referencia) ? 1 : 0, 1);
+  col("raio", "Apoiou quem começa", "Página com menos de 6 meses na rede", l.some(c=>c.nova) ? 1 : 0, 1);
+  col("lapis", "Colecionável de estilos", "Estilos diferentes de trabalho", dist(c=>c.estilo), 3);
+  return out; }
+function passaporteCorpo(){ const l = PASS.lista; if (!l) return `<p class="empty">Carregando…</p>`;
+  const dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
+  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : "bookmark")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando)}</small></a>`).join("")}<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span></div>`
+    : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento.</b> Cada sessão com check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
+  const cols = passColecoes(l);
+  return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
+    <h2 class="sectitle">Coleções</h2><div class="pcols">${cols.map(c=>`<div class="pcol${c.ok ? " ok" : ""}">${ic(c.ic)}<span class="t"><b>${esc(c.nome)}</b><small>${esc(c.desc)}</small></span>${c.ok && c.meta === 1 ? `<span class="pok">${ic("check","sm")}</span>` : `<span class="pprog"><small>${c.n} de ${c.meta}</small><span class="adbar"><i style="width:${Math.round(c.n / c.meta * 100)}%"></i></span></span>`}</div>`).join("")}</div>
+    <p class="lnote" style="margin-top:14px">${ic("lock","sm")} Só você vê o seu passaporte. Ele conta só atendimentos com check-in confirmado pelas duas pessoas: nada de ranking, sequência ou prêmio.</p>`; }
+function screenPassaporte(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Meu passaporte</h1></div>`)
+  + `<div class="container"><div id="passbody">${ME.user ? passaporteCorpo() : `<p class="empty">Entre na sua conta para ver o seu passaporte.</p>`}</div></div>`; }
 function screenConfig(){
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Configurações</h1></div>`)
   + `<div class="container">
@@ -3982,6 +4036,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r.startsWith("pin-")){ main.innerHTML = screenPin(r.slice(4)); fillPin(r.slice(4)); }
   else if (r==="ate-depois") main.innerHTML = screenBye();
   else if (r==="conta"){ main.innerHTML = screenConta(); adPedidosCarrega(); }
+  else if (r==="passaporte"){ main.innerHTML = screenPassaporte(); passaporteCarrega(); }
   else if (r==="anunciar") main.innerHTML = screenAnunciar();
   else if (r==="em-alta"){ main.innerHTML = screenAlta(); if (ME.pronto) altaCarrega(); }
   else if (r==="curadoria"){ main.innerHTML = screenCuradoria(); curadoriaCarrega(); }
@@ -4463,6 +4518,8 @@ function mockSB(o = {}){
       y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
       if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
+    meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "tatuagem", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }),
     pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
       const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
         marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
@@ -5620,6 +5677,8 @@ function screenConta(){
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
       <p class="ferr" role="alert" hidden></p>
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
+      <h2 class="sectitle">Passaporte</h2>
+      <div class="list"><button class="setting l1" type="button" data-act="passaporte"><span class="t"><b>Meu passaporte</b><small>Um carimbo por atendimento verificado · só você vê</small></span>${ic("back","sm flip")}</button></div>
       ${PERFIL_MOSTRA()}
 ${/* 15/11: Sua conta fica só com os dados da conta. Publicar está no Criar; sugerir fonte, em "Origem das notícias"; a fila do coletor, no Painel (Conteúdo › Fila de notícias). */""}
       <div class="note">${ic("lock")}<span>Seu e-mail não aparece para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
@@ -6364,6 +6423,7 @@ const A = {
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
   pgapaga: b => sheetPaginaApaga(b.dataset.id),
+  passaporte: () => { PASS.lista = null; go("passaporte"); },
   pgapagaver: b => { closeSheet(); S.gerVer = "agenda"; go("gerir-" + b.dataset.id); },
   pgapagaok: async b => { const pid = b.dataset.id, sen = ($("#pgapsen") || {}).value || "";
     if (!sen) return sheetErro("Escreva sua senha."); sheetErro(""); ocupado(b, true, "Conferindo…");
@@ -6663,8 +6723,8 @@ const A = {
   orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
   orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
-    ocupado(b, true, "Enviando…"); const {error} = await SB.from("tat_pedidos").update({valor_combinado:v, sessoes_prev:n}).eq("id", x.id); if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
-    x.valor_combinado = v; x.sessoes_prev = n; await sesSistema(x.id, `Orçamento: ${finBRL(v)}${n > 1 ? ` em ${n} sessões` : ""}.`); ocupado(b, false); closeSheet(); toast("Orçamento enviado na conversa."); PED.msgs = {}; render(); },
+    ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null; const {error} = await SB.from("tat_pedidos").update({valor_combinado:v, sessoes_prev:n, estilo:est}).eq("id", x.id); if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
+    x.valor_combinado = v; x.sessoes_prev = n; x.estilo = est; await sesSistema(x.id, `Orçamento: ${finBRL(v)}${n > 1 ? ` em ${n} sessões` : ""}.`); ocupado(b, false); closeSheet(); toast("Orçamento enviado na conversa."); PED.msgs = {}; render(); },
   gerver: b => { if (!b.dataset.v && !S.gerVer) return history.back(); S.gerVer = b.dataset.v; render(); window.scrollTo(0, 0); },
   gerconv: b => { S.convTab0 = "atendimento"; S.convId = null; go("conversa-" + b.dataset.id); },
   convtab: b => { S.convTab = b.dataset.tab; render(); },
@@ -7084,7 +7144,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:22";
+const VERSAO = "v1 registrada · 18/11 07:47";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
