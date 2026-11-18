@@ -708,7 +708,7 @@ const STOPS = [[0,[192,54,44]],[45,[194,122,14]],[70,[110,154,58]],[85,[46,139,8
 function tone(sc){ for(let k=1;k<STOPS.length;k++){ const [a,ca]=STOPS[k-1],[b,cb]=STOPS[k]; if(sc<=b){ const t=(sc-a)/(b-a); return "rgb("+ca.map((v,i)=>Math.round(v+(cb[i]-v)*t)).join(",")+")"; } } return "rgb(15,107,62)"; }
 /* CRITÉRIOS DA NOTA (13 nov 2026): faixas do selo e nota de publicação com fonte vêm de Regras e parâmetros, no backoffice.
    Faixa vermelha abaixo de 50 (decisão #39). Publicação com fonte da base não herda a nota da fonte: mostra “Cita fonte confiável”, sem número (decisão #40). */
-let SELO_ALTA = 90, SELO_CONF = 75, SELO_BAIXA = 50, REP_POUCO = 75, REP_MUITO = 90, SELO_AUTO_REP = 75;
+let SELO_ALTA = 90, SELO_CONF = 75, SELO_BAIXA = 50, REP_POUCO = 90, REP_MUITO = 100, SELO_AUTO_REP = 100;
 function sealOf(it){
   const sc = it.id in SEAL ? SEAL[it.id] : (String(it.uid).startsWith("c") ? null : 80);
   if (it.autoral) return {sc:null, lv:"na", label:"Conteúdo autoral"};
@@ -854,7 +854,7 @@ async function capToken(){ if (!CFG.turnstile) return undefined; try{ await capS
 /* regras do backoffice (parametros_publicos): números que valem para todo o site; sem resposta, ficam os valores do código */
 function aplicaRegras(g){ if (!g || typeof g !== "object") return false; const n = (k, a, b)=>{ const v = g[k]; return Number.isInteger(v) && v >= a && v <= b ? v : null; }; let v, mudou = false;
   const poe = (k, a, b, f)=>{ if ((v = n(k, a, b)) !== null) { f(v); mudou = true; } };
-  poe("visitante_por_aba", 1, 1000, x=>{ ACESSO.visitante.porAba = x; ACESSO.cadastrado.porAba = x; });
+  poe("visitante_por_aba", 1, 1000, x=>{ ACESSO.visitante.porAba = x; }); poe("conta_por_aba", 1, 5000, x=>{ ACESSO.cadastrado.porAba = x; });
   poe("visitante_videos", 0, 1000, x=>{ ACESSO.visitante.videos = x; });
   poe("conta_novas_hora", 1, 5000, x=>{ ACESSO.cadastrado.total = x; });
   poe("conta_videos_12h", 0, 1000, x=>{ ACESSO.cadastrado.videos = x; });
@@ -1862,7 +1862,9 @@ new MutationObserver(()=>{ const x = !!document.querySelector("#feed .xcard"); i
    Os números ficam aqui, num lugar só. O que a pessoa já viu nos últimos 7 dias não conta de novo.
    ATENÇÃO: estes limites são da interface, guardados no aparelho; quem domina o navegador consegue contorná-los.
    O que é fechado de verdade no servidor: a aba Arte (o banco só entrega as artes à administradora). Ver Segurança no painel. */
-const ACESSO = {visitante:{porAba:30, videos:8}, cadastrado:{porAba:30, total:100, janela:3600e3, videos:15, janelaVideo:12*3600e3}, memoria:7*864e5};
+/* 18/11 (Amanda, período de testes): visitante 60 por aba e 15 vídeos; conta com e-mail 150 por aba e 450 por hora; conta verificada vê o dobro (vídeos sem limite) */
+const ACESSO = {visitante:{porAba:60, videos:15}, cadastrado:{porAba:150, total:450, janela:3600e3, videos:15, janelaVideo:12*3600e3}, memoria:7*864e5};
+const acessoVerif = () => ({porAba:ACESSO.cadastrado.porAba * 2, total:ACESSO.cadastrado.total * 2, janela:ACESSO.cadastrado.janela});
 const NIVEL_TESTE = /[?&]teste=1/.test(location.search) ? (new URLSearchParams(location.search).get("nivel") || "") : "";
 function nivel(){ if (NIVEL_TESTE) return NIVEL_TESTE;
   try{ if (TESTE_HTML && SB && SB._teste){ const pf = ME.perfil; return !ME.user ? "visitante" : pf && pf.papel === "admin" ? "admin" : pf && pf.verificado ? "verificado" : "cadastrado"; } }catch(e){}   /* modo de teste do HTML */
@@ -1881,7 +1883,7 @@ function ledgerSalva(){ clearTimeout(lgT); lgT = setTimeout(()=>{ const L = LG, 
   L.pub = L.pub.filter(x=>now - x[2] < A.janela); L.vid = L.vid.filter(x=>now - x[1] < A.janelaVideo);
   for (const id in L.seen) if (now - L.seen[id] > ACESSO.memoria) delete L.seen[id];
   store.set(LGk, L); }, 300); }
-function acessoPub(tab, id){ const L = ledger(), now = Date.now(), A = ACESSO.cadastrado;
+function acessoPub(tab, id){ const L = ledger(), now = Date.now(), A = nivel()==="verificado" ? acessoVerif() : ACESSO.cadastrado;
   if (L.seen[id]) return null;
   const rec = L.pub.filter(x=>now - x[2] < A.janela), aba = rec.filter(x=>x[1]===tab);
   if (aba.length >= A.porAba) return {k:"hora", escopo:"aba", volta:aba[0][2] + A.janela};
@@ -1895,7 +1897,7 @@ function acessoVideo(id){ const n = nivel(); if (n==="admin" || n==="verificado"
   if (rec.length >= A.videos) return {k:"video", volta:rec[0][1] + A.janelaVideo};
   L.vid.push([id, now]); ledgerSalva(); return null; }
 /* pode entrar mais um cartão no feed? devolve null (pode) ou o motivo da parada */
-function acessoFeed(base){ const n = nivel(); if (n==="admin" || n==="verificado" || base.anuncio) return null;
+function acessoFeed(base){ const n = nivel(); if (n==="admin" || base.anuncio) return null;
   if (n==="visitante"){ const v = S.tab==="videos", lim = v ? ACESSO.visitante.videos : ACESSO.visitante.porAba; return F.vistos >= lim ? {k:"cadastro", lim, videos:v} : null; }
   return S.tab==="videos" ? null : acessoPub(S.tab, String(base.id)); }
 function gateNota(g){
@@ -1903,7 +1905,8 @@ function gateNota(g){
   const conta = `<a class="linkbtn" href="#conta" data-act="criarconta">Criar conta</a><a class="linkbtn" href="#conta" data-act="acessar">Já tenho conta</a>`;
   if (g.k==="cadastro") return note(`<b>Você viu ${g.videos ? "os " + g.lim + " primeiros vídeos" : "as " + g.lim + " primeiras publicações desta aba"}.</b> Para ver mais, crie sua conta ou entre. É grátis.`, conta);
   /* 18/11 (Amanda): mensagem curta e o caminho direto para o CPF */
-  return note(`<b>Você chegou ao limite desta hora.</b> Mais às ${horaDe(g.volta)}, ou verifique a conta com o CPF e leia sem limite.`,
+  if (nivel()==="verificado") return note(`<b>Você chegou ao limite desta hora.</b> Mais às ${horaDe(g.volta)}.`, `<button class="linkbtn" type="button" data-act="acessomais">Atualizar</button>`);
+  return note(`<b>Você chegou ao limite desta hora.</b> Mais às ${horaDe(g.volta)}, ou verifique a conta com o CPF e leia o dobro.`,
     `<button class="btn sm primary" type="button" data-act="verificacpf">Verificar com CPF</button><button class="linkbtn" type="button" data-act="acessomais">Atualizar</button>`); }
 function more(n=10){
   if (F.paused || F.ended) return;
@@ -4751,7 +4754,7 @@ function mockSB(o = {}){
     return b; }
   const RPC = {
     meu_acesso:()=>db.logada ? {papel:db.nivel === "admin" ? "admin" : "membro", nivel:db.nivel} : null,
-    config_publica:()=>({}), seguranca_nota:()=>({grade:"A+", score:115, testes_ok:12, testes_total:12, verificado_em:new Date().toISOString()}), minha_reputacao:()=>({nota:80, tempo:20, uteis:20, fonte:20, colaborador:0, verificado:10, remocoes:0}),
+    config_publica:()=>({}), seguranca_nota:()=>({grade:"A+", score:115, testes_ok:12, testes_total:12, verificado_em:new Date().toISOString()}), minha_reputacao:()=>({nota:db.nivel === "cadastrado" ? 90 : 100, dias:6, pessoas:4, com_fonte:2, removidos:0, verificado:db.nivel !== "cadastrado", selos:[{k:"uteis", nome:"Comentários úteis", de:"4 pessoas marcaram como úteis"}], falta:{uteis:0, fontes:3, dias:84}, minimo:{uteis:3, fontes:5, dias:90}}),
     notif_nao_lidas:()=>tab("notificacoes").filter(n=>n.user_id === eu() && !n.lida_em).length,
     notif_marca_lidas:({p_ids})=>{ let n = 0; tab("notificacoes").forEach(x=>{ if (x.user_id === eu() && !x.lida_em && (!p_ids || p_ids.map(String).includes(String(x.id)))){ x.lida_em = agora(); n++; } }); salva(); return n; },
     perfil_seguidores:({p_id})=>({seguidores:tab("seguidores").filter(s=>s.seguido === p_id).length, seguindo:tab("seguidores").filter(s=>s.seguidor === p_id).length, eu_sigo:tab("seguidores").some(s=>s.seguidor === eu() && s.seguido === p_id)}),
@@ -6105,12 +6108,12 @@ function acessoCard(){ const nv = nivel(), a = ME.acesso || {}, ped = a.pedido, 
   const usados = nv==="cadastrado" && a.novos_na_hora !== undefined ? `<p class="inota">${ic("info","sm")}<span>Nesta hora você recebeu ${a.novos_na_hora} de ${A.cadastrado.total} conteúdos novos.</span></p>` : "";
   const pf = ME.perfil || {};
   if (nv !== "cadastrado") return `<section class="acard" aria-label="Verificação da conta">
-    <div class="vfyhead">${verifIco(pf.verificado || (nv==="admin" ? "curadoria" : ""), "big")}<span><b>${nv==="admin" ? "Administração" : (VERIF[pf.verificado] || ["Conta verificada"])[0]}</b><small>${nv==="admin" ? "Tudo, mais a curadoria." : "Sem limite de leitura. Pode votar, apoiar propostas e criar páginas."}</small></span></div></section>`;
+    <div class="vfyhead">${verifIco(pf.verificado || (nv==="admin" ? "curadoria" : ""), "big")}<span><b>${nv==="admin" ? "Administração" : (VERIF[pf.verificado] || ["Conta verificada"])[0]}</b><small>${nv==="admin" ? "Tudo, mais a curadoria." : `Lê ${A.cadastrado.porAba * 2} novas por aba a cada hora, vídeos sem limite. Pode votar, apoiar propostas e criar páginas.`}</small></span></div></section>`;
   if (!S.vInst) return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Verifique com o CPF</h2>
-    <p class="vsub">Sem documento e sem fila: leva um minuto. Conta verificada lê sem limite, vota, apoia propostas e cria páginas.</p>
+    <p class="vsub">Sem documento e sem fila: leva um minuto. Conta verificada lê o dobro, vota, apoia propostas e cria páginas.</p>
     ${verifCpfForm()}
     <p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">É uma instituição? Envie o documento</button></p>
-    <ol class="nsteps">${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}${li(2, "Conta com e-mail", `${A.cadastrado.porAba} novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, true, false)}${li(3, "Conta verificada", "Sem esses limites", false, false)}</ol>${usados}</section>`;
+    <ol class="nsteps">${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}${li(2, "Conta com e-mail", `${A.cadastrado.porAba} novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, true, false)}${li(3, "Conta verificada", `O dobro: ${A.cadastrado.porAba * 2} novas por aba e ${A.cadastrado.total * 2} no total a cada hora; vídeos sem limite`, false, false)}</ol>${usados}</section>`;
   const pedido = nv!=="cadastrado" ? "" : ped && ped.status==="pendente" && ped.doc
     ? `<div class="note okn">${ic("check")}<span><b class="ntit">Documento enviado, em análise</b>Enviado em ${new Date(ped.doc_enviado_em || ped.criado_em).toLocaleDateString("pt-BR", {day:"numeric", month:"long"})}. Só a curadoria vê o arquivo, e ele é apagado assim que o pedido é decidido.<span class="nact"><button class="linkbtn" type="button" data-act="desisteverif">Desistir do pedido</button></span></span></div>`
     : (ped && ped.status==="recusada" ? `<div class="note">${ic("info")}<span><b class="ntit">Pedido não aprovado</b>${ped.motivo ? esc(ped.motivo) + " " : ""}O documento já foi apagado. Você pode enviar de novo.</span></div>`
@@ -6119,7 +6122,7 @@ function acessoCard(){ const nv = nivel(), a = ME.acesso || {}, ped = a.pedido, 
   return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Instituição</h2><p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">Voltar à verificação com CPF</button></p><ol class="nsteps" hidden>
     ${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}
     ${li(2, "Conta com e-mail", `Até ${A.cadastrado.porAba} publicações novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, nv==="cadastrado", nv!=="cadastrado")}
-    ${li(3, nv==="admin" ? "Administração" : "Conta verificada", nv==="admin" ? "Tudo, mais a curadoria" : "Sem esses limites", nv!=="cadastrado", false)}</ol>${usados}${pedido}</section>`; }
+    ${li(3, nv==="admin" ? "Administração" : "Conta verificada", nv==="admin" ? "Tudo, mais a curadoria" : `O dobro: ${A.cadastrado.porAba * 2} por aba e ${A.cadastrado.total * 2} no total a cada hora; vídeos sem limite`, nv!=="cadastrado", false)}</ol>${usados}${pedido}</section>`; }
 /* IDENTIDADE VERIFICADA (13 nov 2026, P0): uma pessoa, uma conta verificada. Pessoa informa o CPF junto com o documento;
    o servidor guarda só um código embaralhado do CPF (impossível de desfazer) e recusa o mesmo CPF em outra conta.
    Conta verificada é exigida para votar, propor votação, apoiar proposta, assinar abaixo-assinado e pedir organização (escolhas da Amanda). */
@@ -6288,15 +6291,21 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
       <button class="setting l1" type="button" data-act="baixadados"><span class="t"><b>Baixar meus dados</b><small>Tudo o que a rede guarda sobre você</small></span>${chev}</button>
       ${nivel()==="admin" ? "" : `<button class="setting l1 perigo" type="button" data-act="apagaconta"><span class="t"><b>Apagar minha conta</b><small>Apaga tudo. Não tem volta.</small></span>${chev}</button>`}</div></section>`; }
 /* o seu histórico na rede: o número (0 a 100) e o que ajuda a subir. Só você vê. */
+/* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
+   O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null; try{ const r = await SB.rpc("minha_reputacao"); if (!r.error) h = r.data; }catch(e){} if (!h || !box.isConnected) return;
-  const faixa = h.nota >= REP_MUITO ? "Muito bom" : h.nota >= REP_POUCO ? "Bom" : h.nota >= CMN_MIN ? "Em formação" : "Baixo", efeito = h.nota >= REP_MUITO ? "As suas publicações sobem bastante no feed." : h.nota >= REP_POUCO ? "As suas publicações sobem um pouco no feed." : h.nota >= CMN_MIN ? "As suas publicações seguem a ordem normal do feed." : "As suas publicações descem um pouco no feed.";
-  const li = (t, d) => `<li><b>${t}</b><small>${d}</small></li>`; ["pessoas","com_fonte","dias"].forEach(k=>{ h[k] = +h[k] || 0; });   /* 16/11: número que não veio vira 0, nunca "undefined" */
-  box.innerHTML = `<section class="acard" aria-labelledby="hhist"><h2 id="hhist">Seu histórico na rede</h2>
-    <div class="hist"><span class="hnum" aria-label="${h.nota} de 100"><b>${h.nota}</b><small>de 100</small></span><span class="htx"><b>${faixa}</b><small>${efeito}${h.nota >= SELO_AUTO_REP ? " Seus comentários com fonte ajudam a ajustar o selo de confiança das notícias." : ""}</small></span></div>
+  ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
+  const faixa = h.nota >= REP_MUITO ? "Ótima" : h.nota >= REP_POUCO ? "Boa" : h.nota >= CMN_MIN ? "Em atenção" : "Baixa", efeito = h.nota >= REP_MUITO ? "Suas publicações sobem bastante no feed." : h.nota >= REP_POUCO ? "Suas publicações sobem um pouco no feed." + (h.verificado ? "" : " Verificada, a conta vai a 100.") : h.nota >= CMN_MIN ? "Suas publicações seguem a ordem normal do feed." : "Suas publicações descem um pouco no feed.";
+  const SI = {colaboradora:"star", uteis:"check", fontes:"doc", casa:"clock"};
+  const tem = k => selos.some(x=>x.k === k), prox = [!tem("uteis") && ["Comentários úteis", `faltam ${f.uteis} de ${mn.uteis} pessoas marcando seus comentários como úteis`], !tem("fontes") && ["Cita fontes", `faltam ${f.fontes} de ${mn.fontes} comentários ou publicações com fonte`], !tem("casa") && ["Tempo de casa", `faltam ${f.dias} dias`]].filter(Boolean);
+  box.innerHTML = `<section class="acard" aria-labelledby="hhist"><h2 id="hhist">Sua reputação</h2>
+    <div class="hist"><span class="hnum" aria-label="${h.nota} de 100"><b>${h.nota}</b><small>de 100</small></span><span class="htx"><b>${faixa}</b><small>${efeito}</small></span></div>
     <div class="hbar" aria-hidden="true"><i style="width:${h.nota}%"></i></div>
-    <ul class="hlist">${li(h.pessoas + (h.pessoas===1 ? " pessoa marcou" : " pessoas marcaram"), "comentários seus como úteis (o que mais pesa)")}${li(h.com_fonte + " com fonte", "comentários que trazem o endereço de onde veio a informação")}${li(h.dias + (h.dias===1 ? " dia" : " dias"), "de conta")}${h.removidos ? li(h.removidos + (h.removidos===1 ? " removido" : " removidos"), "comentários tirados do ar pela moderação, nos últimos 90 dias") : ""}</ul>
-    <p class="inota">${ic("lock","sm")}<span>Só você vê o seu número. Para as outras pessoas aparece apenas o selo Colaborador, quando a rede o confirma.</span></p></section>`; }
+    ${h.removidos ? `<p class="inota">${ic("info","sm")}<span>${h.removidos} ${h.removidos === 1 ? "comentário removido" : "comentários removidos"} pela moderação nos últimos 90 dias. Cada um tira pontos.</span></p>` : `<p class="inota">${ic("check","sm")}<span>A nota só desce quando a moderação remove um comentário seu.</span></p>`}
+    <h3 class="hsel">Selos</h3>${selos.length ? `<div class="selos">${selos.map(x=>`<span class="selo">${ic(SI[x.k] || "check","sm")}<b>${esc(x.nome)}</b><small>${esc(x.de)}</small></span>`).join("")}</div>` : `<p class="hvazio">Nenhum ainda.</p>`}
+    ${prox.length ? `<ul class="hlist">${prox.map(([t, d])=>`<li><b>${t}</b><small>${d}</small></li>`).join("")}</ul>` : ""}
+    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota e os seus selos. Para as outras pessoas aparece apenas o selo Colaboradora, quando a rede o dá.</span></p></section>`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
@@ -6686,7 +6695,7 @@ const A = {
     ocupado(b, true, "Verificando…"); const {data, error} = await SB.rpc("verifica_cpf", {p_cpf:cpf, p_nome:pn, p_sobrenome:sn, p_nascimento:nasc}); ocupado(b, false);
     if (error) return formErro(msgErr(error));
     ME.dadosPessoais = {nome:pn, sobrenome:sn, nascimento:nasc}; if (ME.perfil){ ME.perfil.verificado = ME.perfil.verificado || "cpf"; } if (ME.acesso) ME.acesso.nivel = "verificado";
-    try{ await perfilCarrega(); }catch(e){} F.gate = null; toast(data === "ja" ? "Sua conta já estava verificada." : "Conta verificada. Pode ler sem limite."); render(); },
+    try{ await perfilCarrega(); }catch(e){} F.gate = null; toast(data === "ja" ? "Sua conta já estava verificada." : "Conta verificada. Agora você lê o dobro."); render(); },
   contatab: b => { S.contaTab = b.dataset.t; ME.pend = null; S.contaAbriu = Date.now(); render(); },
   criarconta: (b, e) => { if (e) e.preventDefault(); closeSheet(); S.contaTab = b && b.dataset.entrar ? "entrar" : "criar"; ME.pend = null; S.contaAbriu = Date.now(); go("conta"); },
   enviaverif: async b => { const box = b.closest(".vform"), err = box.querySelector(".ferr"), f = ($("#vdoc").files || [])[0], tipo = (box.querySelector('input[name="vtipo"]:checked') || {}).value || "pessoa";
@@ -7698,7 +7707,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 14:20";
+const VERSAO = "v1 registrada · 18/11 15:11";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
