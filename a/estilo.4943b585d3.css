@@ -2267,6 +2267,8 @@ p.phrep{cursor:default}.phrep{display:flex;align-items:center;gap:6px;max-width:
 .av.redondo,.phav.redondo{border-radius:50%!important}
 .phcapa .phtop h1{font-size:clamp(22px,5.6vw,28px);font-weight:600;line-height:1.08;letter-spacing:-.01em}
 .phcapa .phseg{font-size:14px}
+.phsep{display:inline-block;margin:0 6px;color:var(--muted);font-weight:400}
+.phd.phcapa{gap:0}.phcapa .phtop{margin-bottom:8px}.phcapa .phmeta,.phcapa .phmeta + .phmeta{display:flex;flex-wrap:wrap;align-items:center;column-gap:0;row-gap:2px;margin:0;line-height:22px}.phcapa .phmeta .phi,.phcapa .phmeta .phstar{display:inline-flex;align-items:center;gap:4px}.phcapa .phmeta + .phmeta{margin-top:2px}.phcapa .phmeta .icon{vertical-align:-3px}.phcapa .phmeta .phcusto{display:inline-flex;flex-wrap:wrap;align-items:center}.phcapa .phtop + .phmeta{display:flex}.phcapa .phnovo{margin-top:14px}.phcapa .phbio{margin-top:10px}
 .ktipo.lugar{font-weight:600}
 .credito .vfy{display:inline-flex;vertical-align:-2px;margin-left:3px}
 @media (min-width:768px){ .lugtopo .phacoes .iconbtn,.lugtopo .lugvolta{width:44px;height:44px} .lugtopo .phacoes .iconbtn .icon{width:21px;height:21px} }

@@ -3482,12 +3482,13 @@ function sheetVis(){   /* 15/11: simples. Uma escolha (público ou privado), uma
     <p class="lnote" style="margin-top:12px">O cadeado ao lado de cada aba mostra o que aparece. Algoritmo, curtidas e agenda são sempre só seus.</p>${perfilNums(ME.user && ME.user.id)}`, "Quem vê seu perfil"); pfNumsPreenche(); }
 function sheetPessoa(uid){ const o = ORG["u-" + uid] || {nome:"Perfil"};   /* só o que não está no cabeçalho */
   openSheet(shead(limpo(o.nome)) + perfilNums(uid) + `<p class="lnote">Quem segue e quem é seguido nunca aparece; só os números.</p>`, "Perfil"); pfNumsPreenche(); }
+const phSep = h => String(h).split(/(<[^>]+>)/).map(t=>t.startsWith("<") ? t : t.replace(/\s+·\s+/g, '<span class="phsep" aria-hidden="true">·</span>')).join("");   /* 17/11: separador com o mesmo respiro em toda linha de cabeçalho */
 function pessoaHead(x){ const temChips = x.chips && x.chips.trim();
   /* 15/11, página e comunidade: avatar e tipo ficam sobre a capa; aqui, o nome alinhado aos botões e uma informação por linha. O detalhe vai para Sobre e Reputação. */
   if (x.capa) return `<section class="phd phcapa${x.forma ? " " + x.forma : ""}"><div class="phtop"><h1>${esc(x.nome)}${verifBtn(x.verificado)}${x.selo || ""}</h1></div>
-    ${(x.linhas || []).filter(Boolean).map(l=>`<p class="phmeta">${l}</p>`).join("")}${x.seg || ""}${x.bio ? `<p class="phbio">${esc(x.bio)}</p>` : ""}${x.rep || ""}${x.extra || ""}</section>`;
+    ${(x.linhas || []).filter(Boolean).map(l=>`<p class="phmeta">${phSep(l)}</p>`).join("")}${x.seg || ""}${x.bio ? `<p class="phbio">${esc(x.bio)}</p>` : ""}${x.rep || ""}${x.extra || ""}</section>`;
   return `<section class="phd${x.forma ? " " + x.forma : ""}">${x.av || `<span class="phav" style="${x.cor ? "background:" + x.cor + ";color:#fff" : ""}" aria-hidden="true">${esc(siglaDe(x.nome))}</span>`}
-    <div class="phn">${x.tag || (x.tipo ? lugarTag(x.tipo) : "")}<h1>${esc(x.nome)}${verifBtn(x.verificado)}${x.selo || ""}</h1>${x.meta || x.vis ? `<p class="phmeta">${x.vis || ""}${x.meta || ""}</p>` : ""}${x.uid ? `<p class="phseg segnum" data-segnum="${x.uid}" hidden></p>` : ""}${x.seg || ""}</div>
+    <div class="phn">${x.tag || (x.tipo ? lugarTag(x.tipo) : "")}<h1>${esc(x.nome)}${verifBtn(x.verificado)}${x.selo || ""}</h1>${x.meta || x.vis ? `<p class="phmeta">${phSep((x.vis || "") + (x.meta || ""))}</p>` : ""}${x.uid ? `<p class="phseg segnum" data-segnum="${x.uid}" hidden></p>` : ""}${x.seg || ""}</div>
     <div class="phacoes">${x.acoes || ""}</div>
     ${x.bio ? `<p class="phbio">${esc(x.bio)}</p>` : ""}
     ${temChips ? `<div class="phchips">${x.chips}</div>` : ""}${x.extra || ""}</section>`; }
@@ -6960,7 +6961,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:42";
+const VERSAO = "v1 registrada · 17/11 21:46";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
