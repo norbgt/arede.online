@@ -437,6 +437,8 @@ const isOrg = o => !o.fonte && !o.pessoa;   /* fontes de notícia publicam, mas 
 const EXTAG = `<span class="extag" title="Conteúdo de exemplo, para mostrar como a rede funciona">exemplo</span>`;
 const ficTag = o => o && o.ficticia ? EXTAG : "";
 const exTag = it => ehExemplo(it) ? EXTAG : "";
+/* 18/11 (Amanda): o site de origem pode pedir assinatura (amostra diária da fonte ou a própria matéria; a curadoria confirma no painel) */
+const pagoTag = it => it && it.assinatura ? `<span class="pagotag" title="O site de origem pode pedir assinatura para ler a matéria inteira">${ic("lock","sm")}Pode pedir assinatura</span>` : "";
 const NUCLEOS = [["Núcleo Centro",48,"toda segunda"],["Núcleo Jardim",36,"quinzenal"],["Comissão de comunicação",12,"às quintas"],["Comissão de finanças",7,"mensal"]];
 /* BANDEIRAS: país (como está na base de fontes) para o código de duas letras e a bandeira em emoji */
 const ISO = {"Brasil":"BR","EUA":"US","Reino Unido":"GB","Irlanda do Norte":"GB","Canadá":"CA","Austrália":"AU","Irlanda":"IE","Nova Zelândia":"NZ","África do Sul":"ZA",
@@ -1206,7 +1208,7 @@ function textParts(it){
   const seal = sealTag(it, s);
   const kind = it.tipo==="documento" && it.doc ? it.doc : kindOf(it);
   /* o tema saiu do topo (10 nov 2026): virou etiqueta no pé do cartão, junto dos interesses de quem lê */
-  const head = `<span class="thead">${seal}<span class="fkind pinkind" style="--k:${it.tipo==="votacao"||it.tipo==="documento"?"var(--ink)":o.cor}">${kind}</span>${exTag(it)}${repTag(it)}${marcaTag(it)}</span>`;
+  const head = `<span class="thead">${seal}<span class="fkind pinkind" style="--k:${it.tipo==="votacao"||it.tipo==="documento"?"var(--ink)":o.cor}">${kind}</span>${pagoTag(it)}${exTag(it)}${repTag(it)}${marcaTag(it)}</span>`;
   const title = it.tipo==="evento" ? `<span class="evrow">${evChip(it)}<span class="ftitle">${esc(it.titulo)}</span></span>` : `<span class="ftitle">${esc(it.titulo)}</span>`;
   const bg = it.tipo==="documento" || it.tipo==="votacao" ? "" : it.tipo==="enquete" ? "background:var(--surface-2)" : `background:color-mix(in srgb,${o.cor} 14%,var(--surface))`;
   return {head, title, foot:footCtx(it) + footInfo(it), bg};
@@ -2092,7 +2094,7 @@ function tileHTML(it, cl, mode="none"){
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
   const seal = sealTag(it, s);
-  const k = `<span class="fkind pinkind" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span>`;
+  const k = `<span class="fkind pinkind" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span>${pagoTag(it)}`;
   const vis = it.tipo==="imagem" || (it.soFoto && it.foto) ? (it.foto && !it.fotoFalhou ? `<span class="arteimg${it.soFoto ? " cobre" : ""}" style="--fundo:url('${esc(it.foto)}')"><img src="${esc(it.foto)}" alt="${esc(it.titulo)}${it.artista ? ", arte de " + esc(it.artista) : ""}" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>` : art(it, 1.25, false))
     : isVid && it.yt ? `${ytCapa(it, 1.6)}<span class="xplay" aria-hidden="true">${ic("play")}<span>${esc(o.nome)}</span></span>`
     : isVid && !it.src ? `${art(it, 1.6, false)}<span class="xplay" aria-hidden="true">${ic("play")}<span>${esc(it.plat||"vídeo")}</span></span>`
@@ -2101,7 +2103,7 @@ function tileHTML(it, cl, mode="none"){
         <span class="tmain">${t.title}<span class="tbody"><p data-full="${esc(readText(it))}" data-g="${esc(it.gancho||"")}" data-max="${maxFrases(cl.size, cl.area[2], fotoOk(it, cl))}"></p></span><span class="tfoot">${t.foot}</span></span></span>`)(textParts(it));
   return `<div class="tile facewrap ${cl.size} ${isVid?"vid":""} ${s.lv==="bad"?"low":""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
     <button class="tbtn" type="button" data-act="topen" data-uid="${it.uid}" aria-label="Abrir ${kindOf(it)}: ${esc(it.titulo)}. ${s.label}${s.sc!==null?", nota "+s.sc:""}">${vis}${media?`<span class="tcap">${capHTML(it)}</span>`:""}</button>
-    ${media ? (ehExemplo(it) ? `<span class="tbadges">${seal}${EXTAG}</span>` : seal) : ""}
+    ${media ? (ehExemplo(it) || it.assinatura ? `<span class="tbadges">${seal}${pagoTag(it)}${ehExemplo(it) ? EXTAG : ""}</span>` : seal) : ""}
     ${isVid && it.src?`<span class="tctl"><button class="vbtn2" type="button" data-act="vmute" aria-label="Ativar som">${ic("mute")}</button><button class="vbadge t" type="button" data-act="vplay" aria-label="Reproduzir vídeo"><span class="vi">${ic("play","sm")}</span><span class="vt">${it.dur}</span></button></span><span class="vprog" aria-hidden="true"><i></i></span>`:""}
     ${saveBtn(it.uid, "savebtn")}${tileAcoes(it)}
   </div>`;
@@ -3678,7 +3680,7 @@ function detailHTML(it, uid, mode, inline){
   const sibRow = p => `<button class="lk" type="button" data-act="open" data-uid="${p.uid}"><span class="lkic">${p.tipo==="imagem"?art(p,1,false):ic(p.tipo==="evento"?"clock":"doc")}</span><span class="t"><b>${p.titulo}</b><span>${kindOf(p)} · ${o.nome}</span></span>${ic("back","sm flip")}</button>`;
   const vis = isImg ? `<div class="pinvis">${isVid && it.yt ? `<div class="ytbox xvid"${S.ytAuto===it.yt ? " data-auto" : ""}>${ytCapa(it)}${ytPlayBtn(it, true)}</div>` : isVid && !it.src ? `<a class="xvid" href="${it.ext ? it.ext.url : "#"}" target="_blank" rel="noopener" aria-label="Assistir: ${esc(it.titulo)}">${art(it, .5625, false)}<span class="xplay big">${ic("play")}<span>Assistir ${it.plat?"no "+esc(it.plat):""}</span></span></a>` : isVid?`<video class="pinvid" ${inline?"":'id="pinvid"'} src="${it.src}" poster="${it.poster}" controls playsinline preload="metadata" style="--ar:${(1/it.ar).toFixed(4)}" aria-label="Vídeo: ${esc(it.titulo)}"></video>`:(it.foto && it.tipo==="imagem" ? `<img class="pinarte" src="${esc(it.foto)}" alt="${esc(it.titulo)}${it.artista ? ", arte de " + esc(it.artista) : ""}" style="aspect-ratio:${(1/(it.ar||1.41)).toFixed(4)}" referrerpolicy="no-referrer">` : art(it, it.ph))}${inline?"":`<button class="iconbtn solid floatback" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button>`}</div>` : "";
   /* tipo na linha dos ícones; autoria vira linha de crédito logo abaixo do título */
-  const tipoTopo = `<span class="fkind pinkind toptipo" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span>${exTag(it)}<div class="spacer"></div>`;
+  const tipoTopo = `<span class="fkind pinkind toptipo" style="--k:${it.tipo==="votacao"?"var(--ink)":o.cor}">${kindOf(it)}</span>${pagoTag(it)}${exTag(it)}<div class="spacer"></div>`;
   const autor = it.daArte ? "" : `<div class="credito">${avatar(o)}<span class="t"><button class="who" type="button" data-act="openorg" data-org="${o.id}">${o.nome}</button>${String(o.id).startsWith("pg-") ? pgSelo(o.id.slice(3)) : verifBtn(o.verificado)}<span class="cm"> · ${it.ext ? dLabel(it.ext.data) : tempo(it.min)}${it.editada ? " · editada" : ""}${o.pessoa ? "" : ` · <button class="linkbtn segue${f?" on":""}" type="button" data-act="follow" data-org="${o.id}">${f?(o.real?"Seguindo":"Participando"):(o.real?"Seguir":"Participar")}</button>`}</span></span></div>`;
   const bar = inline
     ? `<div class="pinbar">${tipoTopo}
@@ -4717,7 +4719,7 @@ function noticiasAplica(data, ref){
        1 outra fonte: +3 · 2 ou mais: +6 · 3 ou mais de pelo menos 2 grupos diferentes do da fonte: +8. Checagem relacionada aparece no selo, sem mudar o número. */
     const oFont = new Set(outras.map(x=>(x.fontes||{}).nome || x.url)).size, oGrp = new Set(outras.map(x=>(x.fontes||{}).grupo_midia || (x.fontes||{}).nome).filter(g=>g && g !== f.grupo_midia && g !== f.nome)).size;
     const tri = !oFont ? 0 : oFont === 1 ? 3 : oFont >= 3 && oGrp >= 2 ? 8 : 6;
-    it.seloBase = f.nota; it.nid = n.id; if (n.futura){ it.futura = true; it.pubEm = Date.parse(n.publicada_em); }
+    it.seloBase = f.nota; it.nid = n.id; if (n.assinatura) it.assinatura = true; if (n.futura){ it.futura = true; it.pubEm = Date.parse(n.publicada_em); }
     if (n.pessoal){ it.pessoal = true; if (n.recusada) it.recusadaMotivo = n.recusada; else if (f.tipo==="Pessoal") it.pessoalNova = true; }   /* 17/11: fonte pessoal, só quem incluiu vê */ it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
     SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (it.recusadaMotivo) SEAL[id] = Math.min(SEAL[id], 30); if (it.pessoalNova) SEAL[id] = null;   /* recusada: no máximo 30; fonte nova: sem número até a curadoria avaliar */ if (n.divergencia){ it.diverg = n.divergencia; if (n.divergencia.status==="desmentida"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; } }   /* 17/11: desmentida pela regra de volume ou pela curadoria: no máximo 20 */
     if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
@@ -6990,7 +6992,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 06:21";
+const VERSAO = "v1 registrada · 18/11 06:38";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

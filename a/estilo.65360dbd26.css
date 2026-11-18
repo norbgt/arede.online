@@ -542,6 +542,7 @@ button.setting{width:100%;border:0;text-align:left;color:var(--ink)}
 /* cartão textual: tipo e selo no topo, título, leitura que ocupa o espaço (mín. 5 linhas), dados no pé */
 .tface{position:absolute;inset:0;display:flex;flex-direction:column;gap:6px;padding:10px 12px 12px;color:var(--ink);overflow:hidden}
 .thead{display:flex;align-items:center;gap:6px;min-width:0;flex:none}
+.thead:has(.pagotag){flex-wrap:wrap;row-gap:5px}   /* 18/11: a tag de assinatura desce para a linha de baixo quando não cabe (texto nunca cortado) */
 .thead .fkind{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tface .ftitle{flex:none;hyphens:manual;font-size:clamp(14px,3.4cqw,21px);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .tile.h .tface .ftitle{font-size:clamp(14px,3cqw,19px)}
@@ -766,6 +767,7 @@ article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 h1 .extag{margin-left:8px;vertical-align:5px}
 .tbadges{position:absolute;top:6px;left:6px;z-index:2;display:flex;align-items:center;gap:4px;pointer-events:none}
 .tbadges .tseal{position:static}
+.tbadges{flex-wrap:wrap;right:6px}.tbadges .pagotag{background:rgba(0,0,0,.6);color:#fff;white-space:normal;max-width:100%;border-radius:10px;align-items:flex-start;line-height:1.3;padding:2px 8px 2px 6px}.tbadges .pagotag svg{flex:none;margin-top:1px}
 .tbadges .extag,.exov .extag{background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.85)}
 .exov{position:absolute;top:8px;left:8px;z-index:2;pointer-events:none}
 .mini + .exov{top:40px}
@@ -1164,6 +1166,7 @@ a.setting{color:var(--ink);text-decoration:none}
 .live{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:#E0245E;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .reptag{flex:none;margin-left:auto;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--warn-dot) 24%,transparent);color:var(--ink);font-size:10.5px;font-weight:600;white-space:nowrap}
+.pagotag{display:inline-flex;align-items:center;gap:4px;flex:none;padding:1px 8px 1px 6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink);font-size:11px;font-weight:600;white-space:nowrap;line-height:1.5}.pagotag svg{width:12px;height:12px}
 .reptag+.reptag{margin-left:4px}.reptag.mk.bad{background:color-mix(in srgb,#DC2626 22%,transparent)}.chkacao{margin:10px 0 0;font-size:13.5px}
 .linkbtn.rep{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:6px 0;font-size:12.5px}
 .linkbtn.rep .icon{width:14px;height:14px}
