@@ -5232,11 +5232,11 @@ async function publicacoesCarrega(){ if (!SB) return;
   /* 16/11 (Amanda): perfis só para quem tem conta. Visitante recebe só nome e selo do autor; com conta, também o texto sobre a pessoa
      e a cidade, se ela escolheu mostrar (cidade_publica). O servidor recusa o resto. */
   const AUTOR = ME.user ? "perfis(id, nome, cidade_publica, bio, verificado)" : "perfis(id, nome, verificado)";
-  const {data, error} = await SB.from("publicacoes").select(`*, ${AUTOR}, paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)`).order("criada_em", {ascending:false}).limit(200);
+  const {data, error} = await SB.from("publicacoes").select(`*, ${AUTOR}, paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)`).order("criada_em", {ascending:false}).limit(200);
   if (error || !data) return;
   data.forEach(p=>{ if (p.perfis){ p.perfis.cidade = p.perfis.cidade_publica || ""; p.perfis.bio = p.perfis.bio || ""; } });
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].conta) POOL.splice(i, 1);
-  let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
+  let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
   data.concat(ex).slice().reverse().forEach(p=>{ const it = itemDaPublicacao(p); if (exPagId(p.pagina_id)) it.exemplo = true; POOL.unshift(it); });   /* 15/11: o que as páginas de exemplo publicam é exemplo */
   await prioridadesCarrega(data.map(p=>p.autor));
   const r = route(); if (r==="inicio" || r==="") feedDadosNovos("publicacoes"); else { feedFonteOk("publicacoes"); F.key = null; if (r==="organizacoes" || r.startsWith("pg-") || r.startsWith("org-")) render(); } }   /* 15/11: a página aberta direto pelo link também mostra as publicações */
@@ -6506,7 +6506,9 @@ const ERROS_AUTH = [[/sem_conta/i,"Entre na sua conta para sugerir uma fonte."],
   [/captcha/i,"Não conseguimos confirmar que é uma pessoa. Recarregue a página e tente de novo; se aparecer uma caixinha, toque nela."],
   [/weak|pwned|leaked|compromised/i,"Essa senha já apareceu em vazamentos de outros sites. Escolha outra."],
   [/password/i,"A senha não foi aceita: use no mínimo 10 caracteres, com letras e números ou símbolos."],[/fetch|network/i,"Sem conexão com o servidor. Verifique a internet."]];
-const erroAuth = e => { const m = (e && e.message) || String(e); const f = ERROS_AUTH.find(([re])=>re.test(m)); return f ? f[1] : "Não deu certo: " + m; };
+const erroAuth = e => { const m = (e && e.message) || String(e); const f = ERROS_AUTH.find(([re])=>re.test(m)); if (f) return f[1];
+  if (/^valor: /.test(m)){ const t = m.replace(/^valor: /, ""); return t.charAt(0).toUpperCase() + t.slice(1) + (/[.!?]$/.test(t) ? "" : "."); }   /* 18/11: mensagem do servidor já escrita para a pessoa, sem "valor:" */
+  return "Não deu certo: " + m; };
 const ocupado = (b, on, txt) => { if (!b) return; if (on){ b.dataset.ocupado = "1"; b.dataset.txt = b.innerHTML; b.disabled = true; b.textContent = txt || "Aguarde…"; } else { delete b.dataset.ocupado; b.disabled = false; if (b.dataset.txt) b.innerHTML = b.dataset.txt; travaLogo(); } };
 /* 18/11 (Amanda): o botão que envia só libera quando tudo o que é obrigatório está preenchido, em todos os fluxos.
    Regra única: campo obrigatório leva o atributo required (caixa de aceite também) e o botão leva data-trava.
@@ -7900,7 +7902,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 18:18";
+const VERSAO = "v1 registrada · 18/11 18:46";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
