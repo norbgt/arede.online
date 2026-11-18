@@ -2806,7 +2806,7 @@ async function capaGrava(alvo, v){ const [k, id] = alvo.split(/:(.+)/);
 function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.find(x=>x.id === pid);
   if (!o || !p) return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Página</h1></div>`) + `<div class="container"><p class="empty">${PAGS.carregou ? "Esta página não existe ou não está no ar." : "Carregando…"}</p></div>`;
   const meu = ME.user && p.dono === ME.user.id, f = S.follow.has(id), emp = p.tipo === "empresa", tt = tatDe(p);
-  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Portfólio") : "Publicações"], ["pastas", "Pastas"], mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, ["sobre","Sobre"]].filter(Boolean);
+  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Publicações") : "Publicações"], ["pastas", "Portfólio"], mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, ["sobre","Sobre"]].filter(Boolean);
   const t = tabs.some(x=>x[0] === S.pgTab) ? S.pgTab : "pubs";
   const aviso = p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
   const ib = (act, icn, rot, extra, cl) => `<button class="iconbtn${cl ? " " + cl : ""}" type="button" data-act="${act}" ${extra || ""} aria-label="${rot}" title="${rot}">${ic(icn)}</button>`;
@@ -6960,7 +6960,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:40";
+const VERSAO = "v1 registrada · 17/11 21:42";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
