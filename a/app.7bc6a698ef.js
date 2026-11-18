@@ -1389,7 +1389,7 @@ let PAUSE_EVERY = 60;   /* 18/11 (Amanda): três blocos de 20 cartões (era 18) 
 const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, key:"", grid:null, obs:null};
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
-const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.pais, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
+const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.pais, S.tab, S.tab==="arte" ? ARTESUB : "", S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
 const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) + (cobForte(it) ? .15 : 0) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
 function amplo(list){
@@ -1399,7 +1399,7 @@ function amplo(list){
     let i = q.findIndex(it=>ORG[it.org].cidade!==last); if(i<0) i=0; const it = q.splice(i,1)[0]; out.push(it); last = ORG[it.org].cidade; } }
   return out;
 }
-const ofTab = types => types==="arte" ? (it => !!it.arte) : (it => !types || types.includes(it.tipo));
+const ofTab = types => types==="arte" ? (it => ARTESUB==="ativista" ? !!it.arte : it.tema==="Cultura" && !!it.coletada && !it.arte && !it.daArte) : (it => !types || types.includes(it.tipo));
 const inProfile = it => (S.follow.has(it.org)&&S.usarOrgs) || S.temas.includes(it.tema);
 /* filtros e ordenação: valem só para a navegação atual, não mudam o algoritmo */
 const CIDADES = [...new Set(ORGS.map(o=>o.cidade))];
@@ -1867,7 +1867,7 @@ function nivel(){ if (NIVEL_TESTE) return NIVEL_TESTE;
   if (LOCAL) return "admin"; if (!ME.user) return "visitante";
   const pf = ME.perfil; return pf && pf.papel==="admin" ? "admin" : pf && pf.verificado ? "verificado" : "cadastrado"; }
 const veArte = () => nivel()==="admin";
-const ftabs = () => FTABS.filter(t=>t[0]!=="arte" || veArte());
+const ftabs = () => FTABS;   /* 18/11 (Amanda): a aba Arte volta a ser pública; o acervo Ativista fica com cadeado dentro dela */
 const horaDe = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); };
 /* a conta do que foi visto fica no aparelho, por conta */
 let LG = null, LGk = "", lgT = 0;
@@ -1927,7 +1927,7 @@ function feedCols(L){ const w = ($("#feed") || document.body).clientWidth || inn
   if (L==="arquivo") return w >= 1100 ? 4 : w >= 720 ? 3 : 2;   /* documentos: cartões compactos, mais de um por linha (12 nov 2026) */
   return w >= 720 ? 2 : 1; }
 function resetFeed(){
-  altaFaixa(); divFaixa(); docBase(); aoVivo();
+  altaFaixa(); divFaixa(); docBase(); arteBase(); aoVivo();
   const manter = F.manter && F.items.length; F.manter = false;
   if (manter){ const vis = F.items.filter(i=>!i.base && !S.created.includes(i)); F.fixos = vis.map(i=>String(i.id)); F.fixosObj = Object.fromEntries(vis.map(i=>[String(i.id), i])); } else { F.fixos = null; F.fixosObj = {}; }
   const nAntes = manter ? F.fixos.length : 0;
@@ -1997,7 +1997,6 @@ function statusLine(){
     <button class="iconbtn tool" type="button" data-act="sort" aria-label="Ordenar: ${o}">${ic("sort")}${S.ord!=="padrao"?`<span class="badge dot2"></span>`:""}</button>`;
 }
 function screenHome(){
-  if (S.tab==="arte" && !veArte()) S.tab = "tudo";       /* a aba Arte, por enquanto, é só da administradora */
   /* topo: marca e mensagens · abas · linha de controles do feed (algoritmo e ajuste à esquerda, filtrar e ordenar à direita) */
   return header(`<div class="toprow">${LOGO}<div class="spacer"></div>
       <button class="apoiebtn" type="button" data-act="apoie" aria-haspopup="dialog">${ic("raio","sm")}<span>Apoie</span></button>
@@ -2008,7 +2007,7 @@ function screenHome(){
         <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
         <div class="status tools" id="status">${statusLine()}</div></div>
       ${rapidosHTML()}</div></div>`)
-  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="divfaixa" class="altafaixa" aria-label="Divergências em análise" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
+  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="divfaixa" class="altafaixa" aria-label="Divergências em análise" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><section id="artebase" class="artebase" aria-label="Arte e cultura" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
   return `<button class="rowitem" type="button" data-act="openorg" data-org="${o.id}">${avatar(o)}<span class="t"><b>${o.nome}${ficTag(o)}${ofTag(o)}</b><small>${o.cidade} · ${orgMeta(o)}${f?(o.real?" · você segue":" · você participa"):""}</small></span></button>`; }
@@ -2869,7 +2868,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : "") + (o.mei ? `<button class="cnpjselo mei" type="button" data-act="meiinfo" aria-label="MEI: o que significa" title="MEI">${ic("cracha","sm")}MEI</button>` : "") + (o.nf ? `<button class="cnpjselo nf" type="button" data-act="nfinfo" aria-label="Nota fiscal: o que significa" title="Nota fiscal">${ic("nota","sm")}Nota fiscal</button>` : ""),
         linhas:[...(tt ? tatResumo(p).filter(Boolean).map(l=>`<span class="phcusto">${l}</span>`) : []), [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
-        extra:`<div class="phnovo">${aviso}${meu && p.status === "aprovada" ? gerBotao(p) : ""}${tt ? tatConvitesHTML(p) : ""}</div>`})}
+        extra:`<div class="phnovo">${aviso}${meu && p.status === "aprovada" ? gerBotao(p) : ""}${tt ? tatConvitesHTML(p) : ""}${!tt && p.status === "aprovada" ? museuPgHTML(p) : ""}</div>`})}
       <div class="tabs" role="tablist" aria-label="Seções da página" style="margin-top:4px">${tabs.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pgtab" data-tab="${k}" aria-selected="${t===k}">${n}</button>`).join("")}</div>
       <div id="pgbody" style="padding-top:var(--gap)">${paginaCorpoTab(o, p, t)}</div></div>`; }
 function paginaCorpoTab(o, p, t){
@@ -3063,6 +3062,96 @@ function gerHoje(p){ const d = new Date().toDateString();
     .map(y=>`<div class="gertask">${ic("clock","sm")}<span>Hoje, ${new Date(y.quando).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})} · ${esc(gerNome(y))}</span><button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button></div>`); }
 function gerBotao(p){ const n = gerDados(p) ? gerTarefas(p).length : 0;
   return `<a class="btn block gerbtn" href="#gerir-${p.id}">${ic("painel","sm")} Gerenciar${n ? `<span class="gercount" aria-label="${n} ${n === 1 ? "pendência" : "pendências"}">${n}</span>` : ""}</a>`; }
+/* ===== ARTE (18/11, Amanda): a aba Arte volta a ser pública.
+   Cultura = notícias com o tema Cultura · Museus = guia (Wikidata, dados abertos; parceiros com check-in por QR na entrada)
+   Agenda = exposições e eventos dos parceiros + publicações das agendas oficiais (Ibram, MinC, Iphan, Funarte) · Ativista = acervo Design Ativista, só da administradora.
+   Só o QR de museu parceiro vira carimbo no passaporte; os outros museus ficam como guia. ===== */
+let ARTESUB = store.get("arteSub", "cultura");
+const arteSubs = () => [["cultura","Cultura","doc"],["museus","Museus","predio"],["agenda","Agenda","calplus"]].concat(veArte() ? [["ativista","Ativista","lock"]] : []);
+const MUS = {q:"", onde:"br", lista:null, chave:"", semCidade:false, agenda:null, agPedindo:false, meu:{}, busT:0};
+const urlOk = u => /^https?:\/\/[^\s"<>]+$/i.test(String(u || "")) ? u : "";
+const evDia = d => new Date(String(d).slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
+const evPeriodo = e => e.fim && e.fim !== e.inicio ? evDia(e.inicio) + " a " + evDia(e.fim) : evDia(e.inicio);
+const feedVis = on => ["#feedwrap","#stop","#sentinel"].forEach(s=>{ const e = $(s); if (e) e.style.display = on ? "" : "none"; });
+function arteBase(){ const box = $("#artebase"); if (!box) return;
+  if (S.tab !== "arte" || S.rapido || route() !== "inicio"){ box.hidden = true; box.innerHTML = ""; feedVis(true); return; }
+  if (!arteSubs().some(x=>x[0] === ARTESUB)) ARTESUB = "cultura";
+  box.hidden = false; feedVis(ARTESUB === "cultura" || ARTESUB === "ativista");
+  box.innerHTML = `<div class="partchips artechips" role="group" aria-label="Arte e cultura">${arteSubs().map(([k, n, i])=>`<button class="chip" type="button" data-act="artesub" data-v="${k}" aria-pressed="${ARTESUB === k}">${ic(i, "sm")} ${n}</button>`).join("")}</div><div id="artecorpo">${arteCorpo()}</div>`; }
+function artePinta(){ const c = $("#artecorpo"); if (c && S.tab === "arte") c.innerHTML = arteCorpo(); }
+function arteCorpo(){
+  if (ARTESUB === "museus"){ if (!MUS.lista) musBusca();
+    const lista = !MUS.lista ? `<p class="empty">Carregando…</p>` : MUS.lista.length ? `<div class="list muslist">${MUS.lista.map(musCard).join("")}</div>` : `<p class="empty">Nenhum museu com esse nome.</p>`;
+    return `<div class="musbusca"><div class="seg" role="radiogroup" aria-label="Onde">${[["br","Brasil"],["mundo","Mundo"]].map(([k, n])=>`<label><input type="radio" name="musonde" value="${k}"${MUS.onde === k ? " checked" : ""}><span>${n}</span></label>`).join("")}</div>
+      <div class="field"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div></div>
+      ${MUS.semCidade ? `<p class="lnote">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${lista}</div>
+      <p class="lnote">${ic("qrselo","sm")} Museus parceiros têm check-in por QR na entrada: a visita vira um carimbo no seu passaporte. Guia com dados abertos do Wikidata.</p>`; }
+  if (ARTESUB === "agenda"){ if (!MUS.agenda){ agendaCarrega(); return `<p class="empty">Carregando…</p>`; }
+    const par = MUS.agenda.parceiros || [], ofi = MUS.agenda.oficiais || [];
+    return `<h2 class="sectitle">Nos museus parceiros</h2>${par.length ? `<div class="list">${par.map(e=>`<a class="setting l1" href="#pg-${esc(e.pagina_id)}"><span class="t"><b>${esc(limpo(e.titulo))}</b><small>${e.tipo === "evento" ? "Evento" : "Exposição"} · ${evPeriodo(e)} · ${esc(limpo(e.museu))}${e.cidade ? " · " + esc(limpo(e.cidade)) : ""}</small></span>${ic("back","sm flip")}</a>`).join("")}</div>` : `<p class="empty">Nenhuma exposição ou evento de parceiro agora.</p>`}
+      <h2 class="sectitle">Agendas oficiais</h2>${ofi.length ? `<div class="list">${ofi.map(n=>urlOk(n.url) ? `<a class="setting l1" href="${esc(n.url)}" target="_blank" rel="noopener"><span class="t"><b>${esc(limpo(n.titulo))}</b><small>${esc(limpo(n.fonte))} · ${evDia(n.em)}</small></span>${ic("ext","sm")}</a>` : "").join("")}</div>` : `<p class="empty">Nada publicado nas últimas semanas.</p>`}
+      <p class="lnote">As agendas oficiais vêm dos sites do Ibram, do Ministério da Cultura, do Iphan e da Funarte. Confira data e horário na fonte.</p>`; }
+  return ""; }
+const musCard = m => `<div class="setting l1 muscard"><span class="music" aria-hidden="true">${ic("predio")}</span><span class="t"><b>${esc(limpo(m.nome))}</b><small>${esc([m.cidade, m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "")].filter(Boolean).join(" · "))}${m.km != null ? " · " + String(m.km).replace(".", ",") + " km" : ""}</small>
+  ${m.parceiro ? `<a class="mustag" href="#pg-${esc(m.pagina_id)}">${ic("qrselo","sm")}Check-in por QR</a>` : ""}</span>${urlOk(m.site) ? `<a class="iconbtn" href="${esc(m.site)}" target="_blank" rel="noopener" aria-label="Site do museu ${esc(limpo(m.nome))}">${ic("ext")}</a>` : ""}</div>`;
+async function musBusca(){ const R = minhaRegiao(), q = MUS.q.trim() || (MUS.onde === "br" ? R.cidade : ""), k = MUS.onde + "|" + q;
+  if (MUS.chave === k && MUS.lista) return; MUS.chave = k; MUS.lista = null; MUS.semCidade = false;
+  const pede = async (qq) => { try{ const {data} = await SB.rpc("museus_busca", {p_q:qq || null, p_pais:MUS.onde === "br" ? "BR" : "*", p_lim:30}); return data || []; }catch(e){ return []; } };
+  let l = SB ? await pede(q) : [];
+  if (!l.length && !MUS.q.trim() && q && SB){ l = await pede(null); MUS.semCidade = !!l.length; }   /* sem museu no guia na sua cidade: os mais conhecidos do país */
+  if (MUS.chave !== k) return; MUS.lista = l; const box = $("#muslista"); if (box && !MUS.semCidade) box.innerHTML = l.length ? `<div class="list muslist">${l.map(musCard).join("")}</div>` : `<p class="empty">Nenhum museu com esse nome.</p>`; else artePinta(); }
+async function agendaCarrega(){ if (MUS.agenda || MUS.agPedindo || !SB) return; MUS.agPedindo = true;
+  try{ const {data} = await SB.rpc("agenda_cultural", {p_lim:40}); MUS.agenda = data || {parceiros:[], oficiais:[]}; }catch(e){ MUS.agenda = {parceiros:[], oficiais:[]}; }
+  MUS.agPedindo = false; artePinta(); const r = route(); if (r.startsWith("pg-")) render(); }
+/* na página do museu parceiro: as exposições e eventos em cartaz */
+function museuPgHTML(p){ if (!MUS.agenda){ agendaCarrega(); return ""; } const l = (MUS.agenda.parceiros || []).filter(e=>e.pagina_id === p.id); if (!l.length) return "";
+  return `<div class="musev"><b>${ic("calplus","sm")} Em cartaz</b>${l.map(e=>`<span><b>${esc(limpo(e.titulo))}</b> · ${evPeriodo(e)}${e.local ? " · " + esc(limpo(e.local)) : ""}${e.descricao ? `<small>${esc(limpo(e.descricao))}</small>` : ""}</span>`).join("")}<small class="lnote">${ic("qrselo","sm")} Check-in por QR na entrada: a visita vira carimbo no passaporte.</small></div>`; }
+/* dono: espaço cultural */
+async function museuMeuCarrega(pid, novo){ try{ const {data, error} = await SB.rpc("museu_meu", {p_pagina:pid, p_novo_codigo:!!novo}); MUS.meu[pid] = error ? null : data; }catch(e){ MUS.meu[pid] = null; } gerRepinta(pid); }
+function museuGerHTML(p){ const d = MUS.meu[p.id]; if (d === undefined){ museuMeuCarrega(p.id); return `<p class="empty">Carregando…</p>`; }
+  if (!d || !d.ativo) return `<p class="lnote osub">Museus, galerias, centros culturais e espaços de exposição recebem visitantes com check-in por QR na entrada. Cada visita vira um carimbo no passaporte de quem veio.</p>
+    <button class="btn primary block" type="button" data-act="musativa" data-p="${p.id}">Ativar espaço cultural</button>`;
+  const url = location.origin + location.pathname + "#visita-" + p.id + "-" + d.codigo, ev = d.eventos || [];
+  return `<div class="orow"><span class="ot"><b>${d.museu ? esc(limpo(d.museu)) : "Sem vínculo com o guia"}</b><small>${d.museu ? (d.confirmado ? "Confirmado pela curadoria: aparece como parceiro no guia de museus." : "Esperando a curadoria confirmar o vínculo com o guia.") : "Escolha o museu no guia para aparecer como parceiro."}</small></span><button class="btn sm" type="button" data-act="musativa" data-p="${p.id}">${d.museu ? "Trocar" : "Escolher"}</button></div>
+    <h3 class="psec">QR da entrada</h3><div class="qrbox" id="musqr">${qrSVG(url, "QR do check-in na entrada")}</div>
+    <p class="lnote" style="text-align:center">Deixe impresso na entrada. Cada pessoa ganha um carimbo por dia. Se o QR circular fora do museu, gere um novo: o antigo para de valer.</p>
+    <div class="row" style="gap:8px;justify-content:center"><button class="btn sm" type="button" data-act="musqrbaixa">Baixar QR</button><button class="btn sm ghost" type="button" data-act="musqrnovo" data-p="${p.id}">Gerar novo QR</button></div>
+    <p class="lnote">${d.visitas || 0} ${d.visitas === 1 ? "visita" : "visitas"} com check-in.</p>
+    <h3 class="psec">Exposições e eventos</h3>${ev.length ? `<div class="list">${ev.map(e=>`<div class="setting l1"><span class="t"><b>${esc(limpo(e.titulo))}</b><small>${e.tipo === "evento" ? "Evento" : "Exposição"} · ${evPeriodo(e)}</small></span><button class="btn sm ghost" type="button" data-act="evedita" data-p="${p.id}" data-e="${e.id}">Editar</button></div>`).join("")}</div>` : `<p class="empty">Nenhuma ainda.</p>`}
+    <button class="btn block" type="button" data-act="evedita" data-p="${p.id}">Nova exposição ou evento</button>
+    <button class="btn ghost block" type="button" data-act="musdesliga" data-p="${p.id}" style="margin-top:12px">Desativar espaço cultural</button>`; }
+function sheetMusAtiva(pid){ const d = MUS.meu[pid] || {};
+  openSheet(shead("Espaço cultural") + `<p class="lnote osub">Procure o seu museu no guia. A curadoria confere o vínculo antes de ele aparecer como parceiro.</p>
+    <div class="field"><label for="mavq">Nome do museu</label><input id="mavq" type="search" maxlength="60" placeholder="Museu de Arte do Rio" autocomplete="off"></div>
+    <div id="mavres" class="list" data-sel="${d.museu_id || ""}">${d.museu ? `<label class="setting l1"><input type="radio" name="mavm" value="${d.museu_id}" checked><span class="t"><b>${esc(limpo(d.museu))}</b></span></label>` : ""}</div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="mavpais">País</label><input id="mavpais" maxlength="60" value="${esc(d.pais || "Brasil")}"></div><div class="field" style="width:96px"><label for="mavuf">Estado</label><input id="mavuf" maxlength="2" value="${esc(d.uf || "")}" placeholder="RJ" style="text-transform:uppercase"></div></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="musativaok" data-p="${pid}">Salvar</button>`, "Espaço cultural"); }
+async function mavBusca(q){ const box = $("#mavres"); if (!box) return; if (q.trim().length < 2){ return; }
+  let l = []; try{ const {data} = await SB.rpc("museus_busca", {p_q:q.trim(), p_pais:"*", p_lim:8}); l = data || []; }catch(e){}
+  if ($("#mavq") && $("#mavq").value !== q) return;
+  box.innerHTML = l.map(m=>`<label class="setting l1"><input type="radio" name="mavm" value="${m.id}" data-uf="${esc(m.uf || "")}" data-pais="${esc(m.pais || "")}"><span class="t"><b>${esc(limpo(m.nome))}</b><small>${esc([m.cidade, m.uf || m.pais].filter(Boolean).join(" · "))}</small></span></label>`).join("")
+    + `<label class="setting l1"><input type="radio" name="mavm" value=""><span class="t"><b>Não está no guia</b><small>A página funciona com o QR, sem aparecer como parceira no guia</small></span></label>`; }
+function sheetEvento(pid, eid){ const e = ((MUS.meu[pid] || {}).eventos || []).find(x=>x.id === eid) || {tipo:"exposicao"};
+  openSheet(shead(eid ? "Editar" : "Nova exposição ou evento") + `<div class="seg" role="radiogroup" aria-label="Tipo">${[["exposicao","Exposição"],["evento","Evento"]].map(([k, n])=>`<label><input type="radio" name="evtipo" value="${k}"${e.tipo === k ? " checked" : ""}><span>${n}</span></label>`).join("")}</div>
+    <div class="field"><label for="evtit">Nome</label><input id="evtit" maxlength="120" value="${esc(e.titulo || "")}"></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="evini">Começa</label><input id="evini" type="date" value="${esc(e.inicio || "")}"></div><div class="field" style="flex:1"><label for="evfim">Termina</label><input id="evfim" type="date" value="${esc(e.fim || "")}"></div></div>
+    <div class="field"><label for="evloc">Sala ou local (opcional)</label><input id="evloc" maxlength="120" value="${esc(e.local || "")}"></div>
+    <div class="field"><label for="evdesc">Sobre (opcional)</label><textarea id="evdesc" rows="3" maxlength="600">${esc(e.descricao || "")}</textarea></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="evsalva" data-p="${pid}" data-e="${eid || ""}">Salvar</button>
+    ${eid ? `<button class="btn ghost block" type="button" data-act="evapaga" data-p="${pid}" data-e="${eid}" style="margin-top:8px">Apagar</button>` : ""}`, "Exposição"); }
+/* check-in pelo QR da entrada: #visita-<página>-<código> */
+function screenVisita(arg){ const m = /^([0-9a-f-]{36})-([0-9a-f]{6,40})$/i.exec(arg) || [];
+  const topo = header(`<div class="toprow"><h1 class="pagehead">Check-in</h1></div>`);
+  if (!ME.user) return topo + `<div class="container"><p class="empty">Entre na sua conta para receber o carimbo da visita.</p><button class="btn primary" type="button" data-act="acessar">Entrar</button></div>`;
+  return topo + `<div class="container" id="visitabox"><div class="pedcard"><span class="ktipo">${ic("predio","sm")}Visita</span><b>Confirme que você está no museu agora.</b><small>A visita vira um carimbo no seu passaporte. Um por dia em cada museu.</small></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="visitaok" data-p="${esc(m[1] || "")}" data-c="${esc(m[2] || "")}" style="margin-top:12px">Confirmar visita</button></div>`; }
+document.addEventListener("input", e=>{ const t = e.target; if (!t) return;
+  if (t.id === "musq"){ MUS.q = t.value; clearTimeout(MUS.busT); MUS.busT = setTimeout(()=>{ MUS.lista = null; const b = $("#muslista"); if (b) b.innerHTML = `<p class="empty">Carregando…</p>`; musBusca(); }, 350); }
+  if (t.id === "mavq"){ clearTimeout(MUS.busT); MUS.busT = setTimeout(()=>mavBusca(t.value), 350); } });
+document.addEventListener("change", e=>{ const t = e.target; if (t && t.name === "mavm" && t.value){ const uf = $("#mavuf"), pa = $("#mavpais"); if (uf && t.dataset.uf) uf.value = t.dataset.uf; if (pa && t.dataset.pais) pa.value = t.dataset.pais; }
+  if (t && t.name === "musonde"){ MUS.onde = t.value; MUS.lista = null; MUS.chave = ""; artePinta(); } });
+const msgErr = e => e && e.message ? String(e.message).replace(/^valor: /, "") : "Sem conexão agora.";
+
 function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["pg-" + pid];
   const topo = (t, volta) => header(`<div class="toprow"><button class="iconbtn" type="button" data-act="${volta ? "gerver" : "back"}" data-v="" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">${t}</h1></div>`);
   if (!p || !o) return topo("Gerenciar") + `<div class="container"><p class="empty">${PAGS.carregou ? "Página não encontrada." : "Carregando…"}</p></div>`;
@@ -3070,8 +3159,9 @@ function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["
   const ok = gerDados(p);
   if (S.gerVer === "agenda" && mod(p, "agenda")) return topo("Agenda", 1) + `<div class="container">${ok ? pgAgendaHTML(p) : `<p class="empty">Carregando…</p>`}</div>`;
   if (S.gerVer === "fin" && o.mei) return topo("Financeiro", 1) + `<div class="container">${finHTML(p)}</div>`;
+  if (S.gerVer === "museu" && !tatDe(p)) return topo("Espaço cultural", 1) + `<div class="container">${museuGerHTML(p)}</div>`;
   const t = ok ? gerTarefas(p) : [];
-  const at = [mod(p, "agenda") ? `<button class="geratl" type="button" data-act="gerver" data-v="agenda">${ic("calplus")}<span>Agenda</span></button>` : "", o.mei ? `<button class="geratl" type="button" data-act="gerver" data-v="fin">${ic("grafico")}<span>Financeiro</span></button>` : "",
+  const at = [mod(p, "agenda") ? `<button class="geratl" type="button" data-act="gerver" data-v="agenda">${ic("calplus")}<span>Agenda</span></button>` : "", o.mei ? `<button class="geratl" type="button" data-act="gerver" data-v="fin">${ic("grafico")}<span>Financeiro</span></button>` : "", !tatDe(p) ? `<button class="geratl" type="button" data-act="gerver" data-v="museu">${ic("predio")}<span>Espaço cultural</span></button>` : "",
     `<a class="geratl" href="#conversas">${ic("message")}<span>Pedidos</span></a>`, `<button class="geratl" type="button" data-act="paginaedita" data-id="${pid}">${ic("lapis")}<span>Editar página</span></button>`].filter(Boolean).join("");
   return topo("Gerenciar") + `<div class="container"><p class="lnote osub" style="margin-top:0">${esc(o.nome)}</p>
     <h3 class="psec">Para fazer agora</h3>${!ok ? `<p class="empty">Carregando…</p>` : t.length ? `<div class="gerlist">${t.join("")}</div>` : `<p class="empty">Nada pendente.</p>`}
@@ -3484,34 +3574,37 @@ async function passaporteDeCarrega(uid){ if (!SB || PASS_DE[uid] !== undefined) 
 function passaporteAba(){ if (!PASS.lista) return `<p class="empty">Carregando…</p>`;
   return `<div class="list" style="margin-bottom:14px"><div class="setting"><span class="t"><b>Mostrar no perfil público</b><small>${!S.publico ? "Seu perfil está privado. Ligue o perfil público para isto valer." : PASS.publico ? "Quem visita seu perfil vê os carimbos e as coleções, com o mês e o ano, sem o dia." : "Só você vê o seu passaporte."}</small></span><button class="switch" type="button" role="switch" data-act="passpub" aria-checked="${PASS.publico}" aria-label="Mostrar o passaporte no perfil público"></button></div></div>
     ${passaporteCorpo(PASS.lista)}${passaporteHTML()}`; }
-const PASS_PRIMEIRA = {tatuagem:"Primeira tatuagem", beleza:"Primeiro cuidado de beleza", artesanato:"Primeira peça feita à mão"};
-const PASS_COR = {tatuagem:"pz-tat", beleza:"pz-bel", artesanato:"pz-art"};
+const PASS_PRIMEIRA = {tatuagem:"Primeira tatuagem", beleza:"Primeiro cuidado de beleza", artesanato:"Primeira peça feita à mão", museu:"Primeiro museu"};
+const PASS_COR = {tatuagem:"pz-tat", beleza:"pz-bel", artesanato:"pz-art", museu:"pz-mus"};
+const passLugarDe = c => c.modelo === "museu" ? {cidade:passLugar(c.cidade).cidade, uf:(c.pais || "Brasil") === "Brasil" ? (c.uf || passLugar(c.cidade).uf) : "", pais:c.pais || "Brasil"} : passLugar(c.cidade);   /* 18/11: o museu informa estado e país */
 function passLugar(c){ const t = String(c || "").trim(), m = t.match(/^(.*?),\s*([A-Za-z]{2})$/); if (m && UF_NOME[m[2].toUpperCase()]) return {cidade:m[1].trim(), uf:m[2].toUpperCase(), pais:"Brasil"};
   const k = t.match(/^(.*?),\s*(.+)$/); return k ? {cidade:k[1].trim(), uf:"", pais:k[2].trim()} : {cidade:t, uf:"", pais:t ? "Brasil" : ""}; }
 function passColecoes(l){ const cont = (f) => { const m = {}; l.forEach(c=>{ const k = f(c); if (k) m[k] = (m[k] || 0) + 1; }); return m; }, dist = f => new Set(l.map(f).filter(Boolean)).size;
-  const porCid = {}; l.forEach(c=>{ const g = passLugar(c.cidade); if (g.cidade){ (porCid[g.cidade] = porCid[g.cidade] || new Set()).add(c.pagina_id); } });
+  const porCid = {}; l.forEach(c=>{ const g = passLugarDe(c); if (g.cidade){ (porCid[g.cidade] = porCid[g.cidade] || new Set()).add(c.pagina_id); } });
   const rota = Object.entries(porCid).sort((a, b)=>b[1].size - a[1].size)[0], volta = Math.max(0, ...Object.values(cont(c=>c.pagina_id)));
-  const ufs = dist(c=>passLugar(c.cidade).uf), paises = dist(c=>passLugar(c.cidade).pais), nivel = (n, ns) => ns.find(x=>n < x) || ns[ns.length - 1];
+  const ufs = dist(c=>passLugarDe(c).uf), paises = dist(c=>passLugarDe(c).pais), mus = l.filter(c=>c.modelo === "museu"), mufs = new Set(mus.map(c=>passLugarDe(c).uf).filter(Boolean)).size, mpais = new Set(mus.map(c=>passLugarDe(c).pais)).size, nivel = (n, ns) => ns.find(x=>n < x) || ns[ns.length - 1];
   const out = [], col = (ic, nome, desc, n, meta) => out.push({ic, nome, desc, n:Math.min(n, meta), meta, ok:n >= meta});
   const mods = new Set(l.map(c=>c.modelo));
-  Object.keys(PASS_PRIMEIRA).forEach(m=>col(m === "tatuagem" ? "lapis" : m === "beleza" ? "heart" : "bookmark", PASS_PRIMEIRA[m], "Primeira vez nesse serviço", mods.has(m) ? 1 : 0, 1));
+  Object.keys(PASS_PRIMEIRA).forEach(m=>col(m === "tatuagem" ? "lapis" : m === "beleza" ? "heart" : m === "museu" ? "predio" : "bookmark", PASS_PRIMEIRA[m], m === "museu" ? "Primeira visita a um museu parceiro" : "Primeira vez nesse serviço", mods.has(m) ? 1 : 0, 1));
   col("pin", "Rota da cidade", rota ? `Lugares diferentes em ${rota[0]}` : "5 lugares diferentes na mesma cidade", rota ? rota[1].size : 0, 5);
   col("predio", "Negócio local", "Páginas diferentes com selo MEI", dist(c=>c.mei ? c.pagina_id : ""), 3);
   col("check", "Volta sempre", "Voltas à mesma página", volta, 3);
   col("flag", "Pelo Brasil", "Estados diferentes", ufs, nivel(ufs, [3, 5, 10]));
   col("globe", "Pelo mundo", "Países diferentes", paises, nivel(paises, [2, 3, 5]));
+  col("predio", "Museus pelo Brasil", "Museus parceiros em estados diferentes", mufs, nivel(mufs, [3, 5, 10]));
+  col("globe", "Museus pelo mundo", "Museus parceiros em países diferentes", mpais, nivel(mpais, [2, 3, 5]));
   col("star", "Com uma referência", "Página com Bem avaliado e 5 anos de casa", l.some(c=>c.referencia) ? 1 : 0, 1);
   col("raio", "Apoiou quem começa", "Página com menos de 6 meses na rede", l.some(c=>c.nova) ? 1 : 0, 1);
   col("lapis", "Colecionável de estilos", "Estilos diferentes de trabalho", dist(c=>c.estilo), 3);
   return out; }
 function passaporteCorpo(l, outro){ if (!l) return `<p class="empty">Carregando…</p>`;
   const dia = (d, mes) => mes ? new Date(d).toLocaleDateString("pt-BR", {month:"short", year:"numeric"}).replace(".", "").replace(" de ", " ") : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
-  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
-    : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento.</b> Cada sessão com check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
+  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : c.modelo === "museu" ? "predio" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
+    : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento ou na primeira visita a um museu parceiro.</b> Cada check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
     <h2 class="sectitle">Coleções</h2><div class="pmeds">${cols.map((c, i)=>`<div class="pmed${c.ok ? " ok" : c.n ? " anda" : ""}" style="--p:${Math.round(c.n / c.meta * 100)}%;--r:${[-6, 5, -3, 7][i % 4]}deg" title="${esc(c.desc)}"><span class="pring">${ic(c.ic)}</span><b>${esc(c.nome)}</b><small>${c.ok ? (c.meta === 1 ? "conquistada" : c.n + " de " + c.meta + " · conquistada") : c.n + " de " + c.meta}</small><small class="pdesc">${esc(c.desc)}</small></div>`).join("")}</div>
-    <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas: nada de ranking, sequência ou prêmio."}</p>`; }
+    <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas e de visitas a museus parceiros pelo QR da entrada." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas e visitas a museus parceiros pelo QR da entrada: nada de ranking, sequência ou prêmio."}</p>`; }
 function screenPassaporte(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Meu passaporte</h1></div>`)
   + `<div class="container"><div id="passbody">${ME.user ? passaporteCorpo() : `<p class="empty">Entre na sua conta para ver o seu passaporte.</p>`}</div></div>`; }
 function screenConfig(){
@@ -4031,6 +4124,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r==="conversas"){ main.innerHTML = screenConversas(); }
   else if (r.startsWith("gerir-")){ if (S.gerPid !== r.slice(6)){ S.gerPid = r.slice(6); S.gerVer = ""; } main.innerHTML = screenGerir(r.slice(6)); }
   else if (r.startsWith("checkin-")){ main.innerHTML = screenCheckin(r.slice(8)); }
+  else if (r.startsWith("visita-")){ main.innerHTML = screenVisita(r.slice(7)); }
   else if (r.startsWith("conversa-")){ main.innerHTML = screenConversa(r.slice(9)); const m = $(".msgs"); if (m) m.scrollTop = m.scrollHeight; }
   else if (r==="participar"){ main.innerHTML = screenPartTodos(); }
   else if (r==="perfil" && semConta()){ if (!S.contaTab) S.contaTab = "entrar"; main.innerHTML = screenConta(); }
@@ -4055,7 +4149,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
     main.innerHTML = screenHome();
     const keep = !same && F.items.length && F.key===feedKey();
     if (!FEED_PRONTO && !PREVIA){ const fd = $("#feed"); if (fd) fd.innerHTML = feedEsqueleto(); }
-    else if (keep){ altaFaixa(); divFaixa(); docBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
+    else if (keep){ altaFaixa(); divFaixa(); docBase(); arteBase(); aoVivo(); layoutFeed(); renderStop(); restore = SCROLL[r] || 0; } else resetFeed();
     F.obs = new IntersectionObserver(es=>{ if (es[0].isIntersecting && FEED_PRONTO) more(10); }, {rootMargin:"800px"});
     F.obs.observe($("#sentinel"));
   }
@@ -4526,11 +4620,32 @@ function mockSB(o = {}){
       y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
       if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
+    museus_busca:a=>{ const M = tab("museus"); if (!M.length) [["Museu Nacional de Belas Artes","Rio de Janeiro","RJ","Brasil","BR","https://www.gov.br/museus/pt-br/museus-ibram/mnba",40],["Museu Oscar Niemeyer","Curitiba","PR","Brasil","BR","https://www.museuoscarniemeyer.org.br",30],["Pinacoteca de São Paulo","São Paulo","SP","Brasil","BR","https://pinacoteca.org.br",35],["Museu do Louvre","Paris",null,"França","FR","https://www.louvre.fr",200],["Museu do Prado","Madri",null,"Espanha","ES","https://www.museodelprado.es",120]].forEach((m, i)=>M.push({id:i + 1, nome:m[0], cidade:m[1], uf:m[2], pais:m[3], iso:m[4], site:m[5], rel:m[6]}));
+      const q = (a.p_q || "").toLowerCase(), pm = tab("pagina_museu");
+      return M.filter(m=>(!q || (m.nome + " " + m.cidade).toLowerCase().includes(q)) && (!a.p_pais || a.p_pais === "*" || m.iso === a.p_pais)).map(m=>{ const v = pm.find(x=>x.museu_id === m.id && x.confirmado && x.ativo); return {id:m.id, nome:m.nome, cidade:m.cidade, uf:m.uf, pais:m.pais, site:m.site, km:null, parceiro:!!v, pagina_id:v ? v.pagina_id : null, rel:m.rel}; })
+        .sort((x, y)=>(y.parceiro - x.parceiro) || (y.rel - x.rel)).slice(0, a.p_lim || 30); },
+    agenda_cultural:()=>({parceiros:tab("cultura_eventos").filter(e=>(e.fim || e.inicio) >= agora().slice(0, 10) && tab("pagina_museu").some(x=>x.pagina_id === e.pagina_id && x.ativo)).map(e=>{ const p = tab("paginas").find(x=>x.id === e.pagina_id) || {}; return Object.assign({museu:p.nome, cidade:p.cidade}, e); }).sort((x, y)=>x.inicio.localeCompare(y.inicio)),
+      oficiais:[{id:"o1", titulo:"Exposição celebra o patrimônio afro-brasileiro", url:"https://www.gov.br/museus", fonte:"Instituto Brasileiro de Museus (Ibram)", em:agora()}]}),
+    museu_meu:a=>{ const p = tab("paginas").find(x=>x.id === a.p_pagina && x.dono === eu()); if (!p) return null; const r = tab("pagina_museu").find(x=>x.pagina_id === a.p_pagina); if (!r) return null;
+      if (a.p_novo_codigo){ r.codigo = Math.random().toString(16).slice(2, 14); salva(); } const m = tab("museus").find(x=>x.id === r.museu_id);
+      return Object.assign({}, r, {museu:m ? m.nome : null, visitas:tab("museu_visitas").filter(v=>v.pagina_id === r.pagina_id).length, eventos:tab("cultura_eventos").filter(e=>e.pagina_id === r.pagina_id)}); },
+    museu_ativa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_pagina && x.dono === eu() && x.status === "aprovada"); if (!p) throw {message:"Só o responsável por uma página aprovada pode fazer isso."};
+      let r = tab("pagina_museu").find(x=>x.pagina_id === a.p_pagina); if (!r){ r = {pagina_id:a.p_pagina, codigo:Math.random().toString(16).slice(2, 14), confirmado:false}; tab("pagina_museu").push(r); }
+      if (r.museu_id !== a.p_museu) r.confirmado = !!(TESTE_HTML && a.p_museu);   /* modo de teste: a curadoria confirma na hora */
+      Object.assign(r, {museu_id:a.p_museu, uf:a.p_uf, pais:a.p_pais || "Brasil", ativo:a.p_ativo !== false}); salva(); return r; },
+    evento_salva:a=>{ if (!tab("pagina_museu").some(x=>x.pagina_id === a.p_pagina)) throw {message:"Ative a página como espaço cultural primeiro."};
+      let e = a.p_id && tab("cultura_eventos").find(x=>x.id === a.p_id); if (!e){ e = {id:novoId(), pagina_id:a.p_pagina}; tab("cultura_eventos").push(e); }
+      Object.assign(e, {tipo:a.p_tipo, titulo:a.p_titulo, descricao:a.p_descricao, inicio:a.p_inicio, fim:a.p_fim, local:a.p_local}); salva(); return e.id; },
+    evento_apaga:a=>{ const l = tab("cultura_eventos"), i = l.findIndex(x=>x.id === a.p_id); if (i >= 0) l.splice(i, 1); salva(); return true; },
+    museu_checkin:a=>{ const r = tab("pagina_museu").find(x=>x.pagina_id === a.p_pagina && x.ativo), p = tab("paginas").find(x=>x.id === a.p_pagina);
+      if (!r || !p || r.codigo !== a.p_codigo) throw {message:"Este QR não vale mais. Peça o QR atualizado na entrada."};
+      const dia = agora().slice(0, 10), ja = tab("museu_visitas").some(v=>v.pagina_id === a.p_pagina && v.user_id === eu() && v.dia === dia);
+      if (!ja){ tab("museu_visitas").push({id:novoId(), pagina_id:a.p_pagina, user_id:eu(), em:agora(), dia}); salva(); } return {nome:p.nome, novo:!ja}; },
     passaporte_publica:a=>{ db.passPub = !!a.p_on; salva(); return {ok:true, publico:db.passPub}; },
     passaporte_de:a=>{ const eu0 = a.p_user === eu(); if (!eu0) return null; return {publico:!!db.passPub, itens:tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
-      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; })}; },
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false}; }))}; },
     meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
-      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }),
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false}; })),
     pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
       const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
         marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
@@ -6401,6 +6516,25 @@ const A = {
   rapido: b => { const k = b.dataset.k; S.rapido = S.rapido===k ? null : k;
     $$('[data-act="rapido"]').forEach(x=>x.setAttribute("aria-pressed", x.dataset.k===S.rapido));
     if (route()!=="inicio"){ go("inicio"); return; } window.scrollTo(0,0); resetFeed(); },
+  artesub: b => { ARTESUB = b.dataset.v; store.set("arteSub", ARTESUB); window.scrollTo(0,0); arteBase(); if (ARTESUB === "cultura" || ARTESUB === "ativista") resetFeed(); },
+  musativa: b => sheetMusAtiva(b.dataset.p),
+  musativaok: async b => { const pid = b.dataset.p, r = $('#layer input[name="mavm"]:checked'), uf = ($("#mavuf").value || "").trim().toUpperCase(), pais = ($("#mavpais").value || "").trim() || "Brasil";
+    if (uf && !/^[A-Z]{2}$/.test(uf)) return formErro("Use a sigla do estado, com 2 letras.");
+    ocupado(b, true, "Salvando…"); const {error} = await SB.rpc("museu_ativa", {p_pagina:pid, p_museu:r && r.value ? +r.value : null, p_uf:uf || null, p_pais:pais, p_ativo:true}); ocupado(b, false);
+    if (error) return formErro(msgErr(error)); closeSheet(); MUS.meu[pid] = undefined; MUS.lista = null; MUS.chave = ""; museuMeuCarrega(pid); },
+  musdesliga: async b => { const pid = b.dataset.p, d = MUS.meu[pid] || {}; const {error} = await SB.rpc("museu_ativa", {p_pagina:pid, p_museu:d.museu_id || null, p_uf:d.uf || null, p_pais:d.pais || "Brasil", p_ativo:false});
+    if (error) return toast(msgErr(error)); toast("Espaço cultural desativado"); museuMeuCarrega(pid); },
+  musqrnovo: b => { museuMeuCarrega(b.dataset.p, true); toast("QR novo gerado. O antigo parou de valer."); },
+  musqrbaixa: () => { const s = $("#musqr svg"); if (!s) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([s.outerHTML], {type:"image/svg+xml"})); a.download = "qr-entrada.svg"; document.body.appendChild(a); a.click(); a.remove(); },
+  evedita: b => sheetEvento(b.dataset.p, b.dataset.e || ""),
+  evsalva: async b => { const pid = b.dataset.p, tit = ($("#evtit").value || "").trim(), ini = $("#evini").value, fim = $("#evfim").value;
+    if (tit.length < 2) return formErro("Dê um nome."); if (!ini) return formErro("Escolha quando começa."); if (fim && fim < ini) return formErro("O fim vem depois do começo.");
+    ocupado(b, true, "Salvando…"); const {error} = await SB.rpc("evento_salva", {p_pagina:pid, p_id:b.dataset.e || null, p_tipo:($('#layer input[name="evtipo"]:checked') || {}).value || "exposicao", p_titulo:tit, p_descricao:$("#evdesc").value || null, p_inicio:ini, p_fim:fim || null, p_local:$("#evloc").value || null}); ocupado(b, false);
+    if (error) return formErro(msgErr(error)); closeSheet(); MUS.agenda = null; museuMeuCarrega(pid); },
+  evapaga: async b => { const pid = b.dataset.p; await SB.rpc("evento_apaga", {p_id:b.dataset.e}); closeSheet(); MUS.agenda = null; museuMeuCarrega(pid); },
+  visitaok: async b => { if (!b.dataset.p || !b.dataset.c) return formErro("Este QR não é válido. Peça o QR atualizado na entrada."); ocupado(b, true, "Confirmando…");
+    const {data, error} = await SB.rpc("museu_checkin", {p_pagina:b.dataset.p, p_codigo:b.dataset.c, p_evento:null}); ocupado(b, false); if (error) return formErro(msgErr(error));
+    PASS.lista = null; const box = $("#visitabox"); if (box) box.innerHTML = `<div class="pedcard"><span class="ktipo">${ic("check","sm")}Visita</span><b>${data && data.novo ? "Carimbo no seu passaporte." : "Você já tem o carimbo de hoje."}</b><small>${esc(limpo((data && data.nome) || ""))}</small></div><a class="btn primary block" href="#passaporte" style="margin-top:12px">Ver meu passaporte</a>`; },
   ftab: b => { S.tab = b.dataset.tab; persist("tab"); if (route()!=="inicio"){ go("inicio"); return; }
     $$('[data-act="ftab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.tab)); window.scrollTo(0,0); resetFeed(); },
   ttoggle: b => { const t = b.dataset.t; S.temas = S.temas.includes(t) ? S.temas.filter(x=>x!==t) : S.temas.concat(t);
@@ -7106,6 +7240,7 @@ document.addEventListener("click", e=>{ const a = e.target.closest && e.target.c
 if (S.localAuto && navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(q=>{ if (q.state==="granted" && Date.now() - (S.localQuando || 0) > 6 * 3600e3) localAtualiza(true); }).catch(()=>{});
 contaInicia();
 if (/[?&]teste=1/.test(location.search)) window.__arede = {feedDadosNovos, POOL, F, sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
+if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS});
 window.addEventListener("scroll", ()=>{ const t = $("#top"); if (t) t.classList.toggle("scrolled", window.scrollY > 4); }, {passive:true});
 window.addEventListener("resize", debounce(()=>{
   placeLogoDots();
@@ -7160,7 +7295,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 08:03";
+const VERSAO = "v1 registrada · 18/11 08:29";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

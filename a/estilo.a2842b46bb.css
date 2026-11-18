@@ -2054,6 +2054,14 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .pstamp{aspect-ratio:1;border-radius:50%;border:2.5px solid currentColor;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px;text-align:center;transform:rotate(var(--r,0deg));text-decoration:none;outline:1px dashed currentColor;outline-offset:-7px}
 .pstamp .icon{width:20px;height:20px}.pstamp b{font-size:12px;line-height:1.15;overflow-wrap:anywhere}.pstamp small{font-size:11px;line-height:1.2;opacity:.85}
 .pstamp.vazio{color:var(--muted);border-style:dashed;outline:0;transform:none}
+.pz-mus{color:#185FA5}:root[data-theme="dark"] .pz-mus{color:#85B7EB}
+.artebase{margin:2px 0 12px}.artechips{margin:4px 0 12px;flex-wrap:wrap;overflow:visible}.artechips .chip{display:inline-flex;align-items:center;gap:5px}
+.musbusca{display:grid;gap:8px;margin-bottom:6px}.musbusca .field{margin:0}.muscard{align-items:flex-start}.muscard .t{min-width:0}
+.music{flex:0 0 auto;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--chip,rgba(0,0,0,.05));color:#185FA5}
+.mustag{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(15,110,86,.12);color:#0F6E56;text-decoration:none;width:max-content}
+:root[data-theme="dark"] .music,:root[data-theme="dark"] .mustag{color:#85B7EB}:root[data-theme="dark"] .mustag{background:rgba(93,202,165,.16);color:#9FE1CB}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .pz-mus,:root:not([data-theme="light"]) .music{color:#85B7EB} :root:not([data-theme="light"]) .mustag{background:rgba(93,202,165,.16);color:#9FE1CB} }
+.musev{display:grid;gap:6px;margin:10px 0;padding:10px 12px;border:1px solid var(--line,rgba(0,0,0,.1));border-radius:12px;font-size:14px}.musev small{display:block;color:var(--muted,#666)}
 .pz-tat{color:#B4245A}.pz-bel{color:#0F6E56}.pz-art{color:#9A5B0B}.pz-out{color:#534AB7}
 :root[data-theme="dark"] .pz-tat{color:#F193B4}:root[data-theme="dark"] .pz-bel{color:#6ED4AE}:root[data-theme="dark"] .pz-art{color:#F2B562}:root[data-theme="dark"] .pz-out{color:#AFA9EC}
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .pz-tat{color:#F193B4} :root:not([data-theme="light"]) .pz-bel{color:#6ED4AE} :root:not([data-theme="light"]) .pz-art{color:#F2B562} :root:not([data-theme="light"]) .pz-out{color:#AFA9EC} }
