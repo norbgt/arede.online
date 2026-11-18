@@ -1856,7 +1856,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .sesac{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px}
 .orccard{align-self:stretch;display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:16px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--surface)}
 .orccard.velho{opacity:.6;border-color:var(--line)}.orchead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
-.orcval{font-size:24px;line-height:1.15;letter-spacing:-.01em}.orcses{color:var(--muted);font-size:13px}.orcnota{margin:6px 0 0;font-size:14px;line-height:1.4;white-space:pre-line}
+.orcval{font-size:24px;line-height:1.15;letter-spacing:-.01em}.orcses{color:var(--muted);font-size:13px}.orcsinal{font-size:13px;font-weight:600}.sheet .setting.oesinal{padding:6px 0 4px;margin-bottom:8px;background:none;box-shadow:none;cursor:default}.orcnota{margin:6px 0 0;font-size:14px;line-height:1.4;white-space:pre-line}
 .orccard .sesac{margin-top:10px}.orcq{color:var(--muted);font-size:12px;margin-top:6px}.convmais{flex:none;align-self:flex-end;border:1px solid var(--line);border-radius:50%}.orccard.pisca{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent);transition:box-shadow .3s}
 .msgsis{align-self:center;max-width:90%;text-align:center;font-size:12.5px;color:var(--muted);padding:2px 8px}
 .qrbox{display:grid;place-items:center;margin:6px 0}.qrbox .qr{width:min(260px,70vw);height:auto;border-radius:12px;background:#fff;padding:2px}

@@ -2698,6 +2698,9 @@ function sheetOrcEnvia(x){ const o = orcUltimo(x.id); openSheet(shead(o && o.sta
       <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" required value="${o ? +o.sessoes : +x.sessoes_prev || 1}"></div></div>
     ${(()=>{ const pg = PAGS.lista.find(y=>y.id === x.pagina_id), M = MODELOS[modeloDe(pg)] || {}, l = ((tatDe(pg) || {}).estilos || []).length ? tatDe(pg).estilos : (M.esp || []);
       return l.length ? `<div class="field"><label for="oeestilo">${M.espRot === "Estilos" ? "Estilo do trabalho" : (M.espRot || "Tipo do trabalho")} (opcional)</label><select id="oeestilo"><option value="">Não informar</option>${l.map(e=>`<option${e === x.estilo ? " selected" : ""}>${esc(e)}</option>`).join("")}</select><small class="hint">Entra no passaporte de quem foi atendido.</small></div>` : ""; })()}
+    ${(()=>{ const sv = o ? o.sinal : null, on = sv != null;   /* 18/11 (Amanda): o sinal é decidido no orçamento */
+      return `<div class="setting l1 oesinal"><span class="t"><b>Cobrar sinal</b><small>Valor adiantado para reservar o horário. Faz parte do total.</small></span><button class="switch" type="button" role="switch" data-act="oesinal" aria-checked="${on}" aria-label="Cobrar sinal"></button></div>
+      <div class="field" id="oesinalf"${on ? "" : " hidden"}><label for="oesinalv">Valor do sinal (R$)</label><input id="oesinalv" inputmode="decimal" maxlength="14" required value="${on ? String((+sv).toFixed(2)).replace(".", ",") : ""}"></div>`; })()}
     <div class="field"><label for="oenota">O que está incluído (opcional)</label><textarea id="oenota" rows="2" maxlength="300" placeholder="Retoque, material, tempo de cada sessão">${o && o.nota ? esc(o.nota) : ""}</textarea></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}" data-trava>Enviar na conversa</button>`, "Orçamento"); }
 const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
@@ -2737,6 +2740,7 @@ function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tat
   if (o.status === "ajuste" && vivo) ac = eu ? `<small>Combine o ajuste na conversa e envie um orçamento novo.</small>` : `<small>Você pediu ajuste. Conte o que mudar na conversa.</small>`;
   return `<div class="orccard${vivo ? "" : " velho"}"><div class="orchead"><span class="ktipo">${ic("cifrao","sm")}Orçamento</span>${st[0] ? `<span class="pgsit ${st[1]}">${st[0]}</span>` : ""}</div>
     <b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? `${n} ${ses} · cerca de ${finBRL(Math.round(+o.valor / n * 100) / 100)} cada` : `1 ${tat ? "sessão" : "horário"}`}${o.estilo ? " · " + esc(limpo(o.estilo)) : ""}</small>
+    ${o.sinal != null ? `<small class="orcsinal">Sinal de ${finBRL(+o.sinal)} para reservar o horário</small>` : ""}
     ${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}${ac ? `<div class="sesac">${ac}</div>` : ""}<small class="orcq">${quando(o.criado_em)}</small></div>`; }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
@@ -2744,7 +2748,8 @@ function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0),
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date" required></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time" required></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
       </div>
-    ${(SES.pedido[x.id] || []).some(y=>y.status !== "cancelada") ? "" : `<div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>`}
+    ${sesDoPedido(x.id).length ? "" : x.valor_combinado ? (x.sinal_combinado != null ? `<p class="lnote">Sinal combinado no orçamento: ${finBRL(+x.sinal_combinado)}.</p>` : "")
+      : `<div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>`}
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}" data-trava>Propor</button>`, "Marcar"); }
 async function sheetSesQR(y){ if (!y.codigo && sesJanela(y)){ try{ const {data} = await SB.rpc("tat_sessao_codigo", {p_sessao:y.id}); if (data) y.codigo = data; }catch(e){} }   /* 15/11: o código fica no servidor; só a página o recebe */
   const url = location.origin + location.pathname + "#checkin-" + y.id + "-" + y.codigo, ok = sesJanela(y), cod = String(y.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
@@ -4714,15 +4719,15 @@ function mockSB(o = {}){
       let e = a.p_id && tab("cultura_eventos").find(x=>x.id === a.p_id); if (!e){ e = {id:novoId(), pagina_id:a.p_pagina}; tab("cultura_eventos").push(e); }
       Object.assign(e, {tipo:a.p_tipo, titulo:a.p_titulo, descricao:a.p_descricao, inicio:a.p_inicio, fim:a.p_fim, local:a.p_local}); salva(); return e.id; },
     evento_apaga:a=>{ const l = tab("cultura_eventos"), i = l.findIndex(x=>x.id === a.p_id); if (i >= 0) l.splice(i, 1); salva(); return true; },
-    orc_propoe:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só a página envia o orçamento"};
+    orc_envia:a=>{ const x = tab("tat_pedidos").find(y=>y.id === a.p_pedido), pg = x && tab("paginas").find(y=>y.id === x.pagina_id); if (!pg || pg.dono !== eu()) throw {message:"valor: só a página envia o orçamento"};
       tab("tat_orcamentos").forEach(o=>{ if (o.pedido_id === x.id && o.status === "proposto"){ o.status = "substituido"; o.respondido_em = agora(); } });
-      const id = novoId(); tab("tat_orcamentos").push({id, pedido_id:x.id, valor:+a.p_valor, sessoes:Math.max(1, Math.min(20, +a.p_sessoes || 1)), nota:a.p_nota || null, estilo:a.p_estilo || null, status:"proposto", criado_em:agora(), respondido_em:null});
+      const id = novoId(); tab("tat_orcamentos").push({id, pedido_id:x.id, valor:+a.p_valor, sessoes:Math.max(1, Math.min(20, +a.p_sessoes || 1)), nota:a.p_nota || null, estilo:a.p_estilo || null, sinal:a.p_sinal > 0 ? +a.p_sinal : null, status:"proposto", criado_em:agora(), respondido_em:null});
       if (x.status === "aberto") x.status = "respondido"; x.atualizado_em = agora(); salva(); return id; },
     orc_responde:a=>{ const o = tab("tat_orcamentos").find(y=>y.id === a.p_orc), x = o && tab("tat_pedidos").find(y=>y.id === o.pedido_id); if (!x || x.cliente !== eu()) throw {message:"valor: só quem fez o pedido responde ao orçamento"};
       if (o.status !== "proposto") throw {message:"valor: este orçamento já foi respondido ou trocado por outro"}; o.status = a.p_aceita ? "aceito" : "ajuste"; o.respondido_em = agora();
       const brl = v => "R$ " + (+v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
-      if (a.p_aceita){ x.valor_combinado = o.valor; x.sessoes_prev = o.sessoes; if (o.estilo) x.estilo = o.estilo; }
-      tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:a.p_aceita ? `Orçamento aceito: ${brl(o.valor)}${o.sessoes > 1 ? " em " + o.sessoes + " sessões" : ""}. Próximo passo: a página propõe o horário${o.sessoes > 1 ? " da 1ª sessão" : ""}.` : "Ajuste pedido no orçamento. A conversa segue para combinar."});
+      if (a.p_aceita){ x.valor_combinado = o.valor; x.sessoes_prev = o.sessoes; x.sinal_combinado = o.sinal == null ? null : o.sinal; if (o.estilo) x.estilo = o.estilo; }
+      tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:a.p_aceita ? `Orçamento aceito: ${brl(o.valor)}${o.sessoes > 1 ? " em " + o.sessoes + " sessões" : ""}${o.sinal != null ? ", com sinal de " + brl(o.sinal) : ""}. Próximo passo: a página propõe o horário${o.sessoes > 1 ? " da 1ª sessão" : ""}.` : "Ajuste pedido no orçamento. A conversa segue para combinar."});
       x.atualizado_em = agora(); salva(); return a.p_aceita ? "aceito" : "ajuste"; },
     museu_checkin:a=>{ const r = tab("pagina_museu").find(x=>x.pagina_id === a.p_pagina && x.ativo), p = tab("paginas").find(x=>x.id === a.p_pagina);
       if (!r || !p || r.codigo !== a.p_codigo) throw {message:"Este QR não vale mais. Peça o QR atualizado na entrada."};
@@ -6149,6 +6154,8 @@ function screenNovaSenha(){
     : `<p class="empty">Abra o link que enviamos por e-mail para criar uma nova senha.</p>`}</div>`;
 }
 const formErro = t => { const e = $("#layer .ferr") || $("#main .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
+/* 18/11: o aviso de erro de um formulário some quando a pessoa volta a mexer nos campos */
+document.addEventListener("input", e=>{ const f = e.target.closest && e.target.closest("#layer, #main"); const r = f && f.querySelector(".ferr:not([hidden])"); if (r){ r.hidden = true; r.textContent = ""; } });
 /* SENHA (10 nov 2026): o comprimento vale mais que símbolos. Mínimo de 10 caracteres, com letras e números ou símbolos;
    recusa as senhas mais comuns e as que repetem o nome ou o e-mail. A senha nunca é guardada no aparelho. */
 let SENHA_MIN = 10;
@@ -6927,7 +6934,7 @@ const A = {
   sescria: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), d = $("#sesdia").value, h = $("#seshora").value; if (!x) return;
     if (!d || !h) return formErro("Escolha o dia e a hora."); const quando0 = new Date(d + "T" + h + ":00");
     if (quando0.getTime() < Date.now() - 36e5) return formErro("Escolha um horário que ainda não passou.");
-    ocupado(b, true, "Propondo…"); const sn = $("#sessinal") && $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
+    ocupado(b, true, "Propondo…"); const sn = sesDoPedido(x.id).length ? null : x.valor_combinado ? (x.sinal_combinado != null ? +x.sinal_combinado : null) : $("#sessinal") && $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
     const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:x.valor_combinado ? finBRL(x.valor_combinado) : (x.preco || null), sinal:sn, status:"proposta"});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await sesSistema(x.id, `Horário proposto: ${dataHora(quando0)}.`); ocupado(b, false); closeSheet(); toast("Proposta enviada na conversa."); sesRecarrega(); },
@@ -7026,17 +7033,20 @@ const A = {
   sesfimok: async b => { const v = finValor($("#sfval").value); if (!v || v <= 0) return formErro("Informe o valor pago.");
     ocupado(b, true, "Encerrando…"); const {data, error} = await SB.rpc("tat_checkout", {p_sessao:b.dataset.s, p_valor:v}); ocupado(b, false); if (error) return formErro(erroAuth(error));
     closeSheet(); if (b.dataset.p) delete FIN[b.dataset.p]; toast(data && data.venda ? "Atendimento encerrado. A venda entrou no Financeiro." : "Atendimento encerrado."); sesRecarrega(); },
+  oesinal: b => { const on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on); const f = $("#oesinalf"); if (f){ f.hidden = !on; if (on) setTimeout(()=>$("#oesinalv").focus(), 30); } travaConfere(); },
   orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
   orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
+    const comSinal = $("[data-act=oesinal]") && $("[data-act=oesinal]").getAttribute("aria-checked") === "true", sn = comSinal ? finValor($("#oesinalv").value) : null;
+    if (comSinal && !(sn > 0)) return formErro("Informe o valor do sinal."); if (sn && sn > v) return formErro("O sinal não pode passar do valor total.");
     ocupado(b, true, "Enviando…"); const est = ($("#oeestilo") || {}).value || null, nota = ($("#oenota").value || "").trim() || null;
-    const {error} = await SB.rpc("orc_propoe", {p_pedido:x.id, p_valor:v, p_sessoes:n, p_nota:nota, p_estilo:est}); ocupado(b, false); if (error) return formErro(msgErr(error));
+    const {error} = await SB.rpc("orc_envia", {p_pedido:x.id, p_valor:v, p_sessoes:n, p_nota:nota, p_estilo:est, p_sinal:sn}); ocupado(b, false); if (error) return formErro(msgErr(error));
     if (x.status === "aberto") x.status = "respondido"; ORC.l = null; closeSheet(); S.convTab = "conversa"; toast("Orçamento enviado na conversa."); orcCarrega(); },
   convmais: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetConvMais(x, pedSouPagina(x)); },
   convfaz: b => { const a = b.dataset.a; closeSheet(); setTimeout(()=>{ if (A[a]) A[a](b); }, 60); },
   orcver: () => { const c = [...document.querySelectorAll(".orccard:not(.velho)")].pop(); if (c){ c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add("pisca"); setTimeout(()=>c.classList.remove("pisca"), 1600); } },
   orcaceita: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), o = (ORC.l || []).find(z=>z.id === b.dataset.o); if (!x || !o) return; const p = pedPagina(x), n = +o.sessoes || 1;
-    openSheet(shead("Aceitar orçamento") + `<div class="orccard"><b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? n + " sessões" : "1 sessão"} com ${esc(limpo(p.nome || "a página"))}</small>${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}</div>
+    openSheet(shead("Aceitar orçamento") + `<div class="orccard"><b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? n + " sessões" : "1 sessão"} com ${esc(limpo(p.nome || "a página"))}</small>${o.sinal != null ? `<small class="orcsinal">Sinal de ${finBRL(+o.sinal)} para reservar o horário</small>` : ""}${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}</div>
       <p class="lnote">Ao aceitar, vocês combinam este valor. O pagamento é acertado direto com ${esc(limpo(p.nome || "a página"))}, fora da rede.online. ${mod(p, "agenda") ? "O próximo passo é a página propor o horário, e você confirma na conversa." : ""}</p>
       <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcaceitaok" data-o="${o.id}">Aceitar orçamento</button><button class="btn ghost block" type="button" data-act="close" style="margin-top:8px">Agora não</button>`, "Aceitar orçamento"); },
   orcaceitaok: async b => { ocupado(b, true, "Aceitando…"); const {error} = await SB.rpc("orc_responde", {p_orc:b.dataset.o, p_aceita:true}); ocupado(b, false); if (error) return formErro(msgErr(error));
@@ -7410,7 +7420,7 @@ document.addEventListener("click", e=>{ const a = e.target.closest && e.target.c
 if (S.localAuto && navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(q=>{ if (q.state==="granted" && Date.now() - (S.localQuando || 0) > 6 * 3600e3) localAtualiza(true); }).catch(()=>{});
 contaInicia();
 if (/[?&]teste=1/.test(location.search)) window.__arede = {feedDadosNovos, POOL, F, sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
-if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS});
+if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS, PED, SES, ORC, sheetSesNova});
 window.addEventListener("scroll", ()=>{ const t = $("#top"); if (t) t.classList.toggle("scrolled", window.scrollY > 4); }, {passive:true});
 window.addEventListener("resize", debounce(()=>{
   placeLogoDots();
@@ -7465,7 +7475,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 10:45";
+const VERSAO = "v1 registrada · 18/11 11:01";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
