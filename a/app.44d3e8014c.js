@@ -4404,13 +4404,18 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.nodeType!
    10. Rotas e navegação (pilha própria: o voltar não depende do navegador)
    ===================================================================== */
 const NAV = [], SCROLL = {}; let lastRoute = null, PENDING = null;
-const route = () => { const h = (location.hash || "#inicio").slice(1) || "inicio"; return /^(organizacoes|paginas)(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
+const ARROBA = {};   /* 18/11 (Amanda): o endereço mostra o @ (arede.online/#@nome); por dentro, a rota continua sendo a da página ou do perfil */
+const route = () => { let h = (location.hash || "#inicio").slice(1) || "inicio"; if (h.charAt(0) === "@"){ const n = decodeURIComponent(h.slice(1)).toLowerCase(); if (ARROBA[n]) return ARROBA[n]; return "@" + n; }
+  return /^(organizacoes|paginas)(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };
+const arrobaDe = r => { if (r.startsWith("pg-")){ const p = PAGS.lista.find(x=>"pg-" + x.id === r); return p && p.status === "aprovada" && p.usuario || ""; }
+  if (r.startsWith("org-u-")){ const uid = r.slice(6); return (ME.user && uid === ME.user.id && ME.perfil && ME.perfil.usuario) || (PESS_VIT[uid] || {}).usuario || ""; } return ""; };
+function arrobaMostra(r){ const n = arrobaDe(r); if (!n) return; ARROBA[n] = r; if (decodeURIComponent(location.hash.slice(1)).toLowerCase() !== "@" + n){ try{ history.replaceState(null, "", location.pathname + location.search + "#@" + n); }catch(e){} } }   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
 const go = r => { if (route()===r) render(); else location.hash = r; };
 /* 18/11: arede.online/#@nome abre o perfil de quem tem esse nome de usuário */
-async function arrobaAbre(n = 0){ const h = decodeURIComponent((location.hash || "").slice(1)); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false;
+async function arrobaAbre(n = 0){ const h = decodeURIComponent((location.hash || "").slice(1)); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false; if (ARROBA[h.slice(1).toLowerCase()]) return true;
   if (!SB && n < 40){ setTimeout(()=>arrobaAbre(n + 1), 250); return true; }   /* espera a conexão com o servidor */
   let x = null; try{ const r = SB ? await SB.rpc("rota_usuario", {p_usuario:h.slice(1)}) : {data:null}; x = r.data || null; }catch(e){}
-  if (x && x.id) location.replace((x.tipo === "pagina" ? "#pg-" : "#org-u-") + x.id); else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
+  if (x && x.id){ ARROBA[h.slice(1).toLowerCase()] = (x.tipo === "pagina" ? "pg-" : "org-u-") + x.id; render(); } else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
 addEventListener("hashchange", ()=>arrobaAbre()); setTimeout(()=>arrobaAbre(), 0);
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
@@ -4418,6 +4423,8 @@ function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 function envExit(){ let h; do { h = NAV.pop(); } while (h && /^(manifesto|funciona|termos|privacidade)$/.test(h)); location.hash = h || "inicio"; }
 function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.dataset.segnum, el)), 0);
   const r = route(), main = $("#main"), logoVelho = main.querySelector(".logo");
+  if (r.charAt(0) === "@"){ main.innerHTML = `<div class="container"><p class="empty">Carregando…</p></div>`; return; }   /* @nome ainda sem resposta do servidor */
+  arrobaMostra(r);
   if (r!=="inicio"){ document.documentElement.classList.remove("snapvid"); LV_ON = null; }
   document.body.classList.toggle("rota-anunciar", r==="anunciar");   /* o selo de teste sobe para não cobrir o total do anúncio */
   const pr = r.split("/")[0];
@@ -7950,7 +7957,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:23";
+const VERSAO = "v1 registrada · 18/11 19:28";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
