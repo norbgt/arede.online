@@ -4856,10 +4856,12 @@ const notifQuando = d => { const m = Math.round((Date.now() - new Date(d)) / 600
 const ncard = ({tag, attrs, marca, titulo, texto, meta, acao, nova}) => `<${tag} class="ncard${nova ? " nova" : ""}" ${attrs}>${marca}<span class="ntx"><b>${titulo}</b>${texto ? `<span>${texto}</span>` : ""}<small>${meta}</small></span>${acao ? `<span class="pgsit ${acao[1]} nacao">${acao[0]}</span>` : nova ? `<span class="nponto" aria-label="Nova"></span>` : ""}</${tag}>`;
 function convCard(x){ const p = pedPagina(x), eu = pedSouPagina(x), o = eu ? {nome:x.cliente_nome || "Cliente", sigla:siglaDe(x.cliente_nome || "C"), cor:"#5B6B7A", pessoa:true} : (ORG["pg-" + p.id] || {nome:p.nome || "Página", sigla:siglaDe(p.nome || "P"), cor:"#888"});
   const st = msgSituacao(x), nova = convNaoLida(x.id);
-  return ncard({tag:"a", attrs:`href="#conversa-${x.id}"`, marca:avatar(o), titulo:esc(limpo(eu ? x.cliente_nome || "Cliente" : p.nome || "Página")),
+  const aba = st && !/^Responder/.test(st[0]) ? "atendimento" : "conversa";   /* abre onde está a ação: avaliar, confirmar horário, encerrar e orçamento ficam em Atendimento */
+  return ncard({tag:"button", attrs:`type="button" data-act="convabre" data-id="${x.id}" data-tab="${aba}"`, marca:avatar(o), titulo:esc(limpo(eu ? x.cliente_nome || "Cliente" : p.nome || "Página")),
     texto:esc(pedResumo(x)) + (eu ? ` · ${esc(limpo(p.nome || ""))}` : ""), meta:(x.status === "fechado" ? "Encerrada" : "Conversa") + " · " + notifQuando(x.atualizado_em), acao:st || (nova ? ["Mensagem nova","ok"] : null), nova}); }
-function avisoCard(x){ return ncard({tag:"button", attrs:`type="button" data-act="notifabre" data-id="${x.id}"`, marca:`<span class="nic" aria-hidden="true">${ic(NOTIF_IC[x.tipo] || "info","sm")}</span>`,
-  titulo:esc(x.titulo), texto:x.texto ? esc(x.texto) : "", meta:"Aviso · " + notifQuando(x.criada_em), nova:!x.lida_em}); }
+function avisoCard(x){ const t = x.titulo || x.texto || "Aviso", tx = x.titulo ? x.texto : "";   /* sem título, o texto vira o título */
+  return ncard({tag:"button", attrs:`type="button" data-act="notifabre" data-id="${x.id}"`, marca:`<span class="nic" aria-hidden="true">${ic(NOTIF_IC[x.tipo] || "info","sm")}</span>`,
+  titulo:esc(t), texto:tx ? esc(tx) : "", meta:"Aviso · " + notifQuando(x.criada_em), nova:!x.lida_em}); }
 function screenNotif(f){ if (f) NOTIF.f = f; f = NOTIF.f || "tudo";
   const topo = header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Notificações</h1><div class="spacer"></div>
     ${ME.user && f !== "conversas" && avisosNaoLidos() ? `<button class="linkbtn" type="button" data-act="notiftodas">Marcar como lidas</button>` : ""}</div>`);
@@ -7052,6 +7054,7 @@ const A = {
   notifpref: async b => { const k = b.dataset.k, on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on);
     const {error} = await SB.from("notif_prefs").upsert({user_id:ME.user.id, tipo:k, quer:on}); if (error){ b.setAttribute("aria-checked", !on); return toast("Não foi possível salvar agora."); }
     NOTIF.prefs[k] = on; toast(on ? "Você vai receber esta notificação." : "Você não vai mais receber esta notificação."); },
+  convabre: b => { S.convId = null; S.convTab0 = b.dataset.tab === "atendimento" ? "atendimento" : null; go("conversa-" + b.dataset.id); },
   notiff: b => { NOTIF.f = b.dataset.f; if (route() === "conversas"){ location.replace("#notificacoes"); return; } render(); },   /* #conversas só escolhe o filtro de entrada */
   notifabre: async b => { const x = (NOTIF.lista || []).find(n=>String(n.id)===b.dataset.id); if (!x) return;
     if (!x.lida_em){ x.lida_em = new Date().toISOString(); NOTIF.nao = (NOTIF.nao || []).filter(n=>String(n.id) !== String(x.id)); NOTIF.n = sinoConta(); navConta(); SB.rpc("notif_marca_lidas", {p_ids:[x.id]}).then(()=>{}, ()=>{}); b.classList.remove("nova"); const p = b.querySelector(".nponto"); if (p) p.remove(); }
@@ -7397,7 +7400,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:27";
+const VERSAO = "v1 registrada · 18/11 09:29";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
