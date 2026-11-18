@@ -2622,8 +2622,8 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
       ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`}))
         .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
-      <div class="composer">${eu && x.status !== "fechado" ? `<button class="iconbtn orcbtn" type="button" data-act="orcenvia" data-id="${id}" aria-label="Enviar orçamento" title="Enviar orçamento">${ic("cifrao")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
-      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Mande o orçamento pelo ${ic("cifrao","sm")} ao lado da mensagem: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
+      ${eu && x.status !== "fechado" ? (o0 => `<div class="orcatalho"><button class="rdf orcbtn" type="button" data-act="orcenvia" data-id="${id}">${ic("cifrao","sm")}${o0 && o0.status === "proposto" ? "Trocar orçamento" : o0 && o0.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento"}</button></div>`)(orcUltimo(id)) : ""}<div class="composer"><textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
+      ${orcsDe(id).length ? "" : `<p class="lnote">${eu ? `Use Enviar orçamento: ${esc(limpo(x.cliente_nome || "a cliente"))} aceita ou pede ajuste aqui mesmo.` : "Quando a página mandar o orçamento, ele aparece aqui para você aceitar ou pedir ajuste."} ${mod(p, "agenda") ? "Depois do aceite, a página propõe o horário; no dia, o check-in por QR confirma o atendimento." : ""}</p>`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
 function qrMatriz(texto){
@@ -7444,7 +7444,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:47";
+const VERSAO = "v1 registrada · 18/11 10:16";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
