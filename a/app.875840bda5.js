@@ -543,7 +543,7 @@ function apAprendidos(){ return AP_TOP || (AP_TOP = {t:apTopo(S.apTemas, "t:"), 
 function apPeso(it){ if (!S.algo || !S.aprendeLugares) return 0; const a = apAprendidos(); return (a.t.includes(it.tema) ? .25 : 0) + (a.f.includes(it.org) ? .15 : 0); }
 /* aviso uma vez: o aprendizado começa ligado, e a pessoa fica sabendo onde ver, tirar e desligar */
 function apAviso(){ if (store.get("apAvisado", false)) return; store.set("apAvisado", true);
-  setTimeout(()=>toast("O Algoritmo aprende com seu uso. Veja, tire ou desligue em Perfil › Algoritmo."), 1800); }
+  setTimeout(()=>toast("O Algoritmo aprende com seu uso. Veja, tire ou desligue em Sua conta › Algoritmo."), 1800); }
 function lugarSinal(it, tipo){ apSinal(it, tipo); if (!S.algo || !S.aprendeLugares) return; const k = typeof it==="string" ? it : lugarDe(it); if (!k || S.lugaresFora.includes(k)) return;
   S.lugares[k] = {n:Math.min(40, +(lugarValor(S.lugares[k]) + (LUG_PESO[tipo] || 1)).toFixed(2)), t:Date.now()};
   const ks = Object.keys(S.lugares); if (ks.length > 60) ks.sort((a, b)=>lugarValor(S.lugares[a]) - lugarValor(S.lugares[b])).slice(0, ks.length - 60).forEach(x=>delete S.lugares[x]);
@@ -3563,7 +3563,7 @@ function intBody(){ const d = S.intDraft, full = d.length >= MAX_INT;
    saiu do perfil: fica em Configurações › Seu feed e no atalho de ajustes do feed. */
 /* 15/11: um perfil só. A dona vê e organiza ali mesmo o que é público (cadeado aberto) e o que é só dela (cadeado fechado), como na página.
    Mesmas abas que quem visita vê, mais o Algoritmo, que é só seu. "Pastas" junta as seções (abertas ou fechadas) e, embaixo, o que é só seu: salvos, curtidas, compartilhadas, agenda e passaporte. */
-const PTABS = [["publicacoes","Publicações"],["salvos","Pastas"],["passaporte","Passaporte"],["redes","Outras redes"],["algoritmo","Algoritmo"]];   /* 18/11 (Amanda): Passaporte é uma aba do perfil; a pessoa decide se fica público */
+const PTABS = [["publicacoes","Publicações"],["salvos","Pastas"],["passaporte","Passaporte"],["redes","Redes"]];   /* 18/11 (Amanda): 4 abas que cabem no celular; o Algoritmo foi para Sua conta */   /* 18/11 (Amanda): Passaporte é uma aba do perfil; a pessoa decide se fica público */
 const PFILT = [["tudo","Salvos"],["agenda","Agenda"]];   /* 15/11: curtidas e compartilhadas foram para o histórico, na aba Algoritmo */
 const PFILT_TIT = {tudo:"Tudo o que você salvou", curtidas:"Suas curtidas", compartilhadas:"O que você compartilhou", agenda:"Sua agenda", passaporte:"Seu passaporte"};
 /* o que pode aparecer no perfil público (Publicações e as pastas que não são secretas) e o que é sempre só seu */
@@ -3577,14 +3577,17 @@ function visOf(t){
       if (!pastaAberta(f)) return ["lock","priv", secDe(f[0]) ? "Seção fechada: só você vê" : "Fora das seções: só você vê"];
       return S.publico ? pub : ["lock","priv","Com o perfil privado, só você vê"]; }
     return ["lock","priv","Só você vê"]; }
+  if (t==="redes") return S.publico ? pub : ["lock","priv","Com o perfil privado, só você vê"];
+  if (t==="passaporte") return S.publico && PASS.publico ? pub : ["lock","priv","Só você vê"];
   return ["lock","priv","Só você vê · nunca vai ao perfil público"]; }
 const visTag = t => { const [i, c, x] = visOf(t); return `<span class="vis ${c}">${ic(i,"sm")}${x}</span>`; };
 /* cadeado ao lado de cada aba (14/11): aberto = aparece no perfil público; fechado = não aparece */
 const tabVis = aberto => `<span class="tvis" role="img" aria-label="${aberto ? "aparece no perfil público" : "não aparece no perfil público"}" title="${aberto ? "Aparece no perfil público" : "Não aparece no perfil público"}">${ic(aberto ? "cadaberto" : "lock","sm")}</span>`;
-const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(k==="publicacoes" || (S.publico && ((k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha")) || (k==="passaporte" && PASS.publico))))}</button>`).join("");   /* 18/11: publicações são sempre públicas */
+const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}</button>`).join("");   /* 18/11 (Amanda): quem vê cada aba aparece na linha logo abaixo das abas */
 function screenProfile(){
   if (S.profTab === "agenda"){ S.profFiltro = "agenda"; S.profTab = "salvos"; }   /* abas antigas viram filtros de Salvos */
-  if (S.profTab === "curtidas" || S.profTab === "compartilhadas"){ S.histTipo = S.profTab; S.profTab = "algoritmo"; }   /* 15/11: agora no histórico */
+  if (S.profTab === "curtidas" || S.profTab === "compartilhadas"){ S.histTipo = S.profTab; S.contaAba = "algoritmo"; S.profTab = "publicacoes"; }
+  if (S.profTab === "algoritmo"){ S.contaAba = "algoritmo"; S.profTab = "publicacoes"; }   /* 18/11: links antigos */   /* 15/11: agora no histórico */
   if (S.profFiltro === "curtidas" || S.profFiltro === "compartilhadas") S.profFiltro = "tudo";
   if (!PTABS.some(t=>t[0]===S.profTab)) S.profTab = "publicacoes";
   const pf = ME.user && ME.perfil;
@@ -3595,7 +3598,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[[pf && pf.usuario ? "@" + esc(pf.usuario) : "", pf && pf.cidade ? esc(pf.cidade) : ""].filter(Boolean).join(" · ")], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -3689,15 +3692,14 @@ function profList(){
 }
 /* linha de status: o que está na tela e quem pode ver */
 function profStatus(){ const n = profList().length, pl = (k, a, b) => `${k} ${k===1?a:b}`, v = visTag(S.profTab);
-  if (S.profTab==="publicacoes"){ const k = S.redes.filter(c=>c.tipo==="minha").length;
-    return ""; }   /* 12 nov 2026: sem contagem nem "quem vê" aqui; Outras redes fica em Configurações */
+  if (S.profTab==="publicacoes") return v;   /* 12 nov 2026: sem contagem nem "quem vê" aqui; Outras redes fica em Configurações */
   if (S.profTab==="agenda"){ const it = profList(), ev = it.filter(i=>i.tipo==="evento").length, ch = it.length - ev;
     return `<span class="txt"><b>${pl(ev,"evento","eventos")} · ${pl(ch,"chamado","chamados")}</b></span>${v}`; }
   if (S.profTab==="compartilhadas" || S.profTab==="curtidas") return `<span class="txt"><b>${pl(n,"conteúdo","conteúdos")}</b></span>${v}`;
   if (S.profTab==="algoritmo") return `<span class="txt"><b>Como o seu algoritmo funciona</b></span>${v}`;
   if (S.profFolder){ const f = FOLDERS.find(x=>x[0]===S.profFolder);
     return `<button class="iconbtn tool" type="button" data-act="openfolder" data-f="" aria-label="Voltar para as pastas">${ic("back")}</button><span class="txt"><b>${esc(f[1])}</b> · ${pl(n,"item","itens")}</span>${v}${pastaMinha(f[0]) ? `<button class="iconbtn tool" type="button" data-act="pastaedita" data-f="${f[0]}" aria-label="Editar a pasta ${esc(f[1])}" title="Editar pasta">${ic("lapis")}</button>` : ""}`; }
-  return "";
+  return v;
 }
 function profBody(){
   const f = S.profFiltro || "tudo", ag = S.profTab==="salvos" && !S.profFolder && f==="agenda";
@@ -3705,7 +3707,6 @@ function profBody(){
     + `<h3 class="psec sovoce">${ic("lock","sm")} Só você vê</h3><div class="pfiltros"><div class="chips umalinha" role="group" aria-label="O que só você vê">${PFILT.map(([k,n])=>`<button class="chip" type="button" data-act="pfiltro" data-f="${k}" aria-pressed="${f===k}">${n}</button>`).join("")}</div></div>
     <div class="${ag ? "lwrap" : "rwrap"}"><div id="pfeed"></div></div>`;
   if (S.profTab==="redes"){ const t0 = S.pubTab; S.pubTab = "redes"; const h = pubBody(); S.pubTab = t0; return h; }
-  if (S.profTab==="algoritmo") return `<div class="algotab">${algoPanel()}${ME.user ? `<section class="acard alrep"><h3>Sua reputação</h3><p class="anote">O algoritmo também usa a sua reputação para mostrar suas publicações a outras pessoas.</p><button class="linkbtn" type="button" data-act="repver">Ver sua reputação</button></section>` : ""}</div>`;   /* 18/11 (Amanda): Algoritmo e Reputação ficam separados, com esta ponte */
   if (S.profTab==="passaporte"){ if (!PASS.lista) passaporteCarrega(); return `<div id="passbody">${passaporteAba()}</div>`; }
   const pgs = S.profTab==="publicacoes" ? minhasPaginas() : [];
   return `<div class="rwrap"><div id="pfeed"></div></div>`;   /* 15/11: as suas páginas aparecem no cabeçalho, como na prévia */
@@ -3716,7 +3717,8 @@ function fillProfile(){ const box = $("#pfeed"); if (!box || S.profTab === "rede
   if (!items.length){ box.className = ""; box.innerHTML = `<p class="empty">${{tudo:`Nada salvo ainda. Toque em <b>Salvar</b> ou em ${ic("bookmark","sm")} num conteúdo para guardar aqui.`, publicacoes:"Você ainda não publicou nada.", agenda:"Sua agenda está vazia. Toque em <b>Quero ir</b> num evento ou em <b>Quero ajudar</b> num chamado.", compartilhadas:"Você ainda não compartilhou nada.", curtidas:"Você ainda não curtiu nada.", salvos:`Pasta vazia. Toque em ${ic("bookmark","sm")} num conteúdo para guardar aqui.`}[S.profTab==="salvos" && !S.profFolder ? S.profFiltro || "tudo" : S.profTab]}</p>`; return; }
   if (S.profTab==="salvos" && !S.profFolder && (S.profFiltro || "tudo")==="agenda"){ const g = new Grid("pfeed", box, "none", box.clientWidth >= 900 ? 3 : 2, "agenda"); items.forEach(it=>g.add(it)); g.render(); return; }
   const g = new TileGrid("pfeed", box, "none"); items.forEach(it=>g.add(it)); g.flush(true); g.render(); }
-function profShow(){ $$('[data-act="ptab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.profTab)); { const ps = profStatus(), pe = $("#pstatus"); pe.innerHTML = ps; pe.hidden = !ps; } $("#pbody").innerHTML = profBody(); fillProfile(); }
+function profShow(){ if (!$("#pbody")){ render(); return; }   /* 18/11: o painel do Algoritmo também vive em Sua conta */
+  $$('[data-act="ptab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.profTab)); { const ps = profStatus(), pe = $("#pstatus"); pe.innerHTML = ps; pe.hidden = !ps; } $("#pbody").innerHTML = profBody(); fillProfile(); }
 /* CONFIGURAÇÕES — separadas do conteúdo do perfil */
 /* 16/11 (Amanda): "a" e engrenagem sem repetição.
    "a" (Sua conta) = quem você é: seu perfil, o que ele mostra, seu acesso, segurança e sair.
@@ -3817,7 +3819,7 @@ function screenConfig(){
       ${switchRow("usarOrgs","Usar minhas comunidades no algoritmo","Desligue quando quiser")}
       ${switchRow("pausas","Pausas no feed",`Parada a cada ${PAUSE_EVERY} publicações`)}
       ${switchRow("autoplay","Reproduzir vídeos automaticamente","Sem som, com as prévias")}
-      <div class="note">${ic("lock")}<span>O algoritmo usa o que você escolhe aqui e aprende com seu uso. Você vê e apaga o que ele aprendeu em Perfil › Algoritmo. Com o algoritmo desligado, nada do seu perfil é usado.</span></div>
+      <div class="note">${ic("lock")}<span>O algoritmo usa o que você escolhe aqui e aprende com seu uso. Você vê e apaga o que ele aprendeu em Sua conta › Algoritmo. Com o algoritmo desligado, nada do seu perfil é usado.</span></div>
     </div>
     <h2 class="sectitle">Aparência</h2>
     <div class="setting stack"><span class="t"><b>Tema</b><small>Automático segue o seu aparelho</small></span>
@@ -3921,8 +3923,8 @@ function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu 
   return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor, (PESS_VIT[uid] || {}).foto)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
     + `<div class="container">${(()=>{ const vt = PESS_VIT[uid] || (pessVitCarrega(uid), {}), pfv = {nome:o.nome, colaborador:vt.colaborador, selos:vt.selos};
         const chips = (vt.interesses || []).map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (vt.comunidades || []).map(n=>`<span class="chip static">${ic("people","sm")}${esc(n)}</span>`).join("") + pgChips(uid);
-        return pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, selo:seloResumo(pfv, uid), linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips}); })()}
-      <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"]].concat((PESS_VIT[uid] || {}).publico ? [["pastas","Pastas"]] : [], PASS_DE[uid] ? [["passaporte","Passaporte"]] : [], ((PESS_VIT[uid] || {}).redes || []).length ? [["redes","Outras redes"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
+        return pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, selo:seloResumo(pfv, uid), linhas:[[vt.usuario ? "@" + esc(vt.usuario) : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")], bio:o.sobre, chips}); })()}
+      <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"]].concat((PESS_VIT[uid] || {}).publico ? [["pastas","Pastas"]] : [], PASS_DE[uid] ? [["passaporte","Passaporte"]] : [], ((PESS_VIT[uid] || {}).redes || []).length ? [["redes","Redes"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
       <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], uid) : pessAba(uid) === "redes" ? pessRedesHTML(uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
 /* 18/11 (Amanda): o que quem visita vê vem do servidor (perfil_vitrine). Selos sempre; interesses, comunidades,
    pastas e outras redes só com o perfil público. Publicações e comentários são sempre públicos. */
@@ -3969,7 +3971,7 @@ function screenPublic(){
       const chips = (S.publico ? S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") : "") + (ME.user ? pgChips(ME.user.id) : "");
       return pessoaHead({capa:true, nome:pf.nome, verificado:pf.verificado, selo:ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[vis + (pf.cidade ? " · " + esc(pf.cidade) : "")], bio:pf.bio,
         chips}); })()}
-    <div class="tabs pubtabs" role="tablist" aria-label="Perfil público">${[["publicacoes","Publicações"]].concat(S.publico ? [["pastas","Pastas"],["redes","Outras redes"]] : []).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pubtab" data-tab="${k}" aria-selected="${S.pubTab===k}">${n}${tabVis(S.publico && (k!=="pastas" || pubFolders().length > 0))}</button>`).join("")}</div>
+    <div class="tabs pubtabs" role="tablist" aria-label="Perfil público">${[["publicacoes","Publicações"]].concat(S.publico ? [["pastas","Pastas"],["redes","Redes"]] : []).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pubtab" data-tab="${k}" aria-selected="${S.pubTab===k}">${n}${tabVis(S.publico && (k!=="pastas" || pubFolders().length > 0))}</button>`).join("")}</div>
     <div class="status" id="pubstatus"${pubStatus() ? "" : " hidden"}>${pubStatus()}</div>
     <div id="pubbody">${pubBody()}</div></div>`;
 }
@@ -4335,6 +4337,12 @@ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.nodeType!
 const NAV = [], SCROLL = {}; let lastRoute = null, PENDING = null;
 const route = () => { const h = (location.hash || "#inicio").slice(1) || "inicio"; return /^(organizacoes|paginas)(\/[a-z]+)?$/.test(h) ? "organizacoes" : h; };   /* #organizacoes e #organizacoes/<aba> são a tela Organizações */
 const go = r => { if (route()===r) render(); else location.hash = r; };
+/* 18/11: arede.online/#@nome abre o perfil de quem tem esse nome de usuário */
+async function arrobaAbre(n = 0){ const h = decodeURIComponent((location.hash || "").slice(1)); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false;
+  if (!SB && n < 40){ setTimeout(()=>arrobaAbre(n + 1), 250); return true; }   /* espera a conexão com o servidor */
+  let id = null; try{ const r = SB ? await SB.rpc("perfil_por_usuario", {p_usuario:h.slice(1)}) : {data:null}; id = r.data || null; }catch(e){}
+  if (id) location.replace("#org-u-" + id); else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
+addEventListener("hashchange", ()=>arrobaAbre()); setTimeout(()=>arrobaAbre(), 0);
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
 /* 16/11 (Amanda): voltar sai do módulo inteiro (Manifesto, Como funciona, Termos, Privacidade) e volta para a tela de antes, sem passar pelas abas */
@@ -4928,9 +4936,13 @@ function mockSB(o = {}){
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
+    perfil_usuario_define:({p_usuario})=>{ const pf = perfil(eu()), u = String(p_usuario || "").replace(/^@+/, "").toLowerCase().trim(); if (!u){ pf.usuario = null; salva(); return null; }
+      if (!/^[a-z0-9_.]{3,30}$/.test(u)) throw {message:"valor: use de 3 a 30 letras minúsculas, números, ponto ou _"}; if (/arede/.test(u) || ["admin","contato","rede","suporte"].includes(u)) throw {message:"valor: esse nome é reservado. Escolha outro"};
+      if (tab("perfis").some(x=>x.usuario === u && x.id !== eu())) throw {message:"valor: esse nome já está em uso"}; pf.usuario = u; salva(); return u; },
+    perfil_por_usuario:({p_usuario})=>(tab("perfis").find(x=>x.usuario === String(p_usuario || "").toLowerCase()) || {}).id || null,
     perfil_foto_define:({p_path})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; const ant = pf.foto || null; pf.foto = p_path || null; salva(); return ant; },
     perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
-      return {foto:pf.foto || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
+      return {foto:pf.foto || null, usuario:pf.usuario || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
       if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
       const ab = Object.fromEntries(sec.filter(x=>x && x.aberta === true && Array.isArray(x.pastas)).map(x=>[x.id, x.pastas])), secr = ps.filter(f=>Array.isArray(f) && f[3] === true).map(f=>f[0]);
@@ -6137,10 +6149,11 @@ function screenConta(){
   if (ME.user){ const pf = ME.perfil || {nome:ME.user.user_metadata && ME.user.user_metadata.nome || "", cidade:"", bio:"", papel:"membro"};
     /* 18/11 (Amanda): Sua conta em abas: Perfil · Reputação · Anúncios (só com pedido) · Dados e segurança.
        Reputação junta a escala de verificação da rede (o progresso de nível) com a nota e os selos. */
-    const abas = [["perfil","Perfil"],["verificacao","Reputação"]].concat(AD_PEDIDOS && AD_PEDIDOS.length ? [["anuncios","Anúncios"]] : [], [["dados","Dados e segurança"]]);
+    const abas = [["perfil","Perfil"],["verificacao","Reputação"],["algoritmo","Algoritmo"]].concat(AD_PEDIDOS && AD_PEDIDOS.length ? [["anuncios","Anúncios"]] : [], [["dados","Dados"]]);   /* 18/11 (Amanda): o Algoritmo mora aqui, ao lado da Reputação */
     const ab = abas.some(x=>x[0]===S.contaAba) ? S.contaAba : "perfil";
     const tabs = `<div class="tabs contabs" role="tablist" aria-label="Sua conta">${abas.map(([k, n])=>`<button class="tab" type="button" role="tab" data-act="contaaba" data-a="${k}" aria-selected="${ab===k}">${n}</button>`).join("")}</div>`;
     if (ab === "verificacao") return topo + `<div class="container cform">${tabs}${acessoCard()}<div id="histbox"></div></div>`;
+    if (ab === "algoritmo") return topo + `<div class="container cform">${tabs}<div class="algotab">${algoPanel()}</div></div>`;
     if (ab === "anuncios") return topo + `<div class="container cform">${tabs}<div id="adpedidos">${adPedidosHTML()}</div></div>`;
     if (ab === "dados") return topo + `<div class="container cform">${tabs}${contaSeguranca()}
       <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
@@ -6149,6 +6162,7 @@ function screenConta(){
       <div class="cme">${fotoUrl(pf.foto) ? `<span class="av pav comfoto" aria-hidden="true">${fotoImg(pf.foto)}</span>` : avatar({cor:comCor(ME.user.id), sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
       <div class="fotolin"><input id="pfotoin" type="file" accept="image/*" hidden>${pf.foto_em_analise ? `<p class="inota">${ic("info","sm")}<span>Sua foto está em análise pela moderação.</span></p>` : `<button class="linkbtn" type="button" data-act="fotoperfil">${pf.foto ? "Trocar foto" : "Pôr foto"}</button>${pf.foto ? `<button class="linkbtn" type="button" data-act="fototirap">Tirar foto</button>` : ""}`}</div>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
+      <div class="field"><label for="pusu">Nome de usuário</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pusu" type="text" maxlength="30" autocapitalize="none" autocomplete="username" spellcheck="false" value="${esc(pf.usuario || "")}" aria-describedby="pusudica"></div><small id="pusudica" class="hint">O endereço do seu perfil: arede.online/#@${esc(pf.usuario || "nome")}</small></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
       <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
       <div class="field"><label for="pbio">Sobre você (até 280 caracteres)</label><textarea id="pbio" maxlength="280">${esc(pf.bio || "")}</textarea></div>
@@ -6778,7 +6792,6 @@ const A = {
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
     if (row) row.remove(); toast(st==="publicada" ? "Publicada no feed." : "Recusada."); if (st==="publicada") noticiasCarrega(); },
-  repver: () => { S.contaAba = "verificacao"; S.vInst = false; go("conta"); window.scrollTo(0, 0); },
   contaaba: b => { S.contaAba = b.dataset.a; S.vInst = false; render(); window.scrollTo(0, 0); },
   vinst: () => { S.vInst = !S.vInst; render(); },
   verificacpf: () => { closeSheet(); S.contaAba = "verificacao"; S.vInst = false; if (!ME.user){ S.contaTab = "criar"; go("conta"); return; } if (route() === "conta") render(); else go("conta"); setTimeout(()=>{ const i = ["#vnome","#vsobre","#vnasc","#vcpf"].map(q=>$(q)).find(x=>x && !x.value) || $("#vcpf"); if (i){ i.scrollIntoView({block:"center"}); i.focus({preventScroll:true}); } }, 250); },
@@ -6909,7 +6922,10 @@ const A = {
     if (error) return formErro(erroAuth(error)); toast("Senha alterada."); go("perfil"); },
   sair: async () => { await SB.auth.signOut(); ME.user = null; ME.perfil = null; ME.acesso = null; toast("Você saiu da conta."); go("conta"); },
   perfilsalva: async b => { const nome = $("#pnome").value.trim(); if (nome.length < 2) return formErro("O nome precisa de pelo menos 2 letras.");
+    const usu = (($("#pusu") || {}).value || "").trim().replace(/^@+/, "").toLowerCase();
+    if (usu && !/^[a-z0-9_.]{3,30}$/.test(usu)) return formErro("Nome de usuário: de 3 a 30 letras minúsculas, números, ponto ou _.");
     ocupado(b, true, "Salvando…");
+    if (usu !== ((ME.perfil || {}).usuario || "")){ const r = await SB.rpc("perfil_usuario_define", {p_usuario:usu || null}); if (r.error){ ocupado(b, false); return formErro(msgErr(r.error)); } }
     const {error} = await SB.from("perfis").update({nome, cidade:$("#pcid").value.trim() || null, mostra_cidade:!!($("#pcidmostra") && $("#pcidmostra").checked), bio:$("#pbio").value.trim() || null}).eq("id", ME.user.id);
     ocupado(b, false); if (error) return formErro(erroAuth(error)); formErro(""); await perfilCarrega(); await publicacoesCarrega(); toast("Perfil salvo."); render(); },
   editarpub: b => { const it = findItem(b.dataset.uid); if (!podeEditar(it)) return; sheetCriarReal(it.raw.tipo, it.raw); },
@@ -6982,7 +6998,7 @@ const A = {
     $$('[data-act="ftab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.tab)); window.scrollTo(0,0); resetFeed(); },
   ttoggle: b => { const t = b.dataset.t; S.temas = S.temas.includes(t) ? S.temas.filter(x=>x!==t) : S.temas.concat(t);
     b.setAttribute("aria-pressed", S.temas.includes(t)); b.innerHTML = (S.temas.includes(t)?ic("check","sm"):"") + t; },
-  algomore: () => { closeSheet(); S.profTab = "algoritmo"; S.profFolder = null; if (location.hash==="#perfil") profShow(); else location.hash = "perfil"; },   /* Algoritmo voltou a ser aba do perfil (14/11) */
+  algomore: () => { closeSheet(); S.contaAba = "algoritmo"; if (route() === "conta") render(); else go("conta"); window.scrollTo(0, 0); },   /* Algoritmo voltou a ser aba do perfil (14/11) */
   applyalgo: () => { persist("temas"); persist("mix"); S.algo = true; persist("algo"); closeSheet(); go("inicio"); toast("Meu algoritmo atualizado."); },
   continue: () => { F.paused = false; renderStop(); more(10); },
   localpede: b => sheetLocal(b.dataset.para || ""),
@@ -7072,7 +7088,8 @@ const A = {
   saveto: b => { const id = b.dataset.uid, k = b.dataset.f; store.set("ultimaPasta", k); S.saved.add(id); S.savedIn[id] = k; persist("saved"); persist("savedIn"); closeSheet(); refresh(id); toast(`Salvo em ${folderName(k)}. Suas pastas ficam no Perfil.`); },
   like: b => { const id = b.dataset.uid; if (!S.liked.has(id)) lugarSinal(findItem(id), "like"); S.liked.has(id) ? S.liked.delete(id) : S.liked.add(id); persist("liked"); refresh(id); },
   share: b => { if (b.dataset.uid && !S.shared.has(b.dataset.uid)){ lugarSinal(findItem(b.dataset.uid), "share"); S.shared.add(b.dataset.uid); persist("shared"); }
-    const url = location.href.split("#")[0] + (b.dataset.uid ? "#pin-" + b.dataset.uid : b.dataset.perfil ? (/^pg-/.test(b.dataset.perfil) ? "#" : "#org-") + b.dataset.perfil : location.hash); try{ navigator.clipboard.writeText(url).then(()=>toast("Link copiado."), ()=>toast("Não foi possível copiar o link.")); }catch(e){ toast("Não foi possível copiar o link."); } },
+    const pu = b.dataset.perfil && /^u-/.test(b.dataset.perfil) ? b.dataset.perfil.slice(2) : "", usu = pu ? (ME.user && ME.user.id === pu ? (ME.perfil || {}).usuario : (PESS_VIT[pu] || {}).usuario) : "";   /* 18/11: com @, o link é arede.online/#@nome */
+    const url = location.href.split("#")[0] + (b.dataset.uid ? "#pin-" + b.dataset.uid : usu ? "#@" + usu : b.dataset.perfil ? (/^pg-/.test(b.dataset.perfil) ? "#" : "#org-") + b.dataset.perfil : location.hash); try{ navigator.clipboard.writeText(url).then(()=>toast("Link copiado."), ()=>toast("Não foi possível copiar o link.")); }catch(e){ toast("Não foi possível copiar o link."); } },
   moretext: b => { const pin = b.closest(".pin"), t = pin.querySelector(".pintext"); const open = !t.classList.contains("open"); t.classList.toggle("open", open); S.textOpen[b.dataset.uid] = open;
     b.textContent = open ? "Mostrar menos" : "Mostrar mais"; b.setAttribute("aria-expanded", open); layoutPin(pin); },
   poll: b => { S.pollVote[b.dataset.uid] = +b.dataset.i; persist("pollVote"); refresh(b.dataset.uid); toast("Voto registrado na consulta."); },
@@ -7826,7 +7843,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 17:27";
+const VERSAO = "v1 registrada · 18/11 17:37";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
