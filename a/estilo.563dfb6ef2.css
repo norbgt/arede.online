@@ -1601,8 +1601,10 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adtile.casa:not(.faixa) .adnome{white-space:normal;font-size:18px;line-height:1.15}
 .adtile.casa:not(.faixa) .adface::after{content:"›";position:absolute;right:13px;bottom:10px;font-size:26px;line-height:1;opacity:.9}
 @container (max-width:170px){ .adtile.casa:not(.faixa) .cslong{display:none} .adtile.casa:not(.faixa) .csshort{display:inline} .adtile.casa:not(.faixa) .adnome{font-size:16px} }
-/* vista Cartões (colunas iguais): a altura segue a área vendida — Quadradinho 1, Vertical 2, Destaque 4 */
-.adcard .adtile.fmt-s{aspect-ratio:2 / 1}.adcard .adtile.fmt-t{aspect-ratio:1 / 1}.adcard .adtile.fmt-w{aspect-ratio:1 / 2}
+/* vista Cartões: o mesmo formato do fluxo de venda (Quadradinho e Destaque quadrados, Vertical 1:2); a Faixa vai de ponta a ponta */
+.adcard .adtile.fmt-s{aspect-ratio:1 / 1}.adcard .adtile.fmt-t{aspect-ratio:1 / 2}.adcard .adtile.fmt-w{aspect-ratio:1 / 1}
+.faixarow{margin:var(--gap) 0}.faixarow .adcard{margin:0}
+@media (max-width:599px){ .faixarow{margin:8px 0} }
 .adtile.faixa .admk{order:-1;flex:none}
 .adtile.faixa .admk svg{width:24px;height:24px}
 .adtile.faixa .adbot{flex:1;min-width:0;align-self:center}
@@ -2096,8 +2098,8 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .apoiebtn .icon{width:15px;height:15px;color:var(--brand)}
 .apoiebtn:hover{background:var(--surface)}
 @media (max-width:339px){ .apoiebtn{padding:0 10px;gap:0} .apoiebtn span{display:none} }
-.apvals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 10px}
-.apvals button{height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.apvals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0 10px}
+.apvals button{height:44px;padding:0 2px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
 .apvals button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .apoutro{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .apoutro input{width:110px;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:var(--bg);color:var(--ink)}

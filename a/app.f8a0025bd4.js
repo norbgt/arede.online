@@ -464,6 +464,7 @@ function prox(it){
   if (R.cidade.length > 2 && (oc.startsWith(R.cidade) || temPalavra(t, R.cidade))) return 3;
   if (R.uf && (oc.endsWith(", " + R.uf.toLowerCase()) || temPalavra(t, semAcento(UF_NOME[R.uf])))) return 2;
   const pais = it.pais || (o.fonte ? "" : "Brasil");
+  if (S.pais === "*") return 0;   /* 18/11: "Todos os países", nenhum país vem na frente */
   if (S.pais && S.pais !== "Brasil"){ if (pais === S.pais) return 2; return temPalavra(t, semAcento(S.pais)) ? 1 : 0; }   /* 17/11: país escolhido no primeiro acesso */
   if (pais==="Brasil" || /\bbrasil|brazil|brasile/.test(t)) return 1;
   if (LATAM.has(pais)) return .5;
@@ -587,8 +588,9 @@ function origensOrdem(){ const R = minhaRegiao();
       <datalist id="capitais">${CAPITAIS.map(c=>`<option value="${c}">`).join("")}</datalist>
       <small class="ohint">${regiaoOrigem()==="perfil" ? "Hoje vem da cidade do seu perfil. Use a localização ou escreva outra cidade. " : regiaoOrigem()==="localizacao" ? "Hoje vem da sua localização. " : ""}${R.txt ? (R.uf ? `Cidade ${esc(R.txt.replace(/\s*[,\-–]?\s*[A-Za-z]{2}$/,""))}, estado ${esc(UF_NOME[R.uf])}.` : "Escreva com a sigla do estado (ex.: Curitiba, PR) para valer também o estado.") : "Sem região, vale só a proximidade com o Brasil."}</small>${localLinha()}</div>${lugaresBloco()}</div>`; }
 function sheetOrigens(){
-  openSheet(shead("Origem das notícias") + `<p class="lnote osub">Escolha de quais idiomas quer receber notícias. Elas aparecem na língua original, com o mesmo selo de confiança. O que se publica na rede aparece sempre.</p>
-    <h3 class="osec">Idiomas de origem</h3>${origensLista()}
+  S.acessoSel = S.origens.slice(); S.acessoP = S.pais || "Brasil";
+  openSheet(shead("Origem das notícias") + `<p class="lnote osub">As notícias aparecem na língua original, com o mesmo selo de confiança. O que se publica na rede aparece sempre.</p>
+    <div class="acesso">${escolhaHTML("globo")}</div>
     <h3 class="osec">Ordem do feed</h3>${origensOrdem()}
     <div class="oref"><span class="reftag" aria-hidden="true"><span>${["Brasil","Espanha","EUA"].map(bandeira).join("")}</span> 3 países</span>
       <p><b>Reforço internacional.</b> Quando a mesma notícia é publicada por fontes de mais de um país, ela ganha esta marca. O mesmo texto republicado conta uma vez só.</p></div>
@@ -1344,7 +1346,12 @@ class Grid {
   cols(){ const m = document.createElement("div"); m.className = "masonry" + (this.n===1 ? " one" : "") + " v-" + this.v; m.style.setProperty("--ncol", this.n); const cs = [];
     for (let i=0;i<this.n;i++){ const c = document.createElement("div"); c.className = "col"; m.appendChild(c); cs.push(c); } return [m, cs]; }
   placeB(u){ if (this.v==="agenda") this.Bh = this.Bcols.map(c=>c.offsetHeight); /* irregular: encaixa pela altura real */
-    const i = this.Bh.indexOf(Math.min(...this.Bh)); this.Bcols[i].insertAdjacentHTML("beforeend", cardFor(this.obj[u], this.mode, this.v)); fitTiles(this.Bcols[i].lastElementChild); this.Bh[i] += this.est(u); }
+    const it = this.obj[u];
+    /* 18/11 (Amanda): na vista Cartões a Faixa ocupa a largura inteira, como no fluxo de venda: fecha as colunas, entra a faixa, e as colunas recomeçam */
+    if (it.anuncio && (it.ad.fmt || (it.ad.casa ? "f" : "s")) === "f" && this.v === "masonry" && this.n > 1 && this.Bcols[0] && this.Bcols[0].parentElement){
+      const m = this.Bcols[0].parentElement, w = document.createElement("div"); w.className = "faixarow"; w.innerHTML = cardFor(it, this.mode, this.v); m.after(w);
+      const [m2, cs] = this.cols(); w.after(m2); this.Bcols = cs; this.Bh = Array(this.n).fill(0); fitTiles(w); return; }
+    const i = this.Bh.indexOf(Math.min(...this.Bh)); this.Bcols[i].insertAdjacentHTML("beforeend", cardFor(it, this.mode, this.v)); fitTiles(this.Bcols[i].lastElementChild); this.Bh[i] += this.est(u); }
   render(){
     const box = this.box; if (!box) return; box.innerHTML = "";
     if (!this.items.length && this.empty){ box.innerHTML = `<p class="empty">Nada por aqui ainda.</p>`; this.Bcols = null; return; }
@@ -1378,7 +1385,7 @@ function playX(x, uid){ const v = x && x.querySelector("video.pinvid"); const st
 /* =====================================================================
    8. Motor do feed (rolagem contínua com pausas)
    ===================================================================== */
-let PAUSE_EVERY = 18;
+let PAUSE_EVERY = 60;   /* 18/11 (Amanda): três blocos de 20 cartões (era 18) */
 const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, key:"", grid:null, obs:null};
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
@@ -5715,7 +5722,7 @@ async function sugFonteEnvia(b){ const url = ($("#sfurl").value || "").trim(); i
   catch(e){ ocupado(b, false); formErro(erroAuth(e)); } }
 /* APOIE (11 nov 2026): doação para manter a arede.online, sem produto, serviço ou vantagem em troca.
    Não precisa de conta; a rede não guarda quem apoiou. Pagamento no Mercado Pago (função apoio-cobra), conferido pela função apoio-aviso. */
-let APOIO_VALORES = [10, 25, 50, 100];
+let APOIO_VALORES = [10, 25, 50, 100, 250];   /* 18/11: valores do business case, sempre com valor livre */
 let APOIO_V = 25;
 function sheetApoie(){
   openSheet(shead("Apoie") + `<div class="sform">
@@ -6762,12 +6769,18 @@ const A = {
     if (route()==="perfil"){ S.profTab = "publicacoes"; S.profFolder = null; render(); } else go("inicio"); toast("Publicado no mural da organização."); },
   mobopcoes: b => sheetMobilizar(b.dataset.id),
   origens: () => sheetOrigens(),
+  acling: b => { const k = b.dataset.k, all = ACESSO_LINGUAS.map(x=>x[0]);
+    if (k === "todos") S.acessoSel = all.slice();
+    else { const todos = S.acessoSel.length === all.length; S.acessoSel = todos ? [k] : S.acessoSel.includes(k) ? S.acessoSel.filter(x=>x !== k) : all.filter(x=>x === k || S.acessoSel.includes(x)); }
+    if (!S.acessoSel.length){ S.acessoSel = [k]; toast("Deixe ao menos um idioma."); }
+    if (k !== "todos" && S.acessoSel.length === 1){ S.acessoL = S.acessoSel[0]; const n = $("#acnota"); if (n && ACESSO_NOTA[S.acessoL]) n.textContent = ACESSO_NOTA[S.acessoL]; }
+    const sc = $("#acpais") ? $("#acpais").value : S.acessoP; S.acessoP = sc;
+    const e = $("#escolha"); if (e){ e.outerHTML = escolhaHTML(b.dataset.ctx); const nb = $(`#escolha [data-act="acling"][data-k="${k}"]`); if (nb) nb.focus({preventScroll:true}); }
+    if (b.dataset.ctx === "globo" && escolhaAplica()) toast("Notícias em " + origensNomes().toLowerCase() + "."); },
   acessolingua: b => { S.acessoL = b.dataset.k; $$('[data-act="acessolingua"]').forEach(x=>x.setAttribute("aria-checked", x === b)); const n = $("#acnota"); if (n) n.textContent = ACESSO_NOTA[S.acessoL]; },
-  acessook: () => { const l = S.acessoL || "pt", p = ($("#acpais") || {}).value || "";
-    S.lingua = l; persist("lingua"); S.pais = p; persist("pais");
-    S.origens = ORIGENS.map(o=>o[0]).filter(x=>x === l || (p === "Brasil" && x === "pt")); persist("origens");
-    if (p && p !== "Brasil" && !S.perto){ S.perto = true; persist("perto"); }
-    F.key = null; closeSheet(); render(); },
+  acessook: () => { S.acessoP = ($("#acpais") || {}).value || "";
+    if (S.acessoP === "Brasil" && !S.acessoSel.includes("pt")) S.acessoSel = ORIGENS.map(o=>o[0]).filter(x=>x === "pt" || S.acessoSel.includes(x));   /* quem mora no Brasil recebe também o português */
+    escolhaAplica(); closeSheet(); render(); },
   redes: () => sheetRedes(),
   verifinfo: b => sheetVerif(b.dataset.v, b.dataset.p),
   cmnnova: async b => { if (!ME.user){ toast("Entre na sua conta para criar uma comunidade."); go("perfil"); return; }
@@ -6944,12 +6957,27 @@ const ACESSO_NOTA = {pt:"Dá para mudar depois no globo, no topo.", es:"Puedes c
 function acessoSugere(){ const ls = (navigator.languages || [navigator.language || "pt-BR"]).map(String), l0 = (ls[0] || "pt").slice(0, 2).toLowerCase();
   const reg = (ls.find(x=>/-[A-Za-z]{2}$/.test(x)) || "").slice(-2).toUpperCase(), pais = Object.keys(ISO).find(k=>ISO[k] === reg && k !== "Irlanda do Norte") || (l0 === "pt" ? "Brasil" : "");
   return {lingua:ACESSO_LINGUAS.some(x=>x[0] === l0) ? l0 : "pt", pais}; }
-function sheetPrimeiroAcesso(){ const sg = acessoSugere(); S.acessoL = S.lingua || sg.lingua;
+/* 18/11 (Amanda): a mesma escolha no primeiro acesso e no globo da barra de cima. Idiomas: um ou mais, ou todos. País: um, ou todos.
+   No primeiro acesso vale ao tocar em Continuar; no globo vale na hora e o feed busca as notícias de novo. */
+const ACESSO_TODOS = {pt:"Todos os idiomas", es:"Todos los idiomas", en:"All languages"};
+function escolhaHTML(ctx){ const sel = S.acessoSel, todos = sel.length === ACESSO_LINGUAS.length, tri = ctx === "acesso";
   const paises = Object.keys(ISO).filter(k=>k !== "Irlanda do Norte").sort((a, b)=>a === "Brasil" ? -1 : b === "Brasil" ? 1 : a.localeCompare(b, "pt"));
-  openSheet(`<div class="acesso"><p class="acmarca">a<i class="ldot"></i>rede</p><p class="acsub">Escolha seu idioma · Elige tu idioma · Choose your language</p>
-    <div class="aclist" role="radiogroup" aria-label="Idioma">${ACESSO_LINGUAS.map(([k, n])=>`<button class="acopt" type="button" role="radio" data-act="acessolingua" data-k="${k}" aria-checked="${S.acessoL === k}"><span>${n}</span>${ic("check","sm")}</button>`).join("")}</div>
-    <label class="acsub" for="acpais">País · Country</label>
-    <span class="acsel"><select id="acpais">${paises.map(k=>`<option value="${esc(k)}"${k === (S.pais || sg.pais || "Brasil") ? " selected" : ""}>${bandeira(k)} ${esc(k)}</option>`).join("")}<option value="">🌐 Outro · Otro · Other</option></select>${ic("back","sm flip90")}</span>
+  const opt = (k, n, on) => `<button class="acopt" type="button" role="checkbox" data-act="acling" data-k="${k}" data-ctx="${ctx}" aria-checked="${on}"><span>${n}</span>${ic("check","sm")}</button>`;
+  return `<div id="escolha"><p class="acsub">${tri ? "Idiomas das notícias · Idiomas de las noticias · News languages" : "Idiomas das notícias"}</p>
+    <div class="aclist" role="group" aria-label="Idiomas das notícias">${ACESSO_LINGUAS.map(([k, n])=>opt(k, n, !todos && sel.includes(k))).join("")}${opt("todos", tri ? "Todos · Todos · All" : ACESSO_TODOS.pt, todos)}</div>
+    <label class="acsub" for="acpais">${tri ? "País · Country" : "País"}</label>
+    <span class="acsel"><select id="acpais" data-ctx="${ctx}"><option value="*"${S.acessoP === "*" || !S.acessoP ? " selected" : ""}>🌐 ${tri ? "Todos os países · Todos los países · All countries" : "Todos os países"}</option>${paises.map(k=>`<option value="${esc(k)}"${k === S.acessoP ? " selected" : ""}>${bandeira(k)} ${esc(k)}</option>`).join("")}</select>${ic("back","sm")}</span>
+    ${tri ? "" : `<p class="lnote acnota" style="text-align:left">O país escolhido sobe no feed as notícias de lá. Com “Todos os países”, nenhum país vem na frente.</p>`}</div>`; }
+document.addEventListener("change", e=>{ const t = e.target; if (!t || t.id !== "acpais") return; S.acessoP = t.value; if (t.dataset.ctx === "globo" && escolhaAplica()) toast(t.value && t.value !== "*" ? "País: " + t.value + "." : "Todos os países: nenhum vem na frente."); });
+function escolhaAplica(){ const sel = S.acessoSel.length ? S.acessoSel : ["pt"], p = S.acessoP || "";
+  const mudouL = sel.join() !== S.origens.join(), mudouP = p !== (S.pais || "");
+  S.origens = ORIGENS.map(o=>o[0]).filter(x=>sel.includes(x)); persist("origens"); S.lingua = sel.length === 1 ? sel[0] : (sel.includes(S.lingua) ? S.lingua : sel[0]); persist("lingua");
+  S.pais = p; persist("pais"); if (p && p !== "*" && p !== "Brasil" && !S.perto){ S.perto = true; persist("perto"); }
+  if (mudouL) noticiasCarrega();   /* as notícias vêm do servidor na língua escolhida: busca de novo */
+  F.key = null; if (mudouL || mudouP) feedDadosNovos(); return mudouL || mudouP; }
+function sheetPrimeiroAcesso(){ const sg = acessoSugere(); S.acessoL = S.lingua || sg.lingua;
+  S.acessoSel = [S.acessoL]; S.acessoP = S.pais || sg.pais || "Brasil";
+  openSheet(`<div class="acesso"><p class="acmarca">a<i class="ldot"></i>rede</p>${escolhaHTML("acesso")}
     <button class="btn primary block" type="button" data-act="acessook">Continuar · Continue</button>
     <p class="lnote acnota" id="acnota">${ACESSO_NOTA[S.acessoL]}</p></div>`, "Primeiro acesso"); const sel = $('.acopt[aria-checked="true"]'); if (sel) sel.focus({preventScroll:true}); }
 function primeiroAcessoTalvez(){ if (store.get("acesso1", false) || /^(termos|privacidade|checkin-)/.test(route())) return; store.set("acesso1", true); setTimeout(()=>{ if (!$("#layer .scrim")) sheetPrimeiroAcesso(); }, 600); }
@@ -7035,7 +7063,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 06:59";
+const VERSAO = "v1 registrada · 18/11 07:08";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
