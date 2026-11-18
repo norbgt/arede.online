@@ -7052,7 +7052,7 @@ const A = {
   notifpref: async b => { const k = b.dataset.k, on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on);
     const {error} = await SB.from("notif_prefs").upsert({user_id:ME.user.id, tipo:k, quer:on}); if (error){ b.setAttribute("aria-checked", !on); return toast("Não foi possível salvar agora."); }
     NOTIF.prefs[k] = on; toast(on ? "Você vai receber esta notificação." : "Você não vai mais receber esta notificação."); },
-  notiff: b => { NOTIF.f = b.dataset.f; render(); },
+  notiff: b => { NOTIF.f = b.dataset.f; if (route() === "conversas"){ location.replace("#notificacoes"); return; } render(); },   /* #conversas só escolhe o filtro de entrada */
   notifabre: async b => { const x = (NOTIF.lista || []).find(n=>String(n.id)===b.dataset.id); if (!x) return;
     if (!x.lida_em){ x.lida_em = new Date().toISOString(); NOTIF.nao = (NOTIF.nao || []).filter(n=>String(n.id) !== String(x.id)); NOTIF.n = sinoConta(); navConta(); SB.rpc("notif_marca_lidas", {p_ids:[x.id]}).then(()=>{}, ()=>{}); b.classList.remove("nova"); const p = b.querySelector(".nponto"); if (p) p.remove(); }
     if (x.link && /^https:\/\//.test(x.link)) window.open(x.link, "_blank", "noopener"); else if (x.link && x.link[0] === "#") go(x.link.slice(1)); },
@@ -7397,7 +7397,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 09:24";
+const VERSAO = "v1 registrada · 18/11 09:27";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
