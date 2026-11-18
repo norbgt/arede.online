@@ -1323,8 +1323,8 @@ function docLocal(it){ const o = ORG[it.org] || {}, c = it.cidade || (!o.fonte &
   return {k:"nac", nivel:"Nacional", lugar:"Brasil"}; }
 const adFaceFeed = a => a.casa ? `<span class="adface casa"><span class="adtop"></span><span class="admk">${adLogo(a, 22)}</span><span class="adbot"><b class="adnome">Anuncie aqui</b><span class="adtxt"><span class="cslong">Seu negócio neste espaço, igual para todo mundo.</span><span class="csshort">Seu negócio aqui.</span></span></span></span>` : `<span class="adface${a.anim ? " an-" + a.anim : ""}"><span class="adtop">${a.real ? `<span class="adtag">Anúncio</span>` : `<span class="adtag adtagph" aria-hidden="true"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></span>`}${a.cta ? `<span class="adcta">${esc(a.cta)}</span>` : ""}</span>
     <span class="admk">${adLogo(a, 34)}</span><span class="adbot"><b class="adnome">${esc(a.nome)}</b><span class="adtxt"><span class="adlong">${esc(a.frase)}</span><span class="adshort">${esc(a.curta)}</span></span>${a.real ? (a.seg ? `<span class="adseg">${esc(a.seg)}</span>` : "") : `<span class="adseg"><span class="adlong">${esc(a.seg)} · </span>exemplo</span>`}</span></span>`;
-const adCard = (it, mode) => { const a = it.ad; return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile${a.casa ? " casa" : ""}${a.casa || a.fmt==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
-  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ' data-fmt="f"' : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
+const adCard = (it, mode) => { const a = it.ad, fm = a.fmt || (a.casa ? "f" : "s"); return `<article class="card adcard" data-card="${it.uid}" data-mode="${mode}"><div class="adtile fmt-${fm}${a.casa ? " casa" : ""}${fm==="f" ? " faixa" : ""}" style="--adc:${a.cor};--adc2:${a.cor2}">
+  <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "f"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div></article>`; };
 const cardFor = (it, mode, v) => it.anuncio ? adCard(it, mode) : v && v!=="masonry" && v!=="video" ? tabCard(it, mode, v) : card(it, mode);
 const EST = {anuncio:()=>200, video:it=>it.ar*170+70, imagem:it=>(it.ph || 1.25)*170+80, texto:()=>270, evento:()=>320, enquete:()=>330, votacao:()=>330, chamado:()=>330, documento:()=>290};
 const EST_V = {cedula:330, arquivo:150};
@@ -1482,12 +1482,19 @@ function adDoEspaco(n, antes){ const ok = a=>!S.adOculta.has(a.id), R = AD_REAIS
   const ex = ANUNCIANTES.filter(ok); return ex.length ? ex[(n - 1) % ex.length] : null; }
 /* 15/11: o espaço sem anúncio pago vira um convite discreto, sem marca inventada */
 const AD_CASA = {id:"ad-casa", casa:true, nome:"Anuncie aqui", frase:"Seu negócio neste espaço.", curta:"Seu negócio aqui.", seg:"", cor:"var(--surface-2)", cor2:"var(--surface-2)", logo:'<path d="M13 3 5 14h6l-1 7 8-11h-6z" fill="currentColor"/>'};
+const AD_SLOTS = [["f",2],["s",11],["t",23],["w",35]];
+const AD_CASA_DE = fmt => Object.assign({}, AD_CASA, {fmt});
 ORG["ad-casa"] = {id:"ad-casa", nome:"a rede.online", sigla:"AR", cor:"#8D9BFF", cidade:"", anunciante:true, membros:0, natureza:"Anunciante"};
 function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anúncio na aba Vídeos, onde ficam as transmissões oficiais */
-  if (S.tab==="tudo" || S.tab==="publicacoes"){   /* 15/11 (Amanda): enquanto a rede cresce, um espaço só, pequeno, no primeiro scroll; o resto é conteúdo */
-    if (l.length < 4) return l; const pagos = AD_REAIS.filter(x=>!S.adOculta.has(x.id)), a = pagos.length ? pagos[AD_ROD % pagos.length] : AD_CASA, out = l.slice();
-    const at = a.casa || a.fmt==="f" ? 2 : 3;   /* o convite é uma faixa fina depois dos primeiros cartões */
-    out.splice(at, 0, {id:"anuncio-1" + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:1, titulo:a.nome + " · " + a.frase, tema:"", min:l[Math.min(at, l.length) - 1].min}); return out; }
+  if (S.tab==="tudo" || S.tab==="publicacoes"){
+    /* 18/11 (Amanda): um espaço de cada formato, como o "Anuncie aqui": Faixa depois do 2º cartão, Quadradinho do 11º, Vertical do 23º e Destaque do 35º.
+       Cerca de 1 anúncio a cada 11 cartões, nunca mais de 4; só entra o espaço que ainda tem notícias depois dele.
+       Sem anúncio pago daquele formato, o espaço é o convite "Anuncie aqui" no próprio formato. */
+    const pagos = AD_REAIS.filter(x=>!S.adOculta.has(x.id)), out = l.slice(); let k = 0;
+    AD_SLOTS.forEach(([fmt, at], i)=>{ const pos = at + k; if (l.length < at + 2) return;
+      const p = pagos.filter(x=>(x.fmt || "s")===fmt), a = p.length ? p[(AD_ROD + i) % p.length] : AD_CASA_DE(fmt);
+      out.splice(pos, 0, {id:"anuncio-" + (i + 1) + (a.real ? "-" + a.pid.slice(0, 8) : "-" + fmt), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:i + 1, titulo:a.nome + " · " + a.frase, tema:"", min:out[pos - 1].min}); k++; });
+    return out; }
   const out = []; let n = 0, antes = "";
   l.forEach((it,i)=>{ out.push(it); if ((i + 1) % ANUNCIO_CADA === 0){ n++; const a = adDoEspaco(n, antes); if (!a) return; antes = a.id;
     out.push({id:"anuncio-" + n + (a.real ? "-" + a.pid.slice(0, 8) : ""), tipo:"anuncio", anuncio:true, ad:a, org:a.id, slot:n, titulo:a.nome + " · " + a.frase, tema:"", min:it.min}); } });
@@ -1499,9 +1506,10 @@ function comAnuncios(l){ if (S.tab==="videos") return l;   /* regra: nenhum anú
    Tabela de preços: proposta inicial, revisada no painel (aba Anúncios). O pagamento ainda não está ligado.
    ===================================================================== */
 const AD_CALL = `<button class="adtag adcall" type="button" data-act="anunciar" aria-label="Anuncie aqui: contratar este espaço"><span class="adlong">Anuncie aqui</span><span class="adshort">Anuncie</span></button>`;
-/* multiplicadores iguais aos da tabela de anúncios do painel (10 nov 2026): formato 1 · 1,8 · 3,2 e posição 1,6 · 1,3 · 1 */
+/* multiplicadores iguais aos da tabela de anúncios do painel. 18/11 (Amanda): o formato segue a área de tela (pixel × R$):
+   Quadradinho 1 · Faixa 1,5 · Vertical 2 · Destaque 3,6 (a área dele vale 4; 10% de desconto no maior). Posição 1,6 · 1,3 · 1 */
 const AD_PRECO = {dia:5, minDias:3, maxDias:90, tempos:[3,7,15,30], descontos:[[30,.20],[15,.10],[7,.05]],
-  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["f","Faixa","Largura inteira, numa linha fina · 390 × 65 px no celular",1.5],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",1.8],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.2]],
+  formatos:[["s","Quadradinho","Um terço da largura · 129 × 129 px no celular",1],["f","Faixa","Largura inteira, numa linha fina · 390 × 65 px no celular",1.5],["t","Vertical","Um terço da largura, altura inteira · 129 × 260 px",2],["w","Destaque","Dois terços da largura, altura inteira · 259 × 260 px",3.6]],
   posicoes:[["rot","Rotativo","Do 4º espaço de anúncio em diante",1],["meio","Meio do feed","2º e 3º espaços de anúncio",1.3],["topo","Início do feed","1º espaço, depois de 8 cartões",1.6]]};
 const AD_CORES = [["#6D28D9","#A78BFA"],["#2338D8","#93A5FF"],["#0F766E","#5EEAD4"],["#15803D","#86EFAC"],["#EA580C","#FDBA74"],["#DC2626","#FCA5A5"],["#BE185D","#F9A8D4"],["#141615","#9CA3AF"]];
 /* pagamento pelo Mercado Pago (Checkout Pro). O modo vem do servidor: "desligado", "teste" (só a administração consegue cobrar, com credenciais de teste) ou "producao".
@@ -1577,8 +1585,8 @@ function adModulo(d){ const P = AD_PRECO, v = adPreco(d), [c1, c2] = AD_CORES[d.
   const slot = (k, area) => { const x = P.formatos.find(y=>y[0]===k), on = d.fmt === k, pr = adBRL(P.dia * x[3] * v.p[3]);
     return `<button class="admslot${on ? " on" : ""}" type="button" role="radio" aria-checked="${on}" data-act="adset" data-k="fmt" data-v="${k}" style="grid-area:${area}" aria-label="${x[1]}: ${pr} por dia">${on
       ? `<span class="tile adtile ${k}${k === "f" ? " faixa" : ""}" style="--adc:${c1};--adc2:${c2}">${adFace(d)}</span>` : `<span class="admlab"><b>${x[1]}</b><small>${pr}/dia</small></span>`}</button>`; };
-  const sk = a => `<div class="adsk img" style="grid-area:${a}"><i></i><i></i><i></i></div>`;
-  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 5")}${slot("t", "1 / 6 / span 2 / span 4")}${slot("s", "1 / 10 / span 1 / span 3")}${sk("2 / 10 / span 1 / span 3")}</div>
+  const skt = a => `<div class="adsk" style="grid-area:${a}" aria-hidden="true"><i></i><i></i><i></i></div>`;   /* 18/11: vizinho de texto, como no feed */
+  return `<div class="admod" role="radiogroup" aria-label="Formato do anúncio"><div class="blk admodb">${slot("w", "1 / 1 / span 2 / span 4")}${slot("t", "1 / 5 / span 2 / span 2")}${slot("s", "3 / 1 / span 1 / span 2")}${skt("3 / 3 / span 1 / span 4")}</div>
     <div class="blk admodf">${slot("f", "1 / 1 / span 1 / span 1")}</div></div>
     <p class="admodinfo"><b>${v.f[1]}</b> · ${esc(v.f[2])} · <b>${adBRL(v.diaria)}</b> por dia</p>`; }
 /* onde o anúncio entra na rolagem: cada número é um espaço de anúncio (um a cada 8 cartões) */
@@ -2058,16 +2066,16 @@ function planBlock(Q, final, g){
   const take = (pred, w=LOOK+1) => { const n = Math.min(Q.length, w); for (let i=0;i<n;i++) if (pred(Q[i])) return Q.splice(i,1)[0]; return null; };
   const cell = (it, size, r, c, rs, cs) => ({uid:it.uid, size, area:[r,c,rs,cs]});
   /* a mídia só sobe para o bloco atual se já estiver perto (janela curta): assim imagens e vídeos ficam espalhados pelo feed */
-  const adFmt = it => it.anuncio ? (it.ad.casa ? "f" : it.ad.fmt || "s") : "", adPeq = it => it.anuncio && adFmt(it)!=="w" && adFmt(it)!=="f";
+  const adFmt = it => it.anuncio ? (it.ad.fmt || (it.ad.casa ? "f" : "s")) : "", adPeq = it => it.anuncio && adFmt(it)!=="w" && adFmt(it)!=="f";
   if (Q[0] && Q[0].anuncio && adFmt(Q[0])==="f") return {casa:true, cells:[cell(Q.shift(),"bar",1,1,1,6)]};   /* 15/11: Faixa (e o "Anuncie aqui"): uma linha fina, de ponta a ponta */
   const mediaCol = (c, w=LOOK+1) => { let m = take(it=>!isTextual(it) && !it.anuncio, w);
     if (!m){ const a = take(adPeq, w); if (!a) return null; if (adFmt(a)==="t") return [cell(a,"t",1,c,2,2)];
-      const p = take(it=>it.tipo==="imagem", LOOK+6);
+      const p = take(it=>it.tipo==="imagem", adFmt(a)==="s" ? LOOK+40 : LOOK+6);   /* 18/11: o Quadradinho procura o par mais longe, para ficar no tamanho que foi vendido */
       return p ? [cell(p,"s",1,c,1,2), cell(a,"s",2,c,1,2)] : [cell(a,"t",1,c,2,2)]; }   /* anúncio sozinho ocupa a coluna toda: sem buraco embaixo dele */
     if (m.tipo==="video") return [cell(m,"t",1,c,2,2)];
     /* anúncio é sempre quadradinho: entra como o par pequeno de uma imagem */
-    const ad2 = take(it=>it.anuncio && !it.ad.casa && adFmt(it)==="s", 3);
-    if (!ad2){ const av = take(it=>it.anuncio && !it.ad.casa && adFmt(it)==="t", 3); if (av){ Q.unshift(av); } }   /* vertical não vira par pequeno: volta para a fila e ganha a coluna dele */
+    const ad2 = take(it=>it.anuncio && adFmt(it)==="s", 3);
+    if (!ad2){ const av = take(it=>it.anuncio && adFmt(it)==="t", 3); if (av){ Q.unshift(av); } }   /* vertical não vira par pequeno: volta para a fila e ganha a coluna dele */
     const m2 = ad2 || take(it=>it.tipo==="imagem", 2);
     return m2 ? [cell(m,"s",1,c,1,2), cell(m2,"s",2,c,1,2)] : [cell(m,"t",1,c,2,2)]; };
   if (Q[0] && Q[0].anuncio && adFmt(Q[0])==="w"){   /* Destaque: dois terços da largura, altura inteira, ao lado de uma coluna de mídia */
@@ -2089,8 +2097,9 @@ function planBlock(Q, final, g){
 }
 function tileHTML(it, cl, mode="none"){
   if (it.anuncio){ const a = it.ad, [r,c,rs,cs] = cl.area;
-    return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}${a.casa || a.fmt==="f" ? " faixa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
-      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ' data-fmt="f"' : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
+    const fx = (a.fmt || (a.casa ? "f" : "s"))==="f";
+    return `<div class="tile adtile ${cl.size}${a.casa ? " casa" : ""}${fx ? " faixa" : ""}" style="grid-area:${r} / ${c} / span ${rs} / span ${cs};--adc:${a.cor};--adc2:${a.cor2}" data-tile="${it.uid}" data-size="${cl.size}" data-area="${cl.area}" data-mode="${mode}">
+      <button class="tbtn" type="button" data-act="${a.casa ? "anunciar" : "adopen"}"${a.casa ? ` data-fmt="${a.fmt || "f"}"` : ""} data-uid="${it.uid}" aria-label="${a.casa ? "Anuncie aqui: contratar este espaço" : "Anúncio de " + esc(a.nome) + ": " + esc(a.frase)}">${adFaceFeed(a)}</button>${a.real || a.casa ? "" : AD_CALL}</div>`; }
   const o = ORG[it.org], s = sealOf(it), on = S.saved.has(it.uid), [r,c,rs,cs] = cl.area;
   const isVid = it.tipo==="video", media = !isTextual(it);
   const seal = sealTag(it, s);
@@ -2948,8 +2957,25 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
     <div data-sec="negocio" hidden>${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
     ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}</div>
     <div data-sec="servicos" hidden>${tatFichaCampos(p)}</div>
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>`, "Editar página"); tatFichaLiga();
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>
+    <button class="btn ghost block perigo" type="button" data-act="pgapaga" data-id="${pid}" style="margin-top:10px">${ic("trash","sm")} Apagar página</button>`, "Editar página"); tatFichaLiga();
   $$("[data-edsec]").forEach(b=>b.addEventListener("click", ()=>{ $$("[data-edsec]").forEach(x=>x.setAttribute("aria-selected", x === b)); $$("[data-sec]").forEach(d=>d.hidden = d.dataset.sec !== b.dataset.edsec); })); }
+/* 18/11 (Amanda): a dona apaga a própria página. Leva tudo junto e não dá para desfazer; atendimentos marcados precisam ser encerrados antes. */
+async function sheetPaginaApaga(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p || !SB) return;
+  openSheet(shead("Apagar página") + `<p class="lnote">Carregando…</p>`, "Apagar página");
+  let r = {}; try{ const x = await SB.rpc("pagina_apaga_resumo", {p_id:pid}); r = x.data || {}; if (x.error) r = {erro:x.error.message}; }catch(e){ r = {erro:"Sem conexão agora."}; }
+  if (r.erro) return openSheet(shead("Apagar página") + `<p>${esc(r.erro)}</p>`, "Apagar página");
+  const n = (k, um, varios) => r[k] ? `<li>${r[k]} ${r[k] === 1 ? um : varios}</li>` : "";
+  const vai = n("publicacoes","publicação","publicações") + n("pedidos","pedido, com a conversa","pedidos, com as conversas") + n("vendas","registro do Financeiro","registros do Financeiro") + n("seguidores","pessoa que segue a página","pessoas que seguem a página");
+  if (r.marcadas) return openSheet(shead("Apagar página") + `<p>Antes de apagar, encerre ou cancele ${r.marcadas === 1 ? "o atendimento marcado" : "os " + r.marcadas + " atendimentos marcados"}. Quem marcou precisa saber.</p>
+    <div class="sheetacts"><button class="btn primary block" type="button" data-act="pgapagaver" data-id="${pid}">Ver atendimentos</button><button class="btn ghost block" type="button" data-act="close">Voltar</button></div>`, "Apagar página");
+  openSheet(shead("Apagar página") + `<p>Apagar <b>${esc(p.nome)}</b> tira a página da rede para sempre. Não dá para desfazer.</p>
+    ${vai ? `<p style="margin:10px 0 4px"><b>Vai junto:</b></p><ul class="dlist">${vai}</ul>` : ""}
+    ${r.vendas ? `<p class="lnote">Se você usa o Financeiro para o MEI, copie os registros antes.</p>` : ""}
+    <div class="field" style="margin-top:12px"><label for="pgapnome">Para confirmar, escreva o nome da página</label><input id="pgapnome" autocomplete="off" placeholder="${esc(p.nome)}"></div>
+    <p class="ferr" role="alert" hidden></p>
+    <div class="sheetacts"><button class="btn block perigo" type="button" data-act="pgapagaok" data-id="${pid}" disabled>${ic("trash","sm")} Apagar para sempre</button><button class="btn ghost block" type="button" data-act="close">Cancelar</button></div>`, "Apagar página");
+  const inp = $("#pgapnome"), bt = $('[data-act="pgapagaok"]'); if (inp && bt) inp.addEventListener("input", ()=>{ bt.disabled = inp.value.trim().toLowerCase() !== p.nome.trim().toLowerCase(); }); }
 function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
     <div class="field"><label for="vinome">Serviço ou produto</label><input id="vinome" maxlength="120"></div>
     <div class="field"><label>Foto (opcional)</label><div class="orcrefs" id="vifotobox"></div><label class="btn ghost sm" style="cursor:pointer">${ic("plus","sm")} Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" id="vifoto" hidden></label></div>
@@ -4427,6 +4453,14 @@ function mockSB(o = {}){
       y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
       if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
+    pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
+      const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
+        marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
+        vendas:tab("mei_vendas").filter(x=>x.pagina_id === p.id).length, seguidores:tab("pagina_seguidores").filter(x=>x.pagina_id === p.id).length}; },
+    pagina_apaga:a=>{ const t = tab("paginas"), i = t.findIndex(x=>x.id === a.p_id && x.dono === eu()); if (i < 0) return {erro:"Só quem criou a página pode apagá-la."};
+      if (String(a.p_nome || "").trim().toLowerCase() !== t[i].nome.trim().toLowerCase()) return {erro:"O nome não confere. Escreva o nome da página igual ao que aparece no topo."};
+      const agora = Date.now(), m = tab("tat_sessoes").filter(x=>x.pagina_id === a.p_id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length; if (m) return {erro:"marcadas", marcadas:m};
+      t.splice(i, 1); ["publicacoes","tat_pedidos","tat_sessoes","mei_vendas","pagina_seguidores","pagina_itens","pagina_secoes","pagina_avaliacoes"].forEach(k=>{ db.t[k] = tab(k).filter(x=>x.pagina_id !== a.p_id); }); salva(); return {ok:true}; },
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
@@ -6308,6 +6342,15 @@ const A = {
   csatnota: b => { const c = USO.csat; if (!c) return; c.nota = +b.dataset.v; csatManda(false); sheetCsat(); },   /* a nota já fica guardada, mesmo que a pessoa feche sem enviar */
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
+  pgapaga: b => sheetPaginaApaga(b.dataset.id),
+  pgapagaver: b => { closeSheet(); S.gerVer = "agenda"; go("gerir-" + b.dataset.id); },
+  pgapagaok: async b => { const pid = b.dataset.id, inp = $("#pgapnome"), er = $(".sheet .ferr"); b.disabled = true;
+    let r; try{ r = await SB.rpc("pagina_apaga", {p_id:pid, p_nome:inp ? inp.value : ""}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
+    const d = r.data || {}, msg = r.error ? r.error.message : d.erro === "marcadas" ? "Há atendimentos marcados. Encerre ou cancele antes." : d.erro;
+    if (msg){ if (er){ er.textContent = msg; er.hidden = false; } b.disabled = false; return; }
+    PAGS.lista = PAGS.lista.filter(x=>x.id !== pid); delete ORG["pg-" + pid];
+    for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].pagina_id === pid) POOL.splice(i, 1);
+    F.key = null; closeSheet(); toast("Página apagada."); go("organizacoes"); },
   anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
   adconta: () => { S.adConta = !S.adConta; adRefaz(); },
   adpasso: b => { if (b.dataset.checa && !S.adPasso && adFalta()) return adMostraFalta(); S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
@@ -6905,8 +6948,8 @@ function sheetPrimeiroAcesso(){ const sg = acessoSugere(); S.acessoL = S.lingua 
   const paises = Object.keys(ISO).filter(k=>k !== "Irlanda do Norte").sort((a, b)=>a === "Brasil" ? -1 : b === "Brasil" ? 1 : a.localeCompare(b, "pt"));
   openSheet(`<div class="acesso"><p class="acmarca">a<i class="ldot"></i>rede</p><p class="acsub">Escolha seu idioma · Elige tu idioma · Choose your language</p>
     <div class="aclist" role="radiogroup" aria-label="Idioma">${ACESSO_LINGUAS.map(([k, n])=>`<button class="acopt" type="button" role="radio" data-act="acessolingua" data-k="${k}" aria-checked="${S.acessoL === k}"><span>${n}</span>${ic("check","sm")}</button>`).join("")}</div>
-    <label class="acsub" for="acpais">País · País · Country</label>
-    <select id="acpais" class="input">${paises.map(k=>`<option value="${esc(k)}"${k === (S.pais || sg.pais || "Brasil") ? " selected" : ""}>${bandeira(k)} ${esc(k)}</option>`).join("")}<option value="">🌐 Outro · Otro · Other</option></select>
+    <label class="acsub" for="acpais">País · Country</label>
+    <span class="acsel"><select id="acpais">${paises.map(k=>`<option value="${esc(k)}"${k === (S.pais || sg.pais || "Brasil") ? " selected" : ""}>${bandeira(k)} ${esc(k)}</option>`).join("")}<option value="">🌐 Outro · Otro · Other</option></select>${ic("back","sm flip90")}</span>
     <button class="btn primary block" type="button" data-act="acessook">Continuar · Continue</button>
     <p class="lnote acnota" id="acnota">${ACESSO_NOTA[S.acessoL]}</p></div>`, "Primeiro acesso"); const sel = $('.acopt[aria-checked="true"]'); if (sel) sel.focus({preventScroll:true}); }
 function primeiroAcessoTalvez(){ if (store.get("acesso1", false) || /^(termos|privacidade|checkin-)/.test(route())) return; store.set("acesso1", true); setTimeout(()=>{ if (!$("#layer .scrim")) sheetPrimeiroAcesso(); }, 600); }
@@ -6992,7 +7035,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 06:38";
+const VERSAO = "v1 registrada · 18/11 06:56";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

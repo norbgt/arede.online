@@ -217,6 +217,7 @@ fieldset.rorig{min-width:0;max-width:100%}
 .sesadd{width:100%;border:1px dashed var(--line);background:none;justify-content:center}
 .pedprog{margin-top:2px}
 .acesso{display:flex;flex-direction:column;gap:12px;padding-top:4px}.acmarca{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}.acmarca .ldot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin:0 1px}.acsub{margin:4px 0 0;color:var(--muted);font-size:14px}.aclist{display:flex;flex-direction:column;gap:8px}.acopt{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:16px;cursor:pointer;text-align:left}.acopt span{flex:1}.acopt .icon{visibility:hidden;color:var(--accent)}.acopt[aria-checked="true"]{border:2px solid var(--accent);font-weight:600}.acopt[aria-checked="true"] .icon{visibility:visible}.acnota{text-align:center;margin:0}
+.acsel{position:relative;display:block}.acsel select{width:100%;min-height:48px;padding:0 44px 0 14px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}.acsel select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}.acsel select option{background:var(--surface);color:var(--ink)}.acsel .icon{position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(-90deg);pointer-events:none;color:var(--muted)}   /* 18/11: o país com a mesma cara das opções de idioma */
 .pilltabs{display:flex;gap:4px;padding:0 0 10px;margin:0 0 14px;border-bottom:1px solid var(--line)}.ptab{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:0;border-radius:99px;background:none;color:var(--muted);font:500 14px/1 var(--font-body,inherit);cursor:pointer}.ptab[aria-selected="true"]{color:var(--ink);background:color-mix(in srgb,var(--ink) 9%,transparent)}
 .sesciclo{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}.sescl{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.sescl b{font-weight:600}.sescl.ok{color:var(--ink)}.sescl.ok .icon{color:var(--ok)}
 .finbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px 0 6px}.finbar i{display:block;height:100%;background:var(--accent)}.finbar.alto i{background:var(--warn)}.fintit{margin:18px 0 8px;font-weight:700}.finv{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-top:1px solid var(--line)}.finv small{color:var(--muted)}.finv .row{flex-wrap:wrap}
@@ -1593,6 +1594,14 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adtile.faixa .adface{display:flex;align-items:center;gap:10px;padding:0 14px}
 .adtile.faixa .adtop{order:3;margin-left:auto;flex:none}
 .adtile.casa .adtop{display:none}
+/* 18/11 (Amanda): o convite "Anuncie aqui" também nos formatos Quadradinho, Vertical e Destaque */
+.adtile.casa:not(.faixa) .adface{display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:14px 34px 14px 14px}
+.adtile.casa:not(.faixa) .admk svg{width:26px;height:26px}
+.adtile.casa:not(.faixa) .adbot{align-self:stretch}
+.adtile.casa:not(.faixa) .adnome{white-space:normal;font-size:18px;line-height:1.15}
+.adtile.casa:not(.faixa) .adface::after{content:"›";position:absolute;right:13px;bottom:10px;font-size:26px;line-height:1;opacity:.9}
+@container (max-width:170px){ .adtile.casa:not(.faixa) .cslong{display:none} .adtile.casa:not(.faixa) .csshort{display:inline} .adtile.casa:not(.faixa) .adnome{font-size:16px} }
+.adcard .adtile.casa.fmt-t{aspect-ratio:1 / 2}.adcard .adtile.casa.fmt-w{aspect-ratio:1 / 1}
 .adtile.faixa .admk{order:-1;flex:none}
 .adtile.faixa .admk svg{width:24px;height:24px}
 .adtile.faixa .adbot{flex:1;min-width:0;align-self:center}
@@ -1603,8 +1612,8 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adpv.fx{grid-template-rows:minmax(0,3fr) minmax(0,1fr)}
 .admod{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:2px;border-radius:10px;overflow:hidden}
 .admod .blk{gap:2px}
-.admodb{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));aspect-ratio:3/1.25}
-.admodf{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);aspect-ratio:7/1}
+.admodb{grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));aspect-ratio:1/1}   /* 18/11: as mesmas proporções do feed no celular (129, 129×260, 259×260) */
+.admodf{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);aspect-ratio:6/1}   /* 390 × 65 */
 .admslot{position:relative;display:block;margin:0;padding:0;border:0;min-width:0;min-height:0;overflow:hidden;background:var(--surface-2);color:var(--ink);font:inherit;text-align:left;cursor:pointer;outline:1px dashed color-mix(in srgb,var(--ink) 28%,transparent);outline-offset:-5px}
 .admslot:hover{background:color-mix(in srgb,var(--brand) 14%,var(--surface-2))}
 .admslot:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
@@ -2025,6 +2034,7 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .nsteps li.on{opacity:1;outline:2px solid var(--accent)}.nsteps li.feito{opacity:1}
 .nsteps b{display:block;font-size:14px}.nsteps small{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}
 button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.dlist{margin:0 0 6px;padding-left:20px}.dlist li{margin:3px 0}
 .setting.perigo b,.btn.perigo{color:var(--bad)}.btn.perigo{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bad) 40%,transparent)}
 .lrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px}.lrow .ohint{flex-basis:100%}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:13.5px}.linkbtn.inl{min-height:0;padding:0;font-size:inherit}
