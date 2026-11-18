@@ -626,7 +626,7 @@ const kindOf = it => it.opiniao ? "Opinião" : it.oficial ? it.doc : it.autoral 
 const KIND = {video:"Vídeo", imagem:"Publicação", texto:"Publicação", evento:"Evento", enquete:"Consulta", votacao:"Votação", chamado:"Chamado", documento:"Documento"};
 /* cada aba tem o leiaute que melhor serve ao seu tipo (4º campo):
    blocos (Início misto) · video (1 coluna) · agenda (eventos e chamados, pelo que acontece ou vence primeiro) · cedula (voto no cartão) · arquivo (lista de documentos) */
-const FTABS = [["tudo","Tudo",null,"blocos"],["publicacoes","Publicações",["imagem","texto","video"],"blocos"],["videos","Canais",["video"],"video"],["arte","Cultura","arte","blocos"],["documentos","Documentos",["documento"],"arquivo"]];
+const FTABS = [["tudo","Tudo",null,"blocos"],["publicacoes","Publicações",["imagem","texto","video"],"blocos"],["videos","Canais",["video"],"video"],["radio","Rádio","radio","blocos"],["arte","Cultura","arte","blocos"],["documentos","Documentos",["documento"],"arquivo"]];
 
 /* =====================================================================
    3. Estado (preferências ficam salvas no navegador)
@@ -1402,7 +1402,7 @@ function amploGira(list){
     let i = q.findIndex(it=>ORG[it.org].cidade!==last); if(i<0) i=0; const it = q.splice(i,1)[0]; out.push(it); last = ORG[it.org].cidade; } }
   return out;
 }
-const ofTab = types => types==="arte" ? (it => ARTESUB==="ativista" ? !!it.arte : it.tema==="Cultura" && !!it.coletada && !it.arte && !it.daArte && !ehEsporte(it)) : (it => !types || types.includes(it.tipo));
+const ofTab = types => types==="radio" ? (()=>false) : types==="arte" ? (it => ARTESUB==="ativista" ? !!it.arte : it.tema==="Cultura" && !!it.coletada && !it.arte && !it.daArte && !ehEsporte(it)) : (it => !types || types.includes(it.tipo));
 const inProfile = it => (S.follow.has(it.org)&&S.usarOrgs) || S.temas.includes(it.tema);
 /* filtros e ordenação: valem só para a navegação atual, não mudam o algoritmo */
 const CIDADES = [...new Set(ORGS.map(o=>o.cidade))];
@@ -2011,7 +2011,7 @@ function screenHome(){
         <button class="iconbtn adj" type="button" data-act="adjust" aria-label="Meu algoritmo: resumo e ajustes">${ic("sliders")}</button>
         <div class="status tools" id="status">${statusLine()}</div></div>
       ${rapidosHTML()}</div></div>`)
-  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="divfaixa" class="altafaixa" aria-label="Divergências em análise" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><section id="artebase" class="artebase" aria-label="Arte e cultura" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
+  + `<div class="container"><h1 class="sr">Início: ${esc((FTABS.find(t=>t[0]===S.tab) || [0,"Tudo"])[1])}</h1><section id="altafaixa" class="altafaixa" aria-label="Assuntos do dia" hidden></section><section id="divfaixa" class="altafaixa" aria-label="Divergências em análise" hidden></section><div id="canaistopo" class="canaistopo" hidden><section id="aovivo" class="aovivo cmod" aria-label="Ao vivo: canais oficiais" hidden></section></div><div id="radiotopo" class="canaistopo" hidden><section id="radio" class="aovivo cmod radio" aria-label="Rádio: emissoras públicas e universitárias" hidden></section></div><section id="docbase" class="docbase" aria-label="Documentação cidadã" hidden></section><section id="artebase" class="artebase" aria-label="Arte e cultura" hidden></section><div id="vidhead" class="vidhead" hidden><div class="cmh"><span class="cmic" aria-hidden="true">${ic("videos")}</span><h2>Vídeos</h2><span class="cmsub">Feed das fontes e dos canais</span></div></div><div id="feedwrap" class="rwrap"><div id="feed"></div></div><div id="stop"></div><div class="sentinel" id="sentinel"></div></div>`;
 }
 function orgRow(o){ const f = S.follow.has(o.id);
   return `<button class="rowitem" type="button" data-act="openorg" data-org="${o.id}">${avatar(o)}<span class="t"><b>${o.nome}${ficTag(o)}${ofTag(o)}</b><small>${o.cidade} · ${orgMeta(o)}${f?(o.real?" · você segue":" · você participa"):""}</small></span></button>`; }
@@ -5517,21 +5517,28 @@ function aoVivoHTML(){ const tudo = lvLista(), temInt = tudo.some(x=>x.ambito===
   const nv = tudo.filter(x=>lvEstado(x)==="aovivo").length;
   return `<div class="cmh"><span class="cmic vivo${nv ? " on" : ""}" aria-hidden="true">${ic("tv")}</span><h2>Ao vivo</h2><span class="cmsub">Canais oficiais e públicos${nv ? ` · ${nv} no ar agora` : ""}</span></div>
     ${(()=>{ const chip = x=>`<button class="lvch" type="button" data-act="vivoabre" data-canal="${esc(x.k)}" aria-pressed="${x.k===LV_ON}" aria-label="${esc(x.nome)}${x.ambito==="int" ? " (" + (LING_ROT[x.lingua] || "") + ")" : ""}${rot(x) ? ", " + rot(x) : ""}"><span class="lvdot" data-e="${lvEstado(x) || "nd"}" aria-hidden="true"></span>${esc(x.nome)}${x.ambito==="int" ? `<span class="lgtag">${LING_ROT[x.lingua] || ""}</span>` : ""}</button>`, sv = tudo.filter(x=>cnSalvo("tv:" + x.k));
-      return `${temInt ? `<div class="lvlist rdfil" role="group" aria-label="Mostrar canais">${[["br","Brasil"],["int","Internacional"]].map(([k, n])=>`<button class="rdf" type="button" data-act="vivofil" data-f="${k}" aria-pressed="${k===f}">${n}</button>`).join("")}</div>` : ""}<div class="lvlist">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
+      return `${temInt ? `<div class="lvlist rdfil" role="group" aria-label="Mostrar canais">${[["br","Brasil"],["int","Internacional"]].map(([k, n])=>`<button class="rdf" type="button" data-act="vivofil" data-f="${k}" aria-pressed="${k===f}">${n}</button>`).join("")}</div>` : ""}<div class="lvlist lvgrade">${l.map(chip).join("")}</div>${sv.length ? `<div class="lvlist lvgrade cnsalvos" role="group" aria-label="Canais salvos"><span class="rdg">${icFill("bookmark", true)}Salvos</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
     ${!c ? "" : src ? `<div class="lvbox"><iframe class="lvframe" src="${src}" title="Transmissão ao vivo: ${esc(c.nome)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
-      <p class="lvcred"><span>Transmissão oficial: <b>${esc(c.nome)}</b> · YouTube</span><span class="lvsp"></span>${cnSalvaBtn("tv:" + c.k, c.nome)}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><button type="button" data-act="vivofecha">Fechar</button></p>
+      <div class="lvnav"><button class="iconbtn" type="button" data-act="vivopasso" data-d="-1" aria-label="Canal anterior">${ic("back")}</button><span class="lvnavtx"><b>${esc(c.nome)}</b><small>Transmissão oficial · YouTube</small></span><button class="iconbtn" type="button" data-act="vivopasso" data-d="1" aria-label="Próximo canal">${ic("back","flip")}</button><button class="iconbtn" type="button" data-act="vivofecha" aria-label="Fechar a transmissão">${ic("close")}</button></div>
+      <p class="lvcred">${cnSalvaBtn("tv:" + c.k, c.nome)}<span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a></p>
       ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal do próprio canal, sem cortes. A rede.online não exibe anúncios nesta aba.</p>`
     : `<div class="note lvfora">${ic("info")}<span><b>${e==="fora" ? esc(c.nome) + " está sem transmissão neste momento." : "A transmissão de " + esc(c.nome) + " abre no canal oficial."}</b> ${e==="fora" ? "As próximas aparecem no canal oficial." : ""}</span></div>
-      <p class="lvcred"><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a><span class="lvsp"></span>${cnSalvaBtn("tv:" + c.k, c.nome)}<button type="button" data-act="vivofecha">Fechar</button></p>${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}`}`; }
+      <div class="lvnav"><button class="iconbtn" type="button" data-act="vivopasso" data-d="-1" aria-label="Canal anterior">${ic("back")}</button><span class="lvnavtx"><b>${esc(c.nome)}</b><small>Sem transmissão agora</small></span><button class="iconbtn" type="button" data-act="vivopasso" data-d="1" aria-label="Próximo canal">${ic("back","flip")}</button><button class="iconbtn" type="button" data-act="vivofecha" aria-label="Fechar">${ic("close")}</button></div>
+      <p class="lvcred">${cnSalvaBtn("tv:" + c.k, c.nome)}<span class="lvsp"></span><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver no canal ↗</a></p>${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}`}`; }
 function aoVivoPinta(){ const box = $("#aovivo"); if (!box || box.hidden) return; if (LV_IO){ LV_IO.disconnect(); LV_IO = null; }
   box.innerHTML = aoVivoHTML(); box.classList.toggle("aberto", !!LV_ON);
   const fr = box.querySelector(".lvbox"); if (fr){ let visto = false;   /* rolou para longe: a transmissão para */
     LV_IO = new IntersectionObserver(es=>es.forEach(e=>{ if (e.isIntersecting && e.intersectionRatio >= .25) visto = true; else if (visto) vivoFecha(); }), {threshold:[0,.25]}); LV_IO.observe(fr); } }
 function aoVivo(){ const on = S.tab==="videos" && !S.rapido && route()==="inicio", tp = $("#canaistopo"), vh = $("#vidhead"); if (tp) tp.hidden = !on; if (vh) vh.hidden = !on;
+  document.body.dataset.aba = route()==="inicio" ? S.tab : "";
   radioBox(); const box = $("#aovivo"); if (!box) return;
   if (S.tab!=="videos" || S.rapido || route()!=="inicio"){ if (LV_IO){ LV_IO.disconnect(); LV_IO = null; } LV_ON = null; box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false; aoVivoPinta(); aoVivoCarrega(); }
 function vivoFecha(){ if (!LV_ON) return; LV_ON = null; aoVivoPinta(); }
+/* 18/11 (Amanda): trocar de canal sem voltar à lista: anterior e próximo no próprio player, na ordem do filtro escolhido */
+function vivoPasso(d){ const tudo = lvLista(), temInt = tudo.some(x=>x.ambito==="int"), f = temInt && LV.f==="int" ? "int" : "br";
+  let l = tudo.filter(x=>(x.ambito || "br")===f).sort((a, b)=>f==="int" ? lingOrdem(a) - lingOrdem(b) : 0); if (!l.some(x=>x.k===LV_ON)) l = tudo; if (!l.length) return;
+  const i = l.findIndex(x=>x.k===LV_ON), k = l[((i < 0 ? 0 : i) + d + l.length) % l.length].k; ytPara(); prevPara(); radioPara(); LV_ON = k; aoVivoPinta(); }
 /* RÁDIO (16 nov 2026): emissoras públicas, dos Poderes, estaduais e universitárias, escolhidas pela curadoria (painel › Conteúdo › Rádios).
    Comercial só com aviso próprio (decisão da Amanda, 16/11: a Mix entra já, com aviso, enquanto o pedido de autorização não é enviado).
    Regras: (1) só o sinal da própria emissora, tocado direto do servidor dela: a rede não grava, não retransmite e não paga a banda;
@@ -5563,25 +5570,42 @@ function radioHTML(){ const l = radioLista(), c = l.find(x=>x.k===RD_ON), gs = O
   const fs = (perto.length ? [["perto", "Perto de você"]] : []).concat([["todas", "Todas"]], gs.map(g=>[g, g==="poderes" ? "Poderes" : RD_GRUPO[g]]));
   const f = fs.some(x=>x[0]===RD.f) ? RD.f : (perto.length ? "perto" : "todas");
   const vis = f==="perto" ? perto : f==="todas" ? gs.flatMap(g=>l.filter(x=>x.grupo===g)) : l.filter(x=>x.grupo===f).sort((a, b)=>f==="internacional" ? lingOrdem(a) - lingOrdem(b) : 0);
-  const est = {conecta:"Conectando…", toca:"No ar", erro:"Esta rádio não respondeu agora. Tente outra ou abra o site dela."}[RD_EST] || "";
+  const est = {conecta:"Conectando…", toca:"No ar", erro:"Não respondeu"}[RD_EST] || "";
+  const card = x=>`<button class="rdcard" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc(rdLugar(x))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}"><span class="rdci" aria-hidden="true">${x.k===RD_ON && RD_EST==="toca" ? `<span class="rdeq on"><i></i><i></i><i></i></span>` : ic(x.k===RD_ON ? "radioon" : "radio")}</span><span class="rdct"><b>${esc(x.nome)}</b><small>${esc(rdLugar(x))}${x.grupo==="internacional" && LING_ROT[x.lingua] ? " · " + LING_ROT[x.lingua] : ""}</small></span></button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
   return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("radio")}</span><h2>Rádio</h2><span class="cmsub">Públicas, universitárias e do mundo</span></div>
-    ${(()=>{ const chip = x=>`<button class="lvch rdch" type="button" data-act="radioabre" data-radio="${esc(x.k)}" aria-pressed="${x.k===RD_ON}" aria-label="${esc(x.nome)}, ${esc(rdLugar(x))}${x.k===RD_ON ? ". Tocando. Tocar para parar" : ""}">${ic(x.k===RD_ON && RD_EST!=="erro" ? "radioon" : "radio")}${esc(x.nome)}${x.grupo==="internacional" ? `<span class="lgtag">${LING_ROT[x.lingua] || ""}</span>` : ""}</button>`, sv = l.filter(x=>cnSalvo("rd:" + x.k));
-      return `<div class="lvlist rdfil" role="group" aria-label="Mostrar rádios">${fs.map(([k, n])=>`<button class="rdf" type="button" data-act="radiofil" data-f="${k}" aria-pressed="${k===f}">${k==="perto" ? ic("pin", "sm") : ""}${n}</button>`).join("")}</div>
-      <div class="lvlist rdlist">${vis.map(chip).join("")}</div>${sv.length ? `<div class="lvlist rdlist cnsalvos" role="group" aria-label="Rádios salvas"><span class="rdg">${icFill("bookmark", true)}Salvas</span>${sv.map(chip).join("")}</div>` : ""}`; })()}
-    ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([rdLugar(c), est].filter(Boolean).join(" · "))}</small></span>
-      ${cnSalvaBtn("rd:" + c.k, c.nome)}${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site ↗</a>` : ""}<button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio" title="Parar">${ic("close")}</button></div>
-      ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}<p class="lvnota">Sinal da própria emissora, ao vivo. A rede.online não exibe anúncios nesta aba.</p>` : ""}`; }
-function radioPinta(){ const box = $("#radio"); if (!box || box.hidden) return; const sx = RD.zera ? 0 : (box.querySelector(".rdlist") || {}).scrollLeft || 0, fx = (box.querySelector(".rdfil") || {}).scrollLeft || 0; RD.zera = false;
-  box.innerHTML = radioHTML(); const l = box.querySelector(".rdlist"), fl = box.querySelector(".rdfil"); if (l) l.scrollLeft = sx; if (fl) fl.scrollLeft = fx; }
-function radioBox(){ const box = $("#radio"); if (!box) return;
-  if (S.tab!=="videos" || S.rapido || route()!=="inicio"){ radioPara(true); box.hidden = true; box.innerHTML = ""; return; }
+    ${c ? `<div class="rdbar${RD_EST==="erro" ? " erro" : ""}" role="status"><span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><span class="rdtx"><b>${esc(c.nome)}</b><small>${esc([est, rdLugar(c)].filter(Boolean).join(" · "))}</small></span>
+      <button class="iconbtn" type="button" data-act="radiopasso" data-d="-1" aria-label="Rádio anterior">${ic("back")}</button><button class="iconbtn" type="button" data-act="radiopasso" data-d="1" aria-label="Próxima rádio">${ic("back","flip")}</button><button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio">${ic("close")}</button></div>
+      ${RD_EST==="erro" ? `<p class="rdaviso">${ic("info","sm")}<span>Esta rádio não respondeu agora. Tente a próxima ou abra o site dela.</span></p>` : ""}<p class="lvcred rdcred">${cnSalvaBtn("rd:" + c.k, c.nome)}${c.site ? `<a href="${esc(c.site)}" target="_blank" rel="noopener">Site da rádio ↗</a>` : ""}</p>
+      ${c.aviso ? `<p class="rdaviso">${ic("info","sm")}<span>${esc(c.aviso)}</span></p>` : ""}` : ""}
+    <div class="lvlist rdfil" role="group" aria-label="Mostrar rádios">${fs.map(([k, n])=>`<button class="rdf" type="button" data-act="radiofil" data-f="${k}" aria-pressed="${k===f}">${k==="perto" ? ic("pin", "sm") : ""}${n}</button>`).join("")}</div>
+    <div class="rdgrid">${vis.map(card).join("")}</div>${sv.length ? `<h3 class="rdsal">${icFill("bookmark", true)}Salvas</h3><div class="rdgrid">${sv.map(card).join("")}</div>` : ""}
+    <p class="lvnota">Sinal da própria emissora, ao vivo. Continua tocando enquanto você navega. A rede.online não exibe anúncios nesta aba.</p>`; }
+function radioPinta(){ rdMini(); const box = $("#radio"); if (!box || box.hidden) return; const fx = (box.querySelector(".rdfil") || {}).scrollLeft || 0; RD.zera = false;
+  box.innerHTML = radioHTML(); const fl = box.querySelector(".rdfil"); if (fl) fl.scrollLeft = fx; }
+/* 18/11 (Amanda): Rádio virou aba própria. A rádio continua tocando nas outras abas e telas, com a barra fixa (rdMini) para trocar ou parar;
+   para sozinha quando um vídeo ou um canal ao vivo começa. */
+function radioBox(){ const box = $("#radio"), rt = $("#radiotopo"); rdMini(); if (!box) return; const on = S.tab==="radio" && !S.rapido && route()==="inicio";
+  if (rt) rt.hidden = !on; if (!on){ box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false; radioPinta(); radioCarrega(); }
+const rdVisiveis = () => { const l = radioLista(), gs = Object.keys(RD_GRUPO).filter(g=>l.some(x=>x.grupo===g)), perto = rdPerto(l);
+  const fs = (perto.length ? ["perto"] : []).concat(["todas"], gs), f = fs.includes(RD.f) ? RD.f : (perto.length ? "perto" : "todas");
+  return f==="perto" ? perto : f==="todas" ? gs.flatMap(g=>l.filter(x=>x.grupo===g)) : l.filter(x=>x.grupo===f).sort((a, b)=>f==="internacional" ? lingOrdem(a) - lingOrdem(b) : 0); };
+function radioPasso(d){ let l = rdVisiveis(); if (!l.some(x=>x.k===RD_ON)) l = radioLista(); if (!l.length) return;
+  const i = l.findIndex(x=>x.k===RD_ON); radioToca(l[((i < 0 ? (d > 0 ? -1 : 0) : i) + d + l.length) % l.length].k); }
+addEventListener("hashchange", ()=>setTimeout(()=>rdMini(), 60));
+function rdMini(){ let m = $("#rdmini"); const aqui = route()==="inicio" && S.tab==="radio" && !S.rapido, c = RD_ON && radioLista().find(x=>x.k===RD_ON);
+  if (!c || aqui){ if (m) m.hidden = true; document.body.classList.remove("comrdmini"); return; }
+  if (!m){ m = document.createElement("div"); m.id = "rdmini"; m.className = "rdmini"; m.setAttribute("role", "region"); m.setAttribute("aria-label", "Rádio tocando"); document.body.appendChild(m); }
+  const est = {conecta:"Conectando…", toca:"No ar", erro:"Não respondeu"}[RD_EST] || "";
+  m.hidden = false; document.body.classList.add("comrdmini");
+  m.innerHTML = `<span class="rdeq${RD_EST==="toca" ? " on" : ""}" aria-hidden="true"><i></i><i></i><i></i></span><button class="rdmtx" type="button" data-act="rdvai" aria-label="Abrir a aba Rádio"><b>${esc(c.nome)}</b><small>${est}</small></button>
+    <button class="iconbtn" type="button" data-act="radiopasso" data-d="-1" aria-label="Rádio anterior">${ic("back","sm")}</button><button class="iconbtn" type="button" data-act="radiopasso" data-d="1" aria-label="Próxima rádio">${ic("back","sm flip")}</button><button class="iconbtn" type="button" data-act="radiopara" aria-label="Parar a rádio">${ic("close","sm")}</button>`; }
 function radioHlsCarrega(){ if (window.Hls) return Promise.resolve(window.Hls);
   return RD.hlsP || (RD.hlsP = new Promise((ok, no)=>{ const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.light.min.js";
     s.integrity = "sha384-GMRZjjumhWPywgLYrubnh5qVhHY0BpD+pxIL57uwAenrOEYDLZ/z+8s/rFIjS+yO"; s.crossOrigin = "anonymous"; s.onload = ()=>ok(window.Hls); s.onerror = ()=>{ RD.hlsP = null; no(new Error("hls")); }; document.head.appendChild(s); })); }
 function radioPara(silencio){ if (RD_HLS){ try{ RD_HLS.destroy(); }catch(e){} RD_HLS = null; }
   if (RD_AUD){ RD_AUD.onplaying = RD_AUD.onerror = RD_AUD.onwaiting = null; RD_AUD.pause(); RD_AUD.removeAttribute("src"); RD_AUD.load(); }
-  if (!RD_ON) return; RD_ON = null; RD_EST = ""; if ("mediaSession" in navigator) navigator.mediaSession.metadata = null; if (!silencio) radioPinta(); }
+  if (!RD_ON) return; RD_ON = null; RD_EST = ""; if ("mediaSession" in navigator) navigator.mediaSession.metadata = null; rdMini(); if (!silencio) radioPinta(); }
 async function radioToca(k){ const c = radioLista().find(x=>x.k===k); if (!c) return;
   vivoFecha(); ytPara(); prevPara(); $$(".face.vid video, .tile video, video.pinvid").forEach(v=>{ if (!v.paused){ v.dataset.user = "paused"; v.pause(); } });
   radioPara(true); RD_ON = k; RD_EST = "conecta"; radioPinta(); uso("radio");
@@ -6946,6 +6970,9 @@ const A = {
   cnconta: () => { closeSheet(); A.acessar(); },
   radioabre: b => { const k = b.dataset.radio; if (RD_ON===k) return radioPara(); radioToca(k); },
   radiopara: () => radioPara(),
+  radiopasso: b => radioPasso(+b.dataset.d),
+  rdvai: () => { S.tab = "radio"; persist("tab"); if (route()!=="inicio"){ go("inicio"); return; } $$('[data-act="ftab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.tab)); window.scrollTo(0,0); resetFeed(); },
+  vivopasso: b => vivoPasso(+b.dataset.d),
   vplay: b => { const v = b.closest(".facewrap").querySelector("video");
     if (v.paused){ radioPara(); $$(".face.vid video, .tile video").forEach(o=>{ if (o!==v && !o.paused) o.pause(); }); v.dataset.user = "playing"; v.play().catch(()=>{}); } else { v.dataset.user = "paused"; v.pause(); } },
   vmute: b => { const v = b.closest(".facewrap").querySelector("video"); const unmute = v.muted;
@@ -7625,7 +7652,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 13:45";
+const VERSAO = "v1 registrada · 18/11 14:00";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
