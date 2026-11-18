@@ -2399,7 +2399,7 @@ async function paginasCarrega0(){ if (!SB) return;
   try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
     let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
-    const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-)/.test(r) || r === "perfil") render(); }catch(e){} }
+    const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-|gerir-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
 const pgPerfilHTML = uid => { const l = paginasDoPerfil(uid); return l.length ? `<p style="margin-top:6px">${l.length === 1 ? "Página" : "Páginas"}</p><div class="pgperfil">${l.map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a href="#pg-${p.id}">${avatar(o)}<span>${esc(o.nome)}</span></a>`; }).join("")}</div>` : ""; };
 function sheetPgPerfil(){ const l = minhasPaginas("aprovada");
@@ -2934,16 +2934,18 @@ function sheetPaginaNova(){
   $("#pgcnpjbox").hidden = !emp0; }
 function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p) return; const o = ORG["pg-" + pid], v = x => esc(x || "");
   const temas = TEMAS_LISTA.map(t=>`<option${t === p.tema ? " selected" : ""}>${esc(t)}</option>`).join("");
-  openSheet(shead("Editar página") + `<p class="lnote osub">O nome não muda. Para trocar, fale com a curadoria em contato@arede.online.</p>
+  openSheet(shead("Editar página") + `<div class="pilltabs" role="tablist" aria-label="Partes da página">${[["perfil","Perfil"],["negocio","Negócio"],["servicos","Serviços"]].map(([k, n], i)=>`<button class="ptab" type="button" role="tab" data-edsec="${k}" aria-selected="${!i}">${n}</button>`).join("")}</div>
+    <div data-sec="perfil"><p class="lnote osub">O nome não muda. Para trocar, fale com a curadoria em contato@arede.online.</p>
     <button class="setting l1" type="button" data-act="capaedita" data-alvo="pg:${pid}" style="width:100%;margin-bottom:12px">${ic("lapis")}<span class="t"><b>Capa</b><small>Trocar a imagem do alto da página</small></span>${ic("back","sm flip")}</button>
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3">${v(p.descricao)}</textarea></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80" value="${v(p.cidade)}"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
     <div class="field"><label for="pgsite">Site</label><input id="pgsite" type="url" maxlength="300" value="${v(p.site)}" placeholder="https://"></div>
-    <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div>
-    ${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
-    ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}
-    ${tatFichaCampos(p)}
-    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>`, "Editar página"); tatFichaLiga(); }
+    <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div></div>
+    <div data-sec="negocio" hidden>${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
+    ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}</div>
+    <div data-sec="servicos" hidden>${tatFichaCampos(p)}</div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>`, "Editar página"); tatFichaLiga();
+  $$("[data-edsec]").forEach(b=>b.addEventListener("click", ()=>{ $$("[data-edsec]").forEach(x=>x.setAttribute("aria-selected", x === b)); $$("[data-sec]").forEach(d=>d.hidden = d.dataset.sec !== b.dataset.edsec); })); }
 function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
     <div class="field"><label for="vinome">Serviço ou produto</label><input id="vinome" maxlength="120"></div>
     <div class="field"><label>Foto (opcional)</label><div class="orcrefs" id="vifotobox"></div><label class="btn ghost sm" style="cursor:pointer">${ic("plus","sm")} Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" id="vifoto" hidden></label></div>
@@ -6958,7 +6960,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:32";
+const VERSAO = "v1 registrada · 17/11 21:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
