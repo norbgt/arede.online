@@ -2533,7 +2533,7 @@ function tatReputacaoHTML(p){ const r = tatRep(p), l = TAT.aval[p.id], eu = ME.u
   return `<div class="fatos tatfatos">${num(r.n ? nota(r.media) : "—", r.n ? `média de ${r.n} ${r.n===1 ? "avaliação" : "avaliações"}` : "sem avaliações")}${num(r.sessoes, tt0 ? "sessões verificadas" : "atendimentos verificados")}${tt0 ? num(r.n ? r.pos + "%" : "—", "saíram sabendo cuidar") + num(r.n ? r.dor + "%" : "—", "dor como foi preparada") : ""}</div>
     <p class="lnote">Só avalia quem foi tatuado: a avaliação abre depois do check-in confirmado pelas duas pessoas. Saúde e preparo são contados à parte da nota.</p>
     <h3 class="psec">Selos</h3><div class="adesivos">${selosDe(p).map(x=>{ const v = x.tem(r, p), f = v ? null : seloFalta(x, r, p);
-      return `<button class="adesivo ${x.fam}${v ? "" : " nao"}" type="button" data-act="selocomo" data-k="${x.k}" aria-label="${esc(x.titulo)}: ${esc(v ? seloDiz(x, v, r) : f.t)}. Como se ganha">${ic(x.ic)}<b>${esc(x.titulo)}</b><small>${esc(v ? seloDiz(x, v, r) : f.t)}</small>${v ? "" : `<span class="adbar" aria-hidden="true"><i style="width:${Math.round(f.f * 100)}%"></i></span>`}</button>`; }).join("")}</div>
+      return `<button class="adesivo ${x.fam}${v ? "" : " nao"}" type="button" data-act="selocomo" data-k="${x.k}" aria-label="${esc(x.titulo)}: ${esc(v ? seloDiz(x, v, r) : f.t)}. Como se ganha">${ic(x.ic)}<span><b>${esc(x.titulo)}</b><small>${esc(v ? seloDiz(x, v, r) : f.t)}</small></span></button>`; }).join("")}</div>
     <p class="lnote">Toque num selo para ver como se ganha. Nenhum selo se compra ou se pede.</p>
     ${(r.referendos || []).length ? `<h3 class="psec">Quem referenda</h3><div class="tatref">${r.referendos.map(y=>`<a href="#pg-${y.por}">${avatar(ORG["pg-" + y.por] || {nome:y.nome})}<span>${esc(limpo(y.nome))}</span></a>`).join("")}</div>` : ""}
     ${eqp.length && !ja ? `<button class="btn" type="button" data-act="tatreferenda" data-p="${p.id}" style="margin-top:10px">${ic("people","sm")} Referendar este trabalho</button>` : ""}
@@ -3510,7 +3510,7 @@ function passaporteCorpo(l, outro){ if (!l) return `<p class="empty">Carregando�
     : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento.</b> Cada sessão com check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
-    <h2 class="sectitle">Coleções</h2><div class="pcols">${cols.map(c=>`<div class="pcol${c.ok ? " ok" : ""}">${ic(c.ic)}<span class="t"><b>${esc(c.nome)}</b><small>${esc(c.desc)}</small></span>${c.ok && c.meta === 1 ? `<span class="pok">${ic("check","sm")}</span>` : `<span class="pprog"><small>${c.n} de ${c.meta}</small><span class="adbar"><i style="width:${Math.round(c.n / c.meta * 100)}%"></i></span></span>`}</div>`).join("")}</div>
+    <h2 class="sectitle">Coleções</h2><div class="pmeds">${cols.map((c, i)=>`<div class="pmed${c.ok ? " ok" : c.n ? " anda" : ""}" style="--p:${Math.round(c.n / c.meta * 100)}%;--r:${[-6, 5, -3, 7][i % 4]}deg" title="${esc(c.desc)}"><span class="pring">${ic(c.ic)}</span><b>${esc(c.nome)}</b><small>${c.ok ? (c.meta === 1 ? "conquistada" : c.n + " de " + c.meta + " · conquistada") : c.n + " de " + c.meta}</small><small class="pdesc">${esc(c.desc)}</small></div>`).join("")}</div>
     <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas: nada de ranking, sequência ou prêmio."}</p>`; }
 function screenPassaporte(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Meu passaporte</h1></div>`)
   + `<div class="container"><div id="passbody">${ME.user ? passaporteCorpo() : `<p class="empty">Entre na sua conta para ver o seu passaporte.</p>`}</div></div>`; }
@@ -7160,7 +7160,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:56";
+const VERSAO = "v1 registrada · 18/11 08:03";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
