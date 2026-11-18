@@ -2752,7 +2752,7 @@ function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); co
   const hoje = y => Math.abs(new Date(y.quando) - Date.now()) < 14 * 36e5, out = [];   /* [ação, atributos, ícone, título, explicação] */
   out.push(["fotoescolhe", `data-id="${x.id}"`, "foto", "Enviar fotos", `Até ${FOTOS_MSG} por mensagem`]);
   if (eu){
-    out.push(["orcenvia", `data-id="${x.id}"`, "cifrao", o && o.status === "proposto" ? "Trocar orçamento" : o && o.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento", o && o.status === "proposto" ? "O anterior fica como trocado" : `${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste aqui`]);
+    out.push(["orcmonta", `data-id="${x.id}"`, "cifrao", o && o.status === "proposto" ? "Trocar orçamento" : o && o.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento", o && o.status === "proposto" ? "O anterior fica como trocado" : `${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste aqui`]);
     if (o && o.status === "proposto") out.push(["orcretira", `data-o="${o.id}" data-id="${x.id}"`, "close", "Retirar orçamento", "Enquanto não houver resposta"]);
     if (ag) out.push(["sesnova", `data-id="${x.id}"`, "calplus", "Propor horário", o && o.status === "aceito" ? "O próximo passo do que vocês combinaram" : "Dia, hora e sinal, se houver"]);
     l.filter(y=>y.status === "marcada" && hoje(y)).forEach(y=>out.push(["sesqr", `data-s="${y.id}"`, "qrselo", "Mostrar QR do check-in", dataHora(y.quando)]));
@@ -7270,7 +7270,7 @@ const A = {
     ocupado(b, true, "Encerrando…"); const {data, error} = await SB.rpc("tat_checkout", {p_sessao:b.dataset.s, p_valor:v}); ocupado(b, false); if (error) return formErro(erroAuth(error));
     closeSheet(); if (b.dataset.p) delete FIN[b.dataset.p]; toast(data && data.venda ? "Atendimento encerrado. A venda entrou no Financeiro." : "Atendimento encerrado."); sesRecarrega(); },
   oesinal: b => { const on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on); const f = $("#oesinalf"); if (f){ f.hidden = !on; if (on) setTimeout(()=>$("#oesinalv").focus(), 30); } travaConfere(); },
-  orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
+  orcmonta: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },   /* 18/11: tinha o mesmo nome do pedido do cliente (orcenvia) e passava por cima dele */
   orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
     const sn = sinalLido(); if (sn === 0) return formErro("Informe o valor do sinal."); if (sn && sn > v) return formErro("O sinal não pode passar do valor total.");
@@ -7753,7 +7753,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 16:16";
+const VERSAO = "v1 registrada · 18/11 16:53";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
