@@ -2746,11 +2746,11 @@ function pgAgendaHTML(p){ const l = SES.pagina[p.id]; if (!l){ sesCarrega("pagin
     ${enc.length ? `<h3 class="psec">Para encerrar</h3><div class="list">${enc.map(lin).join("")}</div>` : ""}
     <h3 class="psec">Feitas</h3>${feitas.length ? `<div class="list">${feitas.map(lin).join("")}</div>` : `<p class="empty">Nenhum check-in ainda.</p>`}`; }
 function pgRepintaTab(pid, t){ if (route() !== "pg-" + pid || S.pgTab !== t) return; const b = $("#pgbody"); if (b) b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], PAGS.lista.find(x=>x.id === pid), t); }
-function passaporteHTML(){ const l = SES.minhas; if (!l){ (async()=>{ SES.minhas = ME.user ? await sesCarrega("cliente", ME.user.id) : []; if (route() === "perfil") profShow(); })(); return `<p class="empty">Carregando…</p>`; }
+function passaporteHTML(){ const l = SES.minhas; if (!l){ (async()=>{ SES.minhas = ME.user ? await sesCarrega("cliente", ME.user.id) : []; if (route() === "perfil") profShow(); })(); return `<p class="empty">Carregando…</p>`; }   /* 18/11: parte da aba Passaporte */
   const vf = l.filter(y=>y.status === "verificada").reverse(), prox = l.filter(y=>y.status === "marcada" || y.status === "proposta");
   const lin = y => { const p = PAGS.lista.find(x=>x.id === y.pagina_id) || {}, o = ORG["pg-" + p.id] || {nome:p.nome, sigla:"?", cor:"#888"};
     return `<a class="setting l1 conv" href="#conversa-${y.pedido_id}">${avatar(o)}<span class="t"><b>${esc(limpo(p.nome || ""))}</b><small>${dataHora(y.quando)}${p.cidade ? " · " + esc(p.cidade) : ""}</small><small class="muted">${y.status === "verificada" ? `${ic("check","sm")} check-in feito${y.avaliada ? " · você avaliou" : " · falta avaliar"}` : SES_ST[y.status][0]}</small></span></a>`; };
-  return `<p class="lnote">Seu passaporte reúne os atendimentos com check-in: onde e com quem você se tatuou ou foi atendida. Só você vê.</p>
+  return `<h2 class="sectitle" style="margin-top:22px">Seus atendimentos</h2><p class="lnote">${ic("lock","sm")} Esta lista é sempre só sua, mesmo com o passaporte público.</p>
     ${prox.length ? `<h3 class="psec">Próximos</h3><div class="list">${prox.map(lin).join("")}</div>` : ""}
     <h3 class="psec">Com check-in</h3>${vf.length ? `<div class="list">${vf.map(lin).join("")}</div>` : `<p class="empty">Nenhum ainda. Quando fizer o check-in numa sessão, ela aparece aqui.</p>`}`; }
 function sheetSeloComo(k){ const pg = route().startsWith("pg-") ? PAGS.lista.find(x=>x.id === route().slice(3)) : null, est = pg && k === "itin" ? tatEstudios(pg) : [];
@@ -3306,8 +3306,8 @@ function intBody(){ const d = S.intDraft, full = d.length >= MAX_INT;
    saiu do perfil: fica em Configurações › Seu feed e no atalho de ajustes do feed. */
 /* 15/11: um perfil só. A dona vê e organiza ali mesmo o que é público (cadeado aberto) e o que é só dela (cadeado fechado), como na página.
    Mesmas abas que quem visita vê, mais o Algoritmo, que é só seu. "Pastas" junta as seções (abertas ou fechadas) e, embaixo, o que é só seu: salvos, curtidas, compartilhadas, agenda e passaporte. */
-const PTABS = [["publicacoes","Publicações"],["salvos","Pastas"],["redes","Outras redes"],["algoritmo","Algoritmo"]];
-const PFILT = [["tudo","Salvos"],["agenda","Agenda"],["passaporte","Passaporte"]];   /* 15/11: curtidas e compartilhadas foram para o histórico, na aba Algoritmo */
+const PTABS = [["publicacoes","Publicações"],["salvos","Pastas"],["passaporte","Passaporte"],["redes","Outras redes"],["algoritmo","Algoritmo"]];   /* 18/11 (Amanda): Passaporte é uma aba do perfil; a pessoa decide se fica público */
+const PFILT = [["tudo","Salvos"],["agenda","Agenda"]];   /* 15/11: curtidas e compartilhadas foram para o histórico, na aba Algoritmo */
 const PFILT_TIT = {tudo:"Tudo o que você salvou", curtidas:"Suas curtidas", compartilhadas:"O que você compartilhou", agenda:"Sua agenda", passaporte:"Seu passaporte"};
 /* o que pode aparecer no perfil público (Publicações e as pastas que não são secretas) e o que é sempre só seu */
 const PRIVADAS = new Set(["agenda","compartilhadas","curtidas","algoritmo"]);
@@ -3324,7 +3324,7 @@ function visOf(t){
 const visTag = t => { const [i, c, x] = visOf(t); return `<span class="vis ${c}">${ic(i,"sm")}${x}</span>`; };
 /* cadeado ao lado de cada aba (14/11): aberto = aparece no perfil público; fechado = não aparece */
 const tabVis = aberto => `<span class="tvis" role="img" aria-label="${aberto ? "aparece no perfil público" : "não aparece no perfil público"}" title="${aberto ? "Aparece no perfil público" : "Não aparece no perfil público"}">${ic(aberto ? "cadaberto" : "lock","sm")}</span>`;
-const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(S.publico && (k==="publicacoes" || (k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha"))))}</button>`).join("");
+const tabsPerfil = () => PTABS.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="ptab" data-tab="${k}" aria-selected="${S.profTab===k}">${n}${tabVis(S.publico && (k==="publicacoes" || (k==="salvos" && S.secoes.some(x=>x.aberta)) || (k==="redes" && S.redes.some(c=>c.tipo==="minha")) || (k==="passaporte" && PASS.publico)))}</button>`).join("");
 function screenProfile(){
   if (S.profTab === "agenda"){ S.profFiltro = "agenda"; S.profTab = "salvos"; }   /* abas antigas viram filtros de Salvos */
   if (S.profTab === "curtidas" || S.profTab === "compartilhadas"){ S.histTipo = S.profTab; S.profTab = "algoritmo"; }   /* 15/11: agora no histórico */
@@ -3449,10 +3449,11 @@ function profBody(){
     <div class="${ag ? "lwrap" : "rwrap"}"><div id="pfeed"></div></div>`;
   if (S.profTab==="redes"){ const t0 = S.pubTab; S.pubTab = "redes"; const h = pubBody(); S.pubTab = t0; return h; }
   if (S.profTab==="algoritmo") return `<div class="algotab">${algoPanel()}</div>`;
+  if (S.profTab==="passaporte"){ if (!PASS.lista) passaporteCarrega(); return `<div id="passbody">${passaporteAba()}</div>`; }
   const pgs = S.profTab==="publicacoes" ? minhasPaginas() : [];
   return `<div class="rwrap"><div id="pfeed"></div></div>`;   /* 15/11: as suas páginas aparecem no cabeçalho, como na prévia */
 }
-function fillProfile(){ const box = $("#pfeed"); if (!box || S.profTab === "redes") return;
+function fillProfile(){ const box = $("#pfeed"); if (!box || S.profTab === "redes" || S.profTab === "passaporte") return;
   if (S.profTab === "salvos" && !S.profFolder && S.profFiltro === "passaporte"){ box.className = ""; box.innerHTML = passaporteHTML(); return; }
   const items = profList();
   if (!items.length){ box.className = ""; box.innerHTML = `<p class="empty">${{tudo:`Nada salvo ainda. Toque em <b>Salvar</b> ou em ${ic("bookmark","sm")} num conteúdo para guardar aqui.`, publicacoes:"Você ainda não publicou nada.", agenda:"Sua agenda está vazia. Toque em <b>Quero ir</b> num evento ou em <b>Quero ajudar</b> num chamado.", compartilhadas:"Você ainda não compartilhou nada.", curtidas:"Você ainda não curtiu nada.", salvos:`Pasta vazia. Toque em ${ic("bookmark","sm")} num conteúdo para guardar aqui.`}[S.profTab==="salvos" && !S.profFolder ? S.profFiltro || "tudo" : S.profTab]}</p>`; return; }
@@ -3473,9 +3474,16 @@ const PERFIL_MOSTRA = () => `<h2 class="sectitle">O que o seu perfil mostra</h2>
     </div>`;
 /* PASSAPORTE (18/11, Amanda): cada sessão com check-in confirmado pelas duas pessoas vira um carimbo. As coleções seguem só o que a rede confere.
    Só a própria pessoa vê. Sem ranking, sem sequência diária, sem prêmio. */
-const PASS = {lista:null};
-async function passaporteCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.rpc("meu_passaporte"); PASS.lista = Array.isArray(data) ? data : []; }catch(e){ PASS.lista = []; }
-  if (route() === "passaporte"){ const m = $("#main") || document.querySelector("main"); const b = $("#passbody"); if (b) b.innerHTML = passaporteCorpo(); } }
+const PASS = {lista:null, publico:false}, PASS_DE = {};
+async function passaporteCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.rpc("passaporte_de", {p_user:ME.user.id}); PASS.lista = data && Array.isArray(data.itens) ? data.itens : []; PASS.publico = !!(data && data.publico); }catch(e){ PASS.lista = []; }
+  const b = $("#passbody"); if (b) b.innerHTML = passaporteAba(); }
+async function passaporteDeCarrega(uid){ if (!SB || PASS_DE[uid] !== undefined) return; PASS_DE[uid] = null;
+  try{ const {data} = await SB.rpc("passaporte_de", {p_user:uid}); PASS_DE[uid] = data && Array.isArray(data.itens) && data.itens.length ? data.itens : false; }catch(e){ PASS_DE[uid] = false; }
+  if (route() === "org-u-" + uid) render(); }
+/* a aba do próprio perfil: escolha de mostrar, carimbos e coleções, e a lista de atendimentos (essa fica sempre só com a pessoa) */
+function passaporteAba(){ if (!PASS.lista) return `<p class="empty">Carregando…</p>`;
+  return `<div class="list" style="margin-bottom:14px"><div class="setting"><span class="t"><b>Mostrar no perfil público</b><small>${!S.publico ? "Seu perfil está privado. Ligue o perfil público para isto valer." : PASS.publico ? "Quem visita seu perfil vê os carimbos e as coleções, com o mês e o ano, sem o dia." : "Só você vê o seu passaporte."}</small></span><button class="switch" type="button" role="switch" data-act="passpub" aria-checked="${PASS.publico}" aria-label="Mostrar o passaporte no perfil público"></button></div></div>
+    ${passaporteCorpo(PASS.lista)}${passaporteHTML()}`; }
 const PASS_PRIMEIRA = {tatuagem:"Primeira tatuagem", beleza:"Primeiro cuidado de beleza", artesanato:"Primeira peça feita à mão"};
 const PASS_COR = {tatuagem:"pz-tat", beleza:"pz-bel", artesanato:"pz-art"};
 function passLugar(c){ const t = String(c || "").trim(), m = t.match(/^(.*?),\s*([A-Za-z]{2})$/); if (m && UF_NOME[m[2].toUpperCase()]) return {cidade:m[1].trim(), uf:m[2].toUpperCase(), pais:"Brasil"};
@@ -3496,14 +3504,14 @@ function passColecoes(l){ const cont = (f) => { const m = {}; l.forEach(c=>{ con
   col("raio", "Apoiou quem começa", "Página com menos de 6 meses na rede", l.some(c=>c.nova) ? 1 : 0, 1);
   col("lapis", "Colecionável de estilos", "Estilos diferentes de trabalho", dist(c=>c.estilo), 3);
   return out; }
-function passaporteCorpo(){ const l = PASS.lista; if (!l) return `<p class="empty">Carregando…</p>`;
-  const dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
-  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando)}</small></a>`).join("")}<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span></div>`
+function passaporteCorpo(l, outro){ if (!l) return `<p class="empty">Carregando…</p>`;
+  const dia = (d, mes) => mes ? new Date(d).toLocaleDateString("pt-BR", {month:"short", year:"numeric"}).replace(".", "").replace(" de ", " ") : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
+  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
     : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento.</b> Cada sessão com check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
     <h2 class="sectitle">Coleções</h2><div class="pcols">${cols.map(c=>`<div class="pcol${c.ok ? " ok" : ""}">${ic(c.ic)}<span class="t"><b>${esc(c.nome)}</b><small>${esc(c.desc)}</small></span>${c.ok && c.meta === 1 ? `<span class="pok">${ic("check","sm")}</span>` : `<span class="pprog"><small>${c.n} de ${c.meta}</small><span class="adbar"><i style="width:${Math.round(c.n / c.meta * 100)}%"></i></span></span>`}</div>`).join("")}</div>
-    <p class="lnote" style="margin-top:14px">${ic("lock","sm")} Só você vê o seu passaporte. Ele conta só atendimentos com check-in confirmado pelas duas pessoas: nada de ranking, sequência ou prêmio.</p>`; }
+    <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas: nada de ranking, sequência ou prêmio."}</p>`; }
 function screenPassaporte(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Meu passaporte</h1></div>`)
   + `<div class="container"><div id="passbody">${ME.user ? passaporteCorpo() : `<p class="empty">Entre na sua conta para ver o seu passaporte.</p>`}</div></div>`; }
 function screenConfig(){
@@ -3599,8 +3607,8 @@ function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu 
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
   return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips:pgChips(uid)})}
-      <div class="tabs" role="tablist" aria-label="Perfil">${[["publicacoes","Publicações"],["pastas","Pastas"]].map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
-      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+      <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"],["pastas","Pastas"]].concat(PASS_DE[uid] ? [["passaporte","Passaporte"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
+      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], true) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
 /* PASTAS NO PERFIL DE OUTRA PESSOA (15/11): só as seções abertas, sem as pastas secretas, e só se o perfil é público.
    Quem decide é o servidor (perfil_pastas). Um item que existe aqui abre na rede; os outros, no link de origem. */
 const PESS_PASTAS = {};
@@ -4036,7 +4044,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r.startsWith("pin-")){ main.innerHTML = screenPin(r.slice(4)); fillPin(r.slice(4)); }
   else if (r==="ate-depois") main.innerHTML = screenBye();
   else if (r==="conta"){ main.innerHTML = screenConta(); adPedidosCarrega(); }
-  else if (r==="passaporte"){ main.innerHTML = screenPassaporte(); passaporteCarrega(); }
+  else if (r==="passaporte"){ S.profTab = "passaporte"; return go("perfil"); }
   else if (r==="anunciar") main.innerHTML = screenAnunciar();
   else if (r==="em-alta"){ main.innerHTML = screenAlta(); if (ME.pronto) altaCarrega(); }
   else if (r==="curadoria"){ main.innerHTML = screenCuradoria(); curadoriaCarrega(); }
@@ -4518,6 +4526,9 @@ function mockSB(o = {}){
       y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
       if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
+    passaporte_publica:a=>{ db.passPub = !!a.p_on; salva(); return {ok:true, publico:db.passPub}; },
+    passaporte_de:a=>{ const eu0 = a.p_user === eu(); if (!eu0) return null; return {publico:!!db.passPub, itens:tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; })}; },
     meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
       return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }),
     pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
@@ -6423,7 +6434,12 @@ const A = {
   csatatr: b => { const c = USO.csat; if (!c) return; const k = b.dataset.v; c.at.has(k) ? c.at.delete(k) : c.at.add(k); b.setAttribute("aria-pressed", c.at.has(k)); },
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
   pgapaga: b => sheetPaginaApaga(b.dataset.id),
-  passaporte: () => { PASS.lista = null; go("passaporte"); },
+  passaporte: () => { PASS.lista = null; S.profTab = "passaporte"; S.profFolder = null; go("perfil"); },
+  passpub: async b => { const on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on);
+    let r; try{ r = await SB.rpc("passaporte_publica", {p_on:on}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
+    const msg = r.error ? r.error.message : (r.data || {}).erro; if (msg){ b.setAttribute("aria-checked", !on); return toast(msg); }
+    PASS.publico = on; const x = $("#passbody"); if (x) x.innerHTML = passaporteAba(); $$('[data-act="ptab"]').forEach(t=>{ if (t.dataset.tab === "passaporte") t.outerHTML = tabsPerfil().match(/<button[^>]*data-tab="passaporte"[\s\S]*?<\/button>/)[0]; });
+    toast(on ? (S.publico ? "Passaporte no seu perfil público." : "Passaporte marcado como público. Vale quando o perfil for público.") : "Passaporte só para você."); },
   pgapagaver: b => { closeSheet(); S.gerVer = "agenda"; go("gerir-" + b.dataset.id); },
   pgapagaok: async b => { const pid = b.dataset.id, sen = ($("#pgapsen") || {}).value || "";
     if (!sen) return sheetErro("Escreva sua senha."); sheetErro(""); ocupado(b, true, "Conferindo…");
@@ -7144,7 +7160,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:53";
+const VERSAO = "v1 registrada · 18/11 07:56";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
