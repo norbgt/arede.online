@@ -1675,6 +1675,12 @@ button.cmnpost{display:block;width:100%;border:0;text-align:left;font:inherit;co
 .adflow{display:flex;flex-direction:column;gap:12px;max-width:640px;padding-top:6px;padding-bottom:16px}
 .adlead{margin:0;color:var(--muted);font-size:var(--fs-sm)}
 .adsticky{position:sticky;top:calc(env(safe-area-inset-top,0px) + 63px);z-index:5;margin:0 calc(-1*var(--gutter));padding:8px var(--gutter) 8px;background:var(--bg);border-bottom:1px solid var(--line)}
+/* 18/11 (Amanda): a prévia fixa no alto ocupava mais da metade da tela do celular. Agora o quadro tem no máximo 30% da altura da tela,
+   e enquanto a pessoa digita ele encolhe para 16%, sem sumir: dá para ver o anúncio mudar e ainda percorrer os campos. */
+.adsticky .admod{max-width:min(440px, 30vh)}.adsticky .admodinfo{margin-top:6px}
+.adflow:has(.adpainel input:focus, .adpainel textarea:focus, .adpainel select:focus) .adsticky .admod{zoom:.6}
+.adflow:has(.adpainel input:focus, .adpainel textarea:focus, .adpainel select:focus) .adsticky .admodinfo{display:none}
+
 .adpv{max-width:360px;margin:0 auto;border-radius:10px;overflow:hidden;gap:2px}
 .adpv .adtile{cursor:default;color:#fff}
 .adpv .adtxt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
