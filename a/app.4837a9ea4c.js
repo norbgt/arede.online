@@ -441,7 +441,7 @@ const NUCLEOS = [["Núcleo Centro",48,"toda segunda"],["Núcleo Jardim",36,"quin
 /* BANDEIRAS: país (como está na base de fontes) para o código de duas letras e a bandeira em emoji */
 const ISO = {"Brasil":"BR","EUA":"US","Reino Unido":"GB","Irlanda do Norte":"GB","Canadá":"CA","Austrália":"AU","Irlanda":"IE","Nova Zelândia":"NZ","África do Sul":"ZA",
   "Espanha":"ES","México":"MX","Argentina":"AR","Colômbia":"CO","Chile":"CL","Peru":"PE","Uruguai":"UY","Equador":"EC","Bolívia":"BO","Venezuela":"VE","Costa Rica":"CR",
-  "Paraguai":"PY","El Salvador":"SV","Guatemala":"GT","Nicarágua":"NI","Alemanha":"DE","França":"FR","Portugal":"PT"};
+  "Paraguai":"PY","El Salvador":"SV","Guatemala":"GT","Nicarágua":"NI","Alemanha":"DE","França":"FR","Portugal":"PT","Angola":"AO","Moçambique":"MZ","Cabo Verde":"CV","Cuba":"CU","Honduras":"HN","Panamá":"PA","República Dominicana":"DO"};
 const bandeira = p => { const c = ISO[p]; return c ? String.fromCodePoint(...[...c].map(ch=>0x1F1A5 + ch.charCodeAt(0))) : "🌐"; };
 const BANDEIRAS_LINGUA = {pt:["Brasil","Reino Unido","Alemanha","França"], en:["EUA","Reino Unido","Canadá","Austrália","Irlanda","Nova Zelândia","África do Sul"],
   es:["Espanha","México","Argentina","Colômbia","Chile","Peru","Uruguai","Equador","Bolívia","Venezuela","Paraguai","Costa Rica","El Salvador","Guatemala","Nicarágua","EUA"]};
@@ -462,6 +462,7 @@ function prox(it){
   if (R.cidade.length > 2 && (oc.startsWith(R.cidade) || temPalavra(t, R.cidade))) return 3;
   if (R.uf && (oc.endsWith(", " + R.uf.toLowerCase()) || temPalavra(t, semAcento(UF_NOME[R.uf])))) return 2;
   const pais = it.pais || (o.fonte ? "" : "Brasil");
+  if (S.pais && S.pais !== "Brasil"){ if (pais === S.pais) return 2; return temPalavra(t, semAcento(S.pais)) ? 1 : 0; }   /* 17/11: país escolhido no primeiro acesso */
   if (pais==="Brasil" || /\bbrasil|brazil|brasile/.test(t)) return 1;
   if (LATAM.has(pais)) return .5;
   return 0; }
@@ -624,7 +625,7 @@ const FTABS = [["tudo","Tudo",null,"blocos"],["publicacoes","Publicações",["im
    3. Estado (preferências ficam salvas no navegador)
    ===================================================================== */
 const S = {
-  tema: store.get("tema","auto"), vista: store.get("vista","blocos"), algo: store.get("algo", true), tab: store.get("tab","tudo"), origens: store.get("origens", ["pt"]), perto: store.get("perto", true), regiao: store.get("regiao", ""),
+  tema: store.get("tema","auto"), vista: store.get("vista","blocos"), algo: store.get("algo", true), tab: store.get("tab","tudo"), origens: store.get("origens", ["pt"]), pais: store.get("pais", ""), lingua: store.get("lingua", ""), perto: store.get("perto", true), regiao: store.get("regiao", ""),
   temas: temaListaNova(store.get("temas", ["Moradia","Mobilidade","Alimentação e campo","Educação"])), mix: store.get("mix", 60),
   pausas: store.get("pausas", true), orgsVisiveis: store.get("orgsVisiveis", false), publico: store.get("publico", false), assinou: store.get("assinou", false), interesses: temaListaNova(store.get("interesses", ["Mobilidade","Alimentação e campo","Meio ambiente e clima"])), intDraft:null, profTab:"publicacoes", pubTab:"publicacoes", pubFolder:null, profQ:"", profFolder:null, usarOrgs: store.get("usarOrgs", true),
   follow: new Set(store.get("follow", ["bairro-vivo","hortas-leste","pedala-cwb"])), saved: new Set(store.get("saved", [])), savedIn: store.get("savedIn", {}), liked: new Set(store.get("liked", ["13-0","27-0","16-0"])), shared: new Set(store.get("shared", ["4-0","15-0","6-0"])),
@@ -1378,7 +1379,7 @@ let PAUSE_EVERY = 18;
 const F = {items:[], cursor:0, vistos:0, gate:null, paused:false, ended:false, key:"", grid:null, obs:null};
 const tabTypes = () => (FTABS.find(t=>t[0]===S.tab)||FTABS[0])[2];
 const feedMode = () => S.algo ? "algo" : "amplo";
-const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
+const feedKey = () => [nivel(), S.rapido, S.algo, S.perto, S.regiao, S.pais, S.tab, S.usarOrgs, S.temas.join(","), S.created.length, [...S.follow].join(","), JSON.stringify(S.filt), S.ord].join("|");
 const scoreAlgo = it => ((S.follow.has(it.org)&&(S.usarOrgs||(ORG[it.org]||{}).pessoa))?1:0)*(S.mix/100) + (S.temas.includes(it.tema)?1:0)*(1-S.mix/100) + apPeso(it) + (cobForte(it) ? .15 : 0) - it.min/480;   /* 17/11 (Amanda): a idade pesa de verdade. 8 horas valem 1 ponto; o tema (0,4 no padrão) vale cerca de 3 horas */
 /* algoritmo desligado: critérios amplos e iguais para todos (rodízio de temas e cidades, mais novo primeiro) */
 function amplo(list){
@@ -6711,6 +6712,12 @@ const A = {
     if (route()==="perfil"){ S.profTab = "publicacoes"; S.profFolder = null; render(); } else go("inicio"); toast("Publicado no mural da organização."); },
   mobopcoes: b => sheetMobilizar(b.dataset.id),
   origens: () => sheetOrigens(),
+  acessolingua: b => { S.acessoL = b.dataset.k; $$('[data-act="acessolingua"]').forEach(x=>x.setAttribute("aria-checked", x === b)); const n = $("#acnota"); if (n) n.textContent = ACESSO_NOTA[S.acessoL]; },
+  acessook: () => { const l = S.acessoL || "pt", p = ($("#acpais") || {}).value || "";
+    S.lingua = l; persist("lingua"); S.pais = p; persist("pais");
+    S.origens = ORIGENS.map(o=>o[0]).filter(x=>x === l || (p === "Brasil" && x === "pt")); persist("origens");
+    if (p && p !== "Brasil" && !S.perto){ S.perto = true; persist("perto"); }
+    F.key = null; closeSheet(); render(); },
   redes: () => sheetRedes(),
   verifinfo: b => sheetVerif(b.dataset.v, b.dataset.p),
   cmnnova: async b => { if (!ME.user){ toast("Entre na sua conta para criar uma comunidade."); go("perfil"); return; }
@@ -6880,6 +6887,22 @@ const START = "";
 const ATALHOS = {tudo:{tab:"tudo"}, publicacoes:{tab:"publicacoes"}, canais:{tab:"videos"}, documentos:{tab:"documentos"},
   buscar:{r:"explorar"}, "como-funciona":{r:"funciona"}, anuncie:{r:"anunciar"}, paginas:{r:"organizacoes/paginas"}, comunidades:{r:"organizacoes/comunidades"}, orgs:{r:"organizacoes"},
   consultas:{r:"organizacoes/consultas"}, eventos:{r:"organizacoes/eventos"}, apoie:{acao:"apoie"}};
+/* PRIMEIRO ACESSO (17/11, decisão da Amanda: "em um primeiro acesso a pessoa decida idioma ou país de origem"; feed agora, interface depois).
+   Aparece uma vez por aparelho. O idioma liga as notícias naquela língua; o país põe primeiro as fontes de lá. A interface segue em português por enquanto. */
+const ACESSO_LINGUAS = [["pt","Português"],["es","Español"],["en","English"]];
+const ACESSO_NOTA = {pt:"Dá para mudar depois no globo, no topo.", es:"Puedes cambiarlo después en el globo, arriba.", en:"You can change this later with the globe at the top."};
+function acessoSugere(){ const ls = (navigator.languages || [navigator.language || "pt-BR"]).map(String), l0 = (ls[0] || "pt").slice(0, 2).toLowerCase();
+  const reg = (ls.find(x=>/-[A-Za-z]{2}$/.test(x)) || "").slice(-2).toUpperCase(), pais = Object.keys(ISO).find(k=>ISO[k] === reg && k !== "Irlanda do Norte") || (l0 === "pt" ? "Brasil" : "");
+  return {lingua:ACESSO_LINGUAS.some(x=>x[0] === l0) ? l0 : "pt", pais}; }
+function sheetPrimeiroAcesso(){ const sg = acessoSugere(); S.acessoL = S.lingua || sg.lingua;
+  const paises = Object.keys(ISO).filter(k=>k !== "Irlanda do Norte").sort((a, b)=>a === "Brasil" ? -1 : b === "Brasil" ? 1 : a.localeCompare(b, "pt"));
+  openSheet(`<div class="acesso"><p class="acmarca">a<i class="ldot"></i>rede</p><p class="acsub">Escolha seu idioma · Elige tu idioma · Choose your language</p>
+    <div class="aclist" role="radiogroup" aria-label="Idioma">${ACESSO_LINGUAS.map(([k, n])=>`<button class="acopt" type="button" role="radio" data-act="acessolingua" data-k="${k}" aria-checked="${S.acessoL === k}"><span>${n}</span>${ic("check","sm")}</button>`).join("")}</div>
+    <label class="acsub" for="acpais">País · País · Country</label>
+    <select id="acpais" class="input">${paises.map(k=>`<option value="${esc(k)}"${k === (S.pais || sg.pais || "Brasil") ? " selected" : ""}>${bandeira(k)} ${esc(k)}</option>`).join("")}<option value="">🌐 Outro · Otro · Other</option></select>
+    <button class="btn primary block" type="button" data-act="acessook">Continuar · Continue</button>
+    <p class="lnote acnota" id="acnota">${ACESSO_NOTA[S.acessoL]}</p></div>`, "Primeiro acesso"); const sel = $('.acopt[aria-checked="true"]'); if (sel) sel.focus({preventScroll:true}); }
+function primeiroAcessoTalvez(){ if (store.get("acesso1", false) || /^(termos|privacidade|checkin-)/.test(route())) return; store.set("acesso1", true); setTimeout(()=>{ if (!$("#layer .scrim")) sheetPrimeiroAcesso(); }, 600); }
 function abaPorEndereco(){ const a = ATALHOS[location.hash.slice(1)]; if (!a) return;
   if (a.tab){ S.tab = a.tab; S.rapido = null; persist("tab"); }
   if (a.org){ S.orgAba = a.org; S.decTipo = "todos"; store.set("orgAba", a.org); }
@@ -6888,6 +6911,7 @@ function abaPorEndereco(){ const a = ATALHOS[location.hash.slice(1)]; if (!a) re
 abaPorEndereco(); window.addEventListener("hashchange", abaPorEndereco);
 if (!location.hash){ const ul = store.get("ultima", ""), ini = START; if (ini && ini!=="inicio"){ try{ history.replaceState(null, "", "#" + ini); }catch(err){ location.hash = ini; } } }
 window.addEventListener("hashchange", render);
+primeiroAcessoTalvez();
 /* TOQUE DE NOVO NO ÍCONE DA BARRA (11 nov 2026): já estando numa seção, tocar outra vez no mesmo ícone volta ao começo dela,
    atualizado e no topo (como no Instagram e no X). Início: aba Tudo com as notícias recarregadas; Busca: sem busca nem tema;
    Comunidades: a página principal; Perfil: a aba Publicações. O Criar não entra. */
@@ -6961,7 +6985,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 22:03";
+const VERSAO = "v1 registrada · 17/11 22:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
