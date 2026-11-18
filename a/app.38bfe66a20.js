@@ -3506,7 +3506,7 @@ function orgMembrosHTML(o){ return mandatoNote(o, true) + `<div class="list two"
 const PESS_BUSCA = {};
 async function pessoaBusca(uid){ if (PESS_BUSCA[uid] !== undefined) return; PESS_BUSCA[uid] = null;
   if (ME.user && uid === ME.user.id && ME.perfil){ orgDaPessoa({id:uid, nome:ME.perfil.nome, verificado:ME.perfil.verificado}); PESS_BUSCA[uid] = true; return render(); }
-  try{ const {data} = await SB.from("perfis").select("id,nome,verificado").eq("id", uid).maybeSingle(); if (data){ orgDaPessoa(data); PESS_BUSCA[uid] = true; } else PESS_BUSCA[uid] = false; }catch(e){ PESS_BUSCA[uid] = false; }
+  try{ const {data} = await SB.from("perfis").select(ME.user ? "id,nome,verificado,bio" : "id,nome,verificado").eq("id", uid).maybeSingle(); if (data){ orgDaPessoa(data); PESS_BUSCA[uid] = true; } else PESS_BUSCA[uid] = false; }catch(e){ PESS_BUSCA[uid] = false; }
   if (route() === "org-u-" + uid) render(); }
 function screenOrg(id){
   const o = ORG[id];
@@ -5235,7 +5235,7 @@ const siglaDe = n => (n||"?").trim().split(/\s+/).map(w=>w.replace(/[^\p{L}\p{N}
 function orgDaPessoa(pf){ const id = "u-" + pf.id; pf = Object.assign({}, pf, {nome:limpo(pf.nome) || "Conta da rede", cidade:limpo(pf.cidade), bio:limpo(pf.bio)});
   if (!ORG[id]) ORG[id] = {id, nome:pf.nome, sigla:siglaDe(pf.nome), cidade:pf.cidade || "", tema:"", membros:0, real:true, pessoa:true, natureza:"conta na rede",
     cor:CORES_CONTA[parseInt(pf.id.replace(/-/g,"").slice(0,6),16) % CORES_CONTA.length], sobre:pf.bio || "", verificado:pf.verificado || null, daRedeConta:ehContaRede(pf.id)};
-  else Object.assign(ORG[id], {nome:pf.nome, sigla:siglaDe(pf.nome), cidade:pf.cidade || "", verificado:pf.verificado || null});
+  else Object.assign(ORG[id], {nome:pf.nome, sigla:siglaDe(pf.nome), cidade:pf.cidade || ORG[id].cidade || "", verificado:pf.verificado || null, sobre:pf.bio || ORG[id].sobre || ""});   /* 18/11: quem chega depois não apaga o "sobre" */
   return id; }
 function itemDaPublicacao(p){
   const id = "u" + p.id.replace(/-/g,""), ex = limpoObj(p.extra), criada = new Date(p.criada_em);
@@ -7946,7 +7946,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:18";
+const VERSAO = "v1 registrada · 18/11 19:20";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
