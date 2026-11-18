@@ -1448,8 +1448,26 @@ let FV = store.get("feedVistos", null) || {}, FV_T = null;
 function fvMarca(id){ id = String(id); if (FV[id]) return; FV[id] = Date.now(); clearTimeout(FV_T);
   FV_T = setTimeout(()=>{ const lim = Date.now() - 14*864e5; FV = Object.fromEntries(Object.entries(FV).filter(([, t])=>t > lim).sort((a,b)=>b[1]-a[1]).slice(0, 3000)); store.set("feedVistos", FV); }, 800); }
 const fvAntes = it => { const t = FV[String(it.id)]; return !!t && t < sessionStart; };
-function fvOrdena(l){ const novos = [], vistos = []; l.forEach(it=>(it.anuncio || !fvAntes(it) ? novos : vistos).push(it));
-  return novos.concat(vistos.sort((a,b)=>(a.min || 0) - (b.min || 0))); }   /* 18/11 (Amanda): o já visto vem do mais novo ao mais antigo (antes: o visto há mais tempo primeiro, sempre as mesmas no topo) */
+/* 18/11 (Amanda): "visto" é o cartão que ficou pelo menos 1 segundo na tela, metade dele à vista. Conta também em quantas visitas apareceu. */
+let FVV = store.get("feedVisitas", null) || {}, FVV_T = null;
+function fvVisita(id){ id = String(id); const r = FVV[id] || {n:0, s:0}; if (r.s === sessionStart) return; r.n++; r.s = sessionStart; FVV[id] = r; clearTimeout(FVV_T);
+  FVV_T = setTimeout(()=>{ FVV = Object.fromEntries(Object.entries(FVV).filter(([k])=>FV[k]).slice(-3000)); store.set("feedVisitas", FVV); }, 900); }
+const FV_OBS = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(es=>es.forEach(e=>{ const el = e.target, uid = el.dataset.uid || "";
+  if (e.isIntersecting){ if (!el._fvt) el._fvt = setTimeout(()=>{ const id = uid.replace(/-\d+$/, ""); fvMarca(id); fvVisita(id); FV_OBS.unobserve(el); }, 1000); }
+  else { clearTimeout(el._fvt); el._fvt = null; } }), {threshold:0.5}) : null;
+function fvVigia(){ if (!FV_OBS) return; $$("#feed [data-uid]:not([data-fvo])").forEach(el=>{ if (el.closest("[data-uid][data-fvo]") && el.closest("[data-uid][data-fvo]") !== el) return; el.dataset.fvo = "1"; FV_OBS.observe(el); }); }
+/* quantas visitas anteriores viram o cartão (as marcas antigas, sem contagem, valem uma) */
+const fvPrevias = it => { const r = FVV[String(it.id)]; if (!r) return fvAntes(it) ? 1 : 0; return r.s === sessionStart ? r.n - 1 : r.n; };
+const fvSegue = it => !!it.conta && !!S.follow && S.follow.has(it.org);
+const FV_JANELA_SEGUE = 6 * 60;
+function fvOrdena(l){ const novos = [], vistosSeg = [], vistos = [], velhos = [];
+  l.forEach(it=>{ if (it.anuncio) return novos.push(it); const p = fvPrevias(it), seg = fvSegue(it);
+    if (seg ? p >= 2 : p >= 1) return (seg ? vistosSeg : vistos).push(it);
+    ((it.min || 0) <= FV_JANELA ? novos : velhos).push(it); });
+  const ord = x => x.sort((a,b)=>(a.min || 0) - (b.min || 0)), k = novos.findIndex(it=>!it.anuncio && (it.min || 0) > FV_JANELA_SEGUE), pos = k < 0 ? novos.length : k;
+  /* 18/11 (Amanda): de quem você segue, a publicação só desce na 2ª visita depois de vista, e desce menos: fica logo depois das novidades das últimas 6 horas */
+  return novos.slice(0, pos).concat(ord(vistosSeg), novos.slice(pos), ord(vistos), velhos); }   /* 18/11 (Amanda): o já visto desce só até depois das novidades das últimas 24 horas (antes: ia para o fim do feed) */
+const FV_JANELA = 24 * 60;   /* 18/11 (Amanda): o já visto vem do mais novo ao mais antigo (antes: o visto há mais tempo primeiro, sempre as mesmas no topo) */
 /* Publicações: um exemplo de cada tipo de conteúdo, trocando de exemplo a cada dia, espalhado no meio do que é verdadeiro */
 function exemplosPorTipo(fl){ const por = {}, dia = Math.floor(Date.now() / 864e5);
   POOL.filter(it=>ehExemplo(it) && !generica(it) && passa(it, fl)).sort((a,b)=>a.min - b.min).forEach(it=>{ (por[it.tipo] = por[it.tipo] || []).push(it); });
@@ -1921,11 +1939,11 @@ function more(n=10){
     const base = src[F.cursor % src.length], round = Math.floor(F.cursor/src.length);
     const g = acessoFeed(base); if (g){ F.gate = g; F.ended = true; break; }
     const it = Object.assign(withUid(base, round), {min: base.min + round*2880});
-    F.items.push(it); F.grid.add(it); F.cursor++; if (!base.anuncio){ F.vistos++; fvMarca(base.id); }
+    F.items.push(it); F.grid.add(it); F.cursor++; if (!base.anuncio) F.vistos++;   /* 18/11: visto só depois de 1 s na tela (fvVigia) */
     if (S.pausas && F.cursor % PAUSE_EVERY===0){ F.paused = true; break; }
   }
   if (F.grid.flush) F.grid.flush(F.paused || F.ended);
-  renderStop(); vidCabe();
+  renderStop(); vidCabe(); fvVigia();
   requestAnimationFrame(fillViewport);
 }
 /* se a tela ainda não encheu (sentinela visível), carrega mais sem esperar a rolagem */
@@ -2445,12 +2463,12 @@ const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status =
 const pgPerfilHTML = uid => { const l = paginasDoPerfil(uid); return l.length ? `<p style="margin-top:6px">${l.length === 1 ? "Página" : "Páginas"}</p><div class="pgperfil">${l.map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a href="#pg-${p.id}">${avatar(o)}<span>${esc(o.nome)}</span></a>`; }).join("")}</div>` : ""; };
 function sheetPgPerfil(){ const l = minhasPaginas("aprovada");
   openSheet(shead("Páginas no seu perfil") + `<p class="lnote osub">Escolha quais das suas páginas aparecem no seu perfil pessoal. Mostrando ou não, você continua como a pessoa responsável por elas.</p>`
-    + (l.length ? `<div class="list">${l.map(p=>`<div class="setting l1"><span class="t"><b>${esc(limpo(p.nome))}</b><small>${p.tipo === "empresa" ? "Negócio ou loja" : "Página pessoal"}</small></span><button class="switch" type="button" role="switch" data-act="pgperfil" data-id="${p.id}" aria-checked="${!!p.no_perfil}" aria-label="Mostrar ${esc(limpo(p.nome))} no perfil"></button></div>`).join("")}</div>`
+    + (l.length ? `<div class="list">${l.map(p=>`<div class="setting l1"><span class="t"><b>${esc(limpo(p.nome))}</b><small>${ehContaRede(p.dono) ? "Página oficial" : p.tipo === "empresa" ? "Negócio ou loja" : "Página pessoal"}</small></span><button class="switch" type="button" role="switch" data-act="pgperfil" data-id="${p.id}" aria-checked="${!!p.no_perfil}" aria-label="Mostrar ${esc(limpo(p.nome))} no perfil"></button></div>`).join("")}</div>`
       : `<p class="empty">Você ainda não tem página no ar. Crie uma em Comunidades › Páginas.</p>`), "Páginas no seu perfil"); }
 const minhasPaginas = (so) => ME.user ? PAGS.lista.filter(p=>p.dono === ME.user.id && (!so || p.status === so)) : [];
 const PG_SIT = {pendente:["esperando a curadoria","warn"], aprovada:["no ar","ok"], recusada:["não aprovada","bad"], suspensa:["suspensa","bad"]};
 function pgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, f = S.follow.has(id), meu = ME.user && p.dono === ME.user.id;
-  const meta = [p.tipo === "empresa" ? "Comercial" : "Pessoal", o.cidade].filter(Boolean).join(" · ");
+  const meta = [tipoNome(p), o.cidade].filter(Boolean).join(" · ");
   const acao = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>`
     : p.status === "aprovada" ? `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>` : "";
   return `<article class="pgcard"><a class="pglink" href="#${id}" aria-label="Abrir a página ${esc(o.nome)}">${avatar(o)}<span class="t"><b>${esc(o.nome)}${o.cnpj ? `<span class="cnpjselo cnpjp" title="CNPJ conferido pela curadoria" aria-label="CNPJ conferido">${ic("predio","sm")}CNPJ</span>` : ""}</b><small>${esc(meta)}</small>${o.sobre ? `<span class="pgdesc">${esc(o.sobre)}</span>` : ""}</span></a>${acao ? `<span class="pgacao">${acao}</span>` : ""}</article>`; }
@@ -2458,7 +2476,7 @@ function pgOrgCard(p){ const id = "pg-" + p.id, o = ORG[id] || {}, h = cmnHash(i
   if (tatDe(p)) return tatCard(p, o, h, f, meu);
   const pe = meu ? `<span class="pgsit ${PG_SIT[p.status][1]}">${PG_SIT[p.status][0]}</span>` : f ? `<span class="cmnsim">${ic("check","sm")} Você segue</span>` : "";
   return `<a class="cmncard kp ${orgAlt(h)}" href="#${id}"><span class="cmncapa" aria-hidden="true">${p.capa ? capaHTML(p.capa, h) : art({id:h, art:["arcs","circles","stripes","grid","blocks"][h % 5]}, .3, false)}</span><span class="cmntag">${o.ficticia ? EXTAG : ""}<span class="pgtag">${ic("doc","sm")}Página</span></span>${avatar(o)}
-    <span class="ktipo">${p.tipo === "empresa" ? "Comercial" : "Pessoal"}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc(o.cidade || "")}</span>${o.sobre ? `<span class="cmnsobre">${esc(o.sobre)}</span>` : ""}
+    <span class="ktipo">${tipoNome(p)}</span><b>${esc(o.nome || "")}</b><span class="cmnmeta">${esc(o.cidade || "")}</span>${o.sobre ? `<span class="cmnsobre">${esc(o.sobre)}</span>` : ""}
     <span class="cmnpe2"><span>${o.cnpj ? `<span class="cnpjselo cnpjp" style="margin:0 4px 0 0">${ic("predio","sm")}CNPJ</span>conferido` : "Responsável verificada"}</span>${pe}</span></a>`; }
 /* ===== TATUAGEM (14/11): primeiro nicho das Páginas. Ideias do Ink Creators, simplificadas.
    Página de tatuador ou estúdio = página comum + ficha de tatuagem (estilos, preço) + reputação que vem de fatos:
@@ -2474,7 +2492,8 @@ const MODELOS = {
   artesanato:{nome:"Artesanato e produtos", ic:"bookmark", desc:"Loja com seus produtos no Mercado e encomendas personalizadas.", mods:["loja","orcamento"], esp:["Cerâmica","Bordado","Crochê","Joias","Papelaria","Madeira","Couro","Velas","Sabonetes","Pintura","Costura","Reciclados"], espRot:"O que você faz", papeis:["Artesão","Ateliê"], tab:"caneca personalizada"},
   escrita:{nome:"Escrita", ic:"doc", desc:"Crônica, conto, poesia, coluna. O feed mostra o texto primeiro, em cartões.", mods:[], esp:["Crônica","Conto","Poesia","Coluna","Ensaio","Reportagem"], espRot:"Gêneros", papeis:null, tab:"", feed:"texto", aba:"Textos"},
   negocio:{nome:"Outro negócio", ic:"globe", desc:"Loja ou serviço: você liga os módulos que quiser depois.", mods:["loja"], esp:[], espRot:"Especialidades", papeis:null, tab:"serviço"},
-  pessoal:{nome:"Pessoal", ic:"pessoa", desc:"Projeto, coluna, hobby, fotos da família. Sem loja.", mods:[], esp:[], espRot:"", papeis:null, tab:""}};
+  conteudo:{nome:"Conteúdo", ic:"doc", desc:"Projeto, coletivo, veículo ou instituição. Publicações e portfólio, sem loja.", mods:[], esp:[], espRot:"", papeis:null, tab:"", criador:true},   /* 18/11 (Amanda) */
+  pessoal:{nome:"Pessoal", ic:"pessoa", desc:"Coluna, hobby, fotos da família. Sem loja.", mods:[], esp:[], espRot:"", papeis:null, tab:"", criador:true}};
 const MODULOS = [["loja","Loja","Vitrine com preços, que também aparece no Mercado. A compra é combinada direto com você, fora da rede."],
   ["orcamento","Orçamento","Pedidos pela tabela de preços ou personalizados. Cada pedido abre uma conversa."],
   ["agenda","Agenda","Sessões marcadas na conversa e check-in por QR, que geram os atendimentos verificados."],
@@ -2487,7 +2506,8 @@ const mod = (p, m) => modsDe(p).includes(m);
 /* 15/11: o portfólio é feito de fotos (grade quadrada, como num portfólio de imagens). O feed de cartões com texto fica para as páginas de Escrita. */
 const feedDe = p => (MODELOS[modeloDe(p)] || {}).feed || "fotos";
 
-const tipoNome = p => { const f = fichaDe(p); if (!f) return p.tipo === "empresa" ? "Comercial" : "Pessoal"; const M = MODELOS[modeloDe(p)]; return M.nome + (f.papel === "estudio" && M.papeis ? " · " + M.papeis[1] : ""); };
+const tipoNome = p => { if (p && ehContaRede(p.dono)) return "Oficial";   /* 18/11 (Amanda): páginas da conta oficial */
+  const f = fichaDe(p); if (!f) return p.tipo === "empresa" ? "Comercial" : "Pessoal"; const M = MODELOS[modeloDe(p)]; return M.nome + (f.papel === "estudio" && M.papeis ? " · " + M.papeis[1] : ""); };
 async function tatCarrega(){ if (!SB) return; try{
   const [a, b, c] = await Promise.all([SB.from("pagina_tatuagem").select("pagina_id,modelo,modulos,papel,estilos,preco,preco_un,orc_tabela,orc_ref,tabela,agenda_aberta"), SB.rpc("tat_reputacao"), SB.from("pagina_equipe").select("estudio_id,tatuador_id,aceito_estudio,aceito_tatuador")]);
   TAT.fich = {}; (a.data || []).forEach(r=>{ TAT.fich[r.pagina_id] = r; });
@@ -2882,7 +2902,7 @@ function sheetSeloComo(k){ const pg = route().startsWith("pg-") ? PAGS.lista.fin
 function tatFichaCampos(p, md0){ const f = (p && fichaDe(p)) || {}, md = md0 || modeloDe(p), M = MODELOS[md], ms = md0 ? M.mods.concat(f.papel === "estudio" ? ["equipe"] : []) : modsDe(p);
   const sw = ([k, n, d]) => `<div class="orow"><span class="ot"><b>${n}</b><small>${d}</small></span><button class="switch" type="button" role="switch" data-act="modliga" data-mod="${k}" aria-checked="${ms.includes(k)}" aria-label="${n}"></button></div>`;
   return `<fieldset class="rorig tatficha"><legend>Tipo e módulos</legend>
-    <div class="field"><label for="pgmod">Tipo de página</label><select id="pgmod">${Object.entries(MODELOS).filter(([k])=>p.tipo === "criador" ? k === "pessoal" : k !== "pessoal").map(([k, X])=>`<option value="${k}"${k === md ? " selected" : ""}>${X.nome}</option>`).join("")}</select></div>
+    <div class="field"><label for="pgmod">Tipo de página</label><select id="pgmod">${Object.entries(MODELOS).filter(([k, X])=>p.tipo === "criador" ? !!X.criador : !X.criador).map(([k, X])=>`<option value="${k}"${k === md ? " selected" : ""}>${X.nome}</option>`).join("")}</select></div>
     ${M.papeis ? `<div class="seg" role="radiogroup" aria-label="Quem é"><label><input type="radio" name="tatpapel" value="tatuador"${f.papel !== "estudio" ? " checked" : ""}><span>${M.papeis[0]}</span></label><label><input type="radio" name="tatpapel" value="estudio"${f.papel === "estudio" ? " checked" : ""}><span>${M.papeis[1]}</span></label></div>` : ""}
     ${M.esp.length ? `<p class="olbl" style="margin-top:10px">${M.espRot} <small>até 4</small></p><div class="chips tatpick">${M.esp.map(e=>`<button class="chip" type="button" data-act="tatestilo" aria-pressed="${md0 ? false : (f.estilos || []).includes(e)}">${esc(e)}</button>`).join("")}</div>` : ""}
     ${p.tipo === "criador" ? "" : `<div class="row" style="gap:10px;margin-top:10px;align-items:flex-end"><div class="field" style="flex:1"><label for="tatpreco">Faixa de preço</label><select id="tatpreco"><option value="">Não mostrar</option>${[1,2,3,4].map(n=>`<option value="${n}"${f.preco === n ? " selected" : ""}>${"$".repeat(n)}</option>`).join("")}</select></div>
@@ -2948,7 +2968,7 @@ function capaHTML(v, seed){ if (/^(data:image\/|https:\/\/)/.test(v || "")) retu
 const topoLugar = (tag, acoes, cls, semVolta) => `<div class="lugtopo${cls ? " " + cls : ""}">${semVolta ? "" : `<button class="iconbtn${cls ? " solid" : ""} lugvolta" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button>`}${tag || ""}<span class="phacoes">${acoes || ""}</span></div>`;
 const capaTopo = (v, seed, edita, sobre, tag, acoes) => `<div class="orghero${sobre ? " comsobre" : ""}">${capaHTML(v, seed)}${sobre ? `<div class="capasobre"><div class="container capasobrein">${sobre}</div></div><div class="capatopo"><div class="container">${topoLugar(tag, acoes, "nacapa")}</div></div>` : `<button class="iconbtn solid" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button>`}${edita ? `<button class="iconbtn solid capaedit" type="button" data-act="capaedita" data-alvo="${esc(edita)}" aria-label="Trocar a capa" title="Trocar a capa">${ic("lapis")}</button>` : ""}</div>`;
 function sheetCapa(alvo){ const op = []; CAPAS.forEach((t, i)=>[3, 11].forEach(n=>op.push(`art:${t}:${n + i}`)));
-  openSheet(shead("Capa") + `<p class="lnote osub">A capa aparece no alto ${alvo.startsWith("pg:") ? "da página" : "da comunidade"} e nos cartões de Organizações. Ela ajuda a reconhecer o espaço: perfil de pessoa não tem capa.</p>
+  openSheet(shead("Capa") + `<p class="lnote osub">${alvo.startsWith("eu:") ? "A capa aparece no alto do seu perfil." : `A capa aparece no alto ${alvo.startsWith("pg:") ? "da página" : "da comunidade"} e nos cartões de Organizações. Ela ajuda a reconhecer o espaço.`}</p>
     <div class="capagrid">${op.map(v=>`<button class="capaop" type="button" data-act="capaescolhe" data-alvo="${esc(alvo)}" data-v="${v}" aria-label="Capa de desenho">${capaHTML(v, 1)}</button>`).join("")}</div>
     <label class="btn ghost block capaup" style="margin-top:12px">${ic("plus","sm")} Enviar uma foto<input type="file" accept="image/jpeg,image/png,image/webp" id="capafile" hidden></label>
     <p class="lnote">Use uma foto sua ou que você tenha direito de usar. Ela fica larga e baixa: o melhor é uma imagem deitada.</p>`, "Capa");
@@ -2965,6 +2985,10 @@ async function capaGrava(alvo, v){ const [k, id] = alvo.split(/:(.+)/);
   if (k === "pg"){ try{ v = await midiaSobe(v, "capa"); }catch(e){ return toast(erroAuth(e)); }
     const {error} = await SB.rpc("pagina_capa", {p_id:id, p_capa:v}); if (error) return toast(erroAuth(error)); const p = PAGS.lista.find(x=>x.id === id); if (p) p.capa = v; }
   else if (k === "cmn"){ const c = cmnDe(id); if (!c) return; c.capa = v; store.set("comunidades", CMNS); }
+  else if (k === "eu"){ try{ v = await midiaSobe(v, "capa"); }catch(e){ return toast(erroAuth(e)); }   /* 18/11 (Amanda): a pessoa escolhe a capa do perfil */
+    const antiga = ME.perfil && ME.perfil.capa, {error} = await SB.rpc("perfil_capa", {p_capa:v}); if (error) return toast(erroAuth(error));
+    if (ME.perfil) ME.perfil.capa = v; if (PESS_VIT[id]) PESS_VIT[id].capa = v;
+    const m = /\/midia\/(.+)$/.exec(antiga || ""); if (m && m[1] !== (/\/midia\/(.+)$/.exec(v) || [])[1] && m[1].startsWith(ME.user.id + "/")) SB.storage.from("midia").remove([decodeURIComponent(m[1])]).catch(()=>{}); }
   closeSheet(); toast("Capa trocada."); render(); }
 function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.find(x=>x.id === pid);
   if (!o || !p) return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Página</h1></div>`) + `<div class="container"><p class="empty">${PAGS.carregou ? "Esta página não existe ou não está no ar." : "Carregando…"}</p></div>`;
@@ -3077,7 +3101,7 @@ function sheetPaginaNova(){
     <a class="btn primary block" href="#conta" data-act="close" style="margin-top:12px">Verificar minha conta</a>`, "Criar página");
   if (!S.pgModelo) return openSheet(shead("Criar página") + `<p class="lnote osub">Que tipo de página? O tipo já liga os módulos certos para começar. Depois você liga e desliga o que quiser em Editar página.</p>
     <div class="list modelos">${Object.entries(MODELOS).map(([k, M])=>`<button class="setting l1 modelo" type="button" data-act="pgmodelo" data-m="${k}">${ic(M.ic)}<span class="t"><b>${M.nome}</b><small>${M.desc}</small>${M.mods.length ? `<span class="modchips">${M.mods.map(m=>`<i>${MODULOS.find(x=>x[0] === m)[1]}</i>`).join("")}</span>` : ""}</span></button>`).join("")}</div>`, "Criar página");
-  const M = MODELOS[S.pgModelo], emp0 = S.pgModelo !== "pessoal";
+  const M = MODELOS[S.pgModelo], emp0 = !M.criador;
   const temas = TEMAS_LISTA.map(t=>`<option>${esc(t)}</option>`).join("");
   openSheet(shead("Criar página") + `<button class="linkbtn" type="button" data-act="pgmodelo" data-m="" style="margin-bottom:6px">Tipo: <b>${M.nome}</b> · trocar</button>
     <p class="lnote osub">Cada conta pode ter até 2 páginas. Ela fica registrada na sua conta verificada: você responde pelo que ela publica, como em qualquer espaço da rede.</p>
@@ -3093,8 +3117,8 @@ function sheetPaginaNova(){
     <details class="decl"><summary><b>Declaração de responsabilidade</b>${ic("chev","sm")}</summary><p>${esc(DECL_PAGINA)}</p></details>
     <label class="chk"><input type="checkbox" id="pgdecl" required><span>Li e aceito a declaração. Meu nome aparece na página como responsável.</span></label>
     <p class="ferr" role="alert" hidden></p>
-    <button class="btn primary block" type="button" data-act="paginacria" data-trava>Enviar para a curadoria</button>
-    <p class="lnote" style="margin-top:8px">A curadoria confere antes de a página ir ao ar e avisa você no sino.</p>`, "Criar página");
+    <button class="btn primary block" type="button" data-act="paginacria" data-trava>${CFG.paginas_curadoria === false ? "Criar página" : "Enviar para a curadoria"}</button>
+    <p class="lnote" style="margin-top:8px">${CFG.paginas_curadoria === false ? "A página vai ao ar na hora. A curadoria acompanha as páginas." : "A curadoria confere antes de a página ir ao ar e avisa você no sino."}</p>`, "Criar página");
   $("#pgcnpjbox").hidden = !emp0; }
 /* 18/11 (Amanda): domínio próprio da página. Quem tem a página compra o domínio (a rede nunca compra nem cobra) e pede aqui;
    a administração conduz a ativação pelo painel e responde por notificação e e-mail. Ainda feito um a um. */
@@ -3110,8 +3134,8 @@ async function sheetPgDominio(pid){ if (PG_DOM[pid] === undefined) await pgDomin
       <button class="btn primary block" type="button" data-act="pgdompede" data-p="${pid}">Pedir domínio</button></div>`), "Domínio próprio"); }
 function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p) return; const o = ORG["pg-" + pid], v = x => esc(x || "");
   const temas = TEMAS_LISTA.map(t=>`<option${t === p.tema ? " selected" : ""}>${esc(t)}</option>`).join("");
-  openSheet(shead("Editar página") + `<div class="pilltabs" role="tablist" aria-label="Partes da página">${[["perfil","Perfil"],["negocio","Negócio"],["servicos","Serviços"]].map(([k, n], i)=>`<button class="ptab" type="button" role="tab" data-edsec="${k}" aria-selected="${!i}">${n}</button>`).join("")}</div>
-    <div data-sec="perfil"><p class="lnote osub">O nome não muda. Para trocar, fale com a curadoria em contato@arede.online.</p>
+  openSheet(shead("Editar página") + `<div class="pilltabs" role="tablist" aria-label="Partes da página">${[["perfil","Perfil"], p.tipo === "empresa" ? ["negocio","Negócio"] : null, ["servicos","Serviços"]].filter(Boolean).map(([k, n], i)=>`<button class="ptab" type="button" role="tab" data-edsec="${k}" aria-selected="${!i}">${n}</button>`).join("")}</div>
+    <div class="edpg"><div data-sec="perfil"><p class="lnote osub">O nome não muda. Para trocar, fale com a curadoria em contato@arede.online.</p>
     <input id="pgfotoin" type="file" accept="image/*" data-id="${pid}" hidden><div class="setting l1 pgfotolin" style="margin-bottom:8px">${p.foto && fotoUrl(p.foto) ? `<span class="av comfoto" aria-hidden="true">${fotoImg(p.foto)}</span>` : avatar(o || {cor:"#555", sigla:"?"})}<span class="t"><b>Foto da página</b><small>Logo ou imagem quadrada</small></span><span class="pgfotobts"><button class="linkbtn" type="button" data-act="pgfoto">${p.foto ? "Trocar" : "Pôr foto"}</button>${p.foto ? `<button class="linkbtn" type="button" data-act="pgfototira" data-id="${pid}">Tirar</button>` : ""}</span></div>
     <button class="setting l1" type="button" data-act="capaedita" data-alvo="pg:${pid}" style="width:100%;margin-bottom:12px">${ic("lapis")}<span class="t"><b>Capa</b><small>Trocar a imagem do alto da página</small></span>${ic("back","sm flip")}</button>
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3">${v(p.descricao)}</textarea></div>
@@ -3120,11 +3144,11 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
     <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div>
     <div class="field"><label for="pgusu">Endereço da página</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pgusu" type="text" maxlength="30" autocapitalize="none" spellcheck="false" value="${v(p.usuario)}" aria-describedby="pgusudica"></div><small id="pgusudica" class="hint">arede.online/#@${v(p.usuario || "nome")}</small></div>
     <button class="setting l1" type="button" data-act="pgdominio" data-id="${pid}" style="width:100%">${ic("globe")}<span class="t"><b>Domínio próprio</b><small>Um endereço seu, como www.seunegocio.com.br</small></span>${ic("back","sm flip")}</button></div>
-    <div data-sec="negocio" hidden>${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
+    ${p.tipo === "empresa" ? `<div data-sec="negocio" hidden>` : `<div hidden>`}${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
     ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}</div>
     <div data-sec="servicos" hidden>${tatFichaCampos(p)}</div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="paginasalva" data-id="${pid}">Salvar</button>
-    <button class="btn ghost block perigo" type="button" data-act="pgapaga" data-id="${pid}" style="margin-top:10px">${ic("trash","sm")} Apagar página</button>`, "Editar página"); tatFichaLiga();
+    <button class="btn ghost block perigo" type="button" data-act="pgapaga" data-id="${pid}">${ic("trash","sm")} Apagar página</button></div>`, "Editar página"); tatFichaLiga();
   $$("[data-edsec]").forEach(b=>b.addEventListener("click", ()=>{ $$("[data-edsec]").forEach(x=>x.setAttribute("aria-selected", x === b)); $$("[data-sec]").forEach(d=>d.hidden = d.dataset.sec !== b.dataset.edsec); })); }
 /* 18/11 (Amanda): a dona apaga a própria página. Leva tudo junto e não dá para desfazer; atendimentos marcados precisam ser encerrados antes. */
 async function sheetPaginaApaga(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p || !SB) return;
@@ -3613,7 +3637,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[[pf && pf.usuario ? "@" + esc(pf.usuario) : "", pf && pf.cidade ? esc(pf.cidade) : ""].filter(Boolean).join(" · ")], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto), pf && pf.capa) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[[pf && pf.usuario ? "@" + esc(pf.usuario) : "", pf && pf.cidade ? esc(pf.cidade) : ""].filter(Boolean).join(" · ")], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -3943,14 +3967,14 @@ const PGFOTO_RE = /^[0-9a-f-]{36}\/pgfoto-[a-z0-9]{4,20}\.(webp|jpg)$/;   /* 18/
 const fotoUrl = path => path && (FOTO_RE.test(path) || PGFOTO_RE.test(path)) && SB ? (SB.storage.from("midia").getPublicUrl(path).data || {}).publicUrl || "" : "";
 const fotoImg = path => { const u = fotoUrl(path); return u ? `<img class="pfoto" src="${esc(u)}" alt="" loading="lazy" decoding="async">` : ""; };
 const pessoaAv = (nome, cor, foto) => `<span class="phav redondo${foto && fotoUrl(foto) ? " comfoto" : ""}" style="background:${cor || "#555"};color:#fff" aria-hidden="true">${fotoImg(foto) || esc(siglaDe(nome || "?"))}</span>`;
-const capaSo = (seed, av) => `<div class="orghero comsobre">${capaHTML(null, seed)}<div class="capasobre"><div class="container capasobrein">${av}</div></div></div>`;   /* 17/11: perfis com o mesmo topo das páginas e comunidades */
+const capaSo = (seed, av, capa) => `<div class="orghero comsobre">${capaHTML(capa || null, seed)}<div class="capasobre"><div class="container capasobrein">${av}</div></div></div>`;   /* 17/11: perfis com o mesmo topo das páginas e comunidades */
 /* 14/11: no seu próprio perfil e na prévia, a etiqueta diz se o perfil é público ou privado (só você vê isso). Na prévia ela abre o que aparece e o que nunca aparece. */
 const perfilTag = bt => { const t = "Perfil " + (S.publico ? "público" : "privado"), i = ic(S.publico ? "cadaberto" : "lock","sm");
   return bt ? `<button class="ktipo lugar perfil lugarbt" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="${t}: ver o que aparece">${i}${t}</button>` : `<span class="ktipo lugar perfil">${i}${t}</span>`; };
 const pgChips = uid => paginasDoPerfil(uid).map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a class="chip" href="#pg-${p.id}">${avatar(o)}${esc(o.nome)}</a>`; }).join("");
 function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu = ME.user && ME.user.id === uid;
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
-  return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor, (PESS_VIT[uid] || {}).foto)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
+  return capaTopo((PESS_VIT[uid] || {}).capa || null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor, (PESS_VIT[uid] || {}).foto)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
     + `<div class="container">${(()=>{ const vt = PESS_VIT[uid] || (pessVitCarrega(uid), {}), pfv = {nome:o.nome, colaborador:vt.colaborador, selos:vt.selos};
         const chips = (vt.interesses || []).map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (vt.comunidades || []).map(n=>`<span class="chip static">${ic("people","sm")}${esc(n)}</span>`).join("") + pgChips(uid);
         return pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, selo:seloResumo(pfv, uid), linhas:[[vt.usuario ? "@" + esc(vt.usuario) : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")], bio:o.sobre, chips}); })()}
@@ -3995,7 +4019,7 @@ function pessPastasHTML(uid){ const l = PESS_PASTAS[uid]; if (!l){ pessPastasCar
 function screenPublic(){
   const orgs = ORGS.filter(o=>S.follow.has(o.id));
   const pf0 = (ME.user && ME.perfil) || {};
-  return capaTopo(null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null, pf0.foto)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
+  return capaTopo(pf0.capa || null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null, pf0.foto)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
   + `<div class="container">
     ${(()=>{ const pf = (ME.user && ME.perfil) || {nome:"Você"}, vis = `<button class="phvis" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="Perfil ${S.publico ? "público" : "privado"}: ver o que aparece" title="Perfil ${S.publico ? "público" : "privado"}">${ic(S.publico ? "cadaberto" : "lock","sm")}</button>`;
       const chips = (S.publico ? S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") : "") + (ME.user ? pgChips(ME.user.id) : "");
@@ -4979,8 +5003,9 @@ function mockSB(o = {}){
       if (tab("perfis").some(x=>x.usuario === u && x.id !== eu())) throw {message:"valor: esse nome já está em uso"}; pf.usuario = u; salva(); return u; },
     perfil_por_usuario:({p_usuario})=>(tab("perfis").find(x=>x.usuario === String(p_usuario || "").toLowerCase()) || {}).id || null,
     perfil_foto_define:({p_path})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; const ant = pf.foto || null; pf.foto = p_path || null; salva(); return ant; },
+    perfil_capa:({p_capa})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; pf.capa = p_capa || null; salva(); return null; },
     perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
-      return {foto:pf.foto || null, usuario:pf.usuario || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
+      return {foto:pf.foto || null, capa:pf.capa || null, usuario:pf.usuario || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
       if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
       const ab = Object.fromEntries(sec.filter(x=>x && x.aberta === true && Array.isArray(x.pastas)).map(x=>[x.id, x.pastas])), secr = ps.filter(f=>Array.isArray(f) && f[3] === true).map(f=>f[0]);
@@ -5228,12 +5253,14 @@ const PRIO = {}, PRIO_HORAS = 6;
 const prioDe = it => it.conta && it.autorId ? (PRIO[it.autorId] || 0) : 0;
 async function prioridadesCarrega(ids){ const falta = [...new Set(ids)].filter(Boolean); if (!SB || !falta.length) return;
   try{ const r = await SB.rpc("prioridades", {p_autores:falta}); if (!r.error && r.data){ falta.forEach(id=>{ PRIO[id] = r.data[id] || 0; }); } }catch(e){} }
+let PUB_TENTA = 0;
 async function publicacoesCarrega(){ if (!SB) return;
   /* 16/11 (Amanda): perfis só para quem tem conta. Visitante recebe só nome e selo do autor; com conta, também o texto sobre a pessoa
      e a cidade, se ela escolheu mostrar (cidade_publica). O servidor recusa o resto. */
   const AUTOR = ME.user ? "perfis(id, nome, cidade_publica, bio, verificado)" : "perfis(id, nome, verificado)";
   const {data, error} = await SB.from("publicacoes").select(`*, ${AUTOR}, paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)`).order("criada_em", {ascending:false}).limit(200);
-  if (error || !data) return;
+  if (error || !data){ PUB_TENTA = (PUB_TENTA || 0) + 1; if (PUB_TENTA <= 4) setTimeout(publicacoesCarrega, 1500 * PUB_TENTA); return; }   /* 18/11: falha passageira do servidor não deixa a página vazia até recarregar */
+  PUB_TENTA = 0;
   data.forEach(p=>{ if (p.perfis){ p.perfis.cidade = p.perfis.cidade_publica || ""; p.perfis.bio = p.perfis.bio || ""; } });
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].conta) POOL.splice(i, 1);
   let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
@@ -6201,6 +6228,7 @@ function screenConta(){
     return topo + `<div class="container cform">${tabs}
       <div class="cme">${fotoUrl(pf.foto) ? `<span class="av pav comfoto" aria-hidden="true">${fotoImg(pf.foto)}</span>` : avatar({cor:comCor(ME.user.id), sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
       <div class="fotolin"><input id="pfotoin" type="file" accept="image/*" hidden>${pf.foto_em_analise ? `<p class="inota">${ic("info","sm")}<span>Sua foto está em análise pela moderação.</span></p>` : `<button class="linkbtn" type="button" data-act="fotoperfil">${pf.foto ? "Trocar foto" : "Pôr foto"}</button>${pf.foto ? `<button class="linkbtn" type="button" data-act="fototirap">Tirar foto</button>` : ""}`}</div>
+      <button class="setting l1" type="button" data-act="capaedita" data-alvo="eu:${ME.user.id}" style="width:100%">${ic("lapis")}<span class="t"><b>Capa</b><small>Trocar a imagem do alto do seu perfil</small></span>${ic("back","sm flip")}</button>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
       <div class="field"><label for="pusu">Nome de usuário</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pusu" type="text" maxlength="30" autocapitalize="none" autocomplete="username" spellcheck="false" value="${esc(pf.usuario || "")}" aria-describedby="pusudica"></div><small id="pusudica" class="hint">O endereço do seu perfil: arede.online/#@${esc(pf.usuario || "nome")}</small></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
@@ -6560,9 +6588,14 @@ function fotoComprime(file, max = 1440){ return new Promise((ok, no)=>{ const im
 const subtemaOps = (t, v) => `<option value="">—</option>` + (SUBTEMAS[t] || []).map(n=>`<option${n===v ? " selected" : ""}>${n}</option>`).join("");
 const TIPOS_REAIS = {texto:"Publicação", evento:"Evento", chamado:"Chamado", abaixo:"Abaixo-assinado"};
 const horaInput = h => { const m = String(h||"").match(/^(\d{1,2})h(\d{2})?$/); return m ? m[1].padStart(2,"0") + ":" + (m[2] || "00") : ""; };
+/* 18/11: "Publicando como" mostra a foto de quem publica (a conta ou a página escolhida) e acompanha a escolha */
+function comoNota(pid){ const pf = ME.perfil || {}, p = pid ? PAGS.lista.find(x=>x.id === pid) : null;
+  const av = p ? avatar(ORG["pg-" + p.id] || {cor:"#555", sigla:siglaDe(limpo(p.nome))}) : fotoUrl(pf.foto) ? `<span class="av comfoto" aria-hidden="true">${fotoImg(pf.foto)}</span>` : avatar({cor:"#141615", sigla:siglaDe(pf.nome), daRedeConta:ME.user && ehContaRede(ME.user.id)});
+  return `${av}<span>Publicando como <b>${esc(p ? limpo(p.nome) : (pf.nome || ME.user.email))}</b> · conta real. Fica visível para quem acessa a rede.</span>`; }
+document.addEventListener("change", e=>{ if (e.target && e.target.id === "rcomo"){ const n = $("#rcomonota"); if (n) n.innerHTML = comoNota(e.target.value); } });
 function sheetCriarReal(k, ed){ const nome = TIPOS_REAIS[k], pf = ME.perfil || {}, ex = (ed && ed.extra) || {}, v = x => esc(x == null ? "" : String(x));
   openSheet(shead(ed ? "Editar " + nome.toLowerCase() : nome) + (ed ? `<div class="note">${ic("lapis")}<span>Quem já viu a publicação passa a ver a versão nova, marcada como <b>editada</b>.</span></div>` : `
-    <div class="note">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)})}<span>Publicando como <b>${esc(pf.nome || ME.user.email)}</b> · conta real. Fica visível para quem acessa a rede.</span></div>
+    <div class="note" id="rcomonota">${comoNota((minhasPaginas("aprovada").find(p=>route() === "pg-" + p.id) || {}).id)}</div>
     ${minhasPaginas("aprovada").length ? `<div class="field"><label for="rcomo">Publicar como</label><select id="rcomo"><option value="">Você (${esc(pf.nome || "sua conta")})</option>${minhasPaginas("aprovada").map(p=>`<option value="${p.id}"${route() === "pg-" + p.id ? " selected" : ""}>Página: ${esc(limpo(p.nome))}</option>`).join("")}</select><small class="hint">Pela página, seu nome aparece como responsável pelo que for publicado.</small></div>` : ""}`) + `
     <div class="field"><label for="rtit">Título</label><input id="rtit" type="text" maxlength="140" value="${ed ? v(ed.titulo) : ""}" required minlength="3"></div>
     ${k==="evento" ? `<div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="rdata">Data</label><input id="rdata" type="date" min="${ed && ex.data && ex.data < new Date().toISOString().slice(0,10) ? ex.data : new Date().toISOString().slice(0,10)}" value="${v(ex.data)}"></div><div class="field" style="flex:1"><label for="rhora">Hora</label><input id="rhora" type="time" value="${horaInput(ex.hora)}"></div></div>
@@ -6969,7 +7002,7 @@ const A = {
     ocupado(b, true, "Salvando…");
     if (usu !== ((ME.perfil || {}).usuario || "")){ const r = await SB.rpc("perfil_usuario_define", {p_usuario:usu || null}); if (r.error){ ocupado(b, false); return formErro(msgErr(r.error)); } }
     const {error} = await SB.from("perfis").update({nome, cidade:$("#pcid").value.trim() || null, mostra_cidade:!!($("#pcidmostra") && $("#pcidmostra").checked), bio:$("#pbio").value.trim() || null}).eq("id", ME.user.id);
-    ocupado(b, false); if (error) return formErro(erroAuth(error)); formErro(""); await perfilCarrega(); await publicacoesCarrega(); toast("Perfil salvo."); render(); },
+    ocupado(b, false); if (error) return formErro(erroAuth(error)); formErro(""); await perfilCarrega(); await publicacoesCarrega(); navConta(); toast("Perfil salvo."); render(); },
   editarpub: b => { const it = findItem(b.dataset.uid); if (!podeEditar(it)) return; sheetCriarReal(it.raw.tipo, it.raw); },
   publicarreal: async b => { const ed = b.dataset.ed, velha = ed ? (POOL.find(x=>x.uuid===ed) || {}).raw : null, k = b.dataset.k, tit = $("#rtit").value.trim(), txt = $("#rtxt").value.trim(), f = $("#rfoto").files[0];
     if (tit.length < 3) return formErro("Escreva um título (pelo menos 3 letras).");
@@ -7902,7 +7935,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 18:46";
+const VERSAO = "v1 registrada · 18/11 19:10";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

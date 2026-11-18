@@ -2137,6 +2137,10 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .pdoff{opacity:.5}.pdck{width:20px;height:20px;accent-color:var(--accent);flex:none}
 .pvazio2{display:flex;align-items:center;gap:8px;margin:4px 0 8px;font-size:14px;color:var(--muted)}.pvazio2 .icon{flex:none;width:18px;height:18px}.pvazio2 a{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap}
 .pgfotolin{display:flex;align-items:center;gap:12px;width:100%}.pgfotolin > .av{width:48px;height:48px;border-radius:14px;flex:none}.pgfotobts{display:flex;gap:12px;flex:none}
+input[type=file]:not([hidden]){font:inherit;font-size:var(--fs-sm);color:var(--muted);max-width:100%;min-height:44px}
+input[type=file]::file-selector-button{font:inherit;font-size:var(--fs-sm);font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:10px 16px;margin:0 10px 0 0;min-height:44px;cursor:pointer}
+input[type=file]::file-selector-button:hover{border-color:var(--muted)}
+.edpg,.edpg > [data-sec]{display:flex;flex-direction:column;gap:14px}.edpg{padding-top:14px}.edpg > [hidden]{display:none}.edpg .setting.l1{margin:0!important}.edpg .btn.perigo{margin-top:-4px}   /* 18/11 (Amanda): Editar página com o mesmo respiro dos outros formulários */
 .comfoto{overflow:hidden;padding:0}.comfoto .pfoto,.pfoto{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}.navme.comfoto{background:none}
 .fotolin{display:flex;gap:18px;margin:-4px 0 14px 60px}.fotolin .linkbtn{color:var(--accent);padding:0;min-height:40px}
 .usucampo{display:flex;align-items:center;min-height:48px;border-radius:var(--r-sm);background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line)}.usucampo span{padding:0 2px 0 12px;color:var(--muted);font-size:16px}.usucampo input{flex:1;min-width:0;box-shadow:none !important;background:none !important;padding-left:2px !important}
