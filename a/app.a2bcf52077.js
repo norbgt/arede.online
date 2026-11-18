@@ -418,7 +418,7 @@ REAL.itens.forEach(r=>{
 /* SELO DE PERFIL VERIFICADO (9 nov 2026): diz QUEM publica, não se o conteúdo é verdadeiro.
    documento = pessoa com identidade confirmada por documento · oficial = conta comprovadamente de uma fonte oficial.
    Só a curadoria concede (o servidor impede que a própria conta se marque). */
-const VERIF = {documento:["Identidade verificada","A pessoa confirmou a identidade com documento."], curadoria:["Verificada pela curadoria","A curadoria da rede.online conferiu esta conta diretamente, sem documento."], oficial:["Conta oficial verificada","A rede.online comprovou que a conta pertence à instituição ou fonte oficial que ela diz ser."], pagina:["Página com responsável verificada","Uma pessoa com conta verificada responde pessoalmente por tudo o que esta página publica: conteúdo, informações e ofertas."]};
+const VERIF = {cpf:["Verificada com CPF","A pessoa informou um CPF válido, que não verifica nenhuma outra conta."], documento:["Identidade verificada","A pessoa confirmou a identidade com documento."], curadoria:["Verificada pela curadoria","A curadoria da rede.online conferiu esta conta diretamente, sem documento."], oficial:["Conta oficial verificada","A rede.online comprovou que a conta pertence à instituição ou fonte oficial que ela diz ser."], pagina:["Página com responsável verificada","Uma pessoa com conta verificada responde pessoalmente por tudo o que esta página publica: conteúdo, informações e ofertas."]};
 const verifIco = (v, cls="") => v && VERIF[v] ? `<span class="vfy ${cls}" title="${VERIF[v][0]}" role="img" aria-label="${VERIF[v][0]}">${ic("vfy")}</span>` : "";
 const verifBtn = v => v && VERIF[v] ? `<button class="vfy vbtn3" type="button" data-act="verifinfo" data-v="${v}" aria-label="${VERIF[v][0]}: o que significa">${ic("vfy")}</button>` : "";
 function sheetVerif(v, pid){ const [t, d] = VERIF[v] || VERIF.oficial;
@@ -429,7 +429,7 @@ function sheetVerif(v, pid){ const [t, d] = VERIF[v] || VERIF.oficial;
       <div class="note">${ic("info")}<span>O selo diz quem responde pela página. Ele não garante que cada conteúdo é verdadeiro: isso continua com o selo de confiabilidade de cada publicação.</span></div>`, "Página verificada"); }
   openSheet(shead("Perfil verificado") + `<div class="vfyhead">${verifIco(v, "big")}<span><b>${t}</b><small>${d}</small></span></div>
     <div class="list">
-      <div class="setting static"><span class="t"><b>Pessoas</b><small>Verificadas com documento de identidade. O documento não fica público nem aparece no perfil.</small></span></div>
+      <div class="setting static"><span class="t"><b>Pessoas</b><small>Verificadas com o número do CPF (um CPF por conta) ou com documento. O número e o documento não ficam públicos.</small></span></div>
       <div class="setting static"><span class="t"><b>Fontes oficiais</b><small>Órgãos públicos, instituições e veículos que comprovam ser donos da conta, por domínio oficial ou documento da instituição.</small></span></div></div>
     <div class="note">${ic("info")}<span>O selo do perfil diz quem publica. Ele não garante que cada conteúdo é verdadeiro: isso continua com o selo de confiabilidade de cada publicação. Só a curadoria concede o selo de perfil.</span></div>`, "Perfil verificado"); }
 const orgMeta = o => o.pagina ? (o.paginaTipo === "empresa" ? "Página · comercial" : "Página · conteúdo") : o.rede ? "Fonte individual · " + REDES[o.rede].nome : o.pessoa ? (o.verificado ? VERIF[o.verificado][0] : "Conta na rede") : o.fonte ? `Fonte verificada · ${o.natureza}` : o.real ? `${capFirst(o.natureza || "organização")} · canais públicos` : `${o.membros.toLocaleString("pt-BR")} membros`;
@@ -991,7 +991,7 @@ function ytNegado(id, g){ ytPara();
   const fora = `<a class="btn block" href="https://www.youtube.com/watch?v=${encodeURIComponent(id)}" target="_blank" rel="noopener">Ver no canal original ${ic("ext","sm")}</a>`;
   if (g.k==="cadastro") return openSheet(shead("Vídeos") + `<div class="note">${ic("lock")}<span><b>Você viu os ${ACESSO.visitante.videos} vídeos abertos a visitantes.</b> Para ver mais vídeos aqui, crie sua conta ou entre. É grátis.</span></div>
     <a class="btn primary block" href="#conta" data-act="criarconta">Criar conta</a><a class="btn block" href="#conta" data-act="criarconta" data-entrar="1">Já tenho conta</a>`, "Vídeos");
-  openSheet(shead("Vídeos") + `<div class="note">${ic("info")}<span><b>Você viu ${ACESSO.cadastrado.videos} vídeos nas últimas 12 horas.</b> Aqui, mais a partir das ${horaDe(g.volta)}. Até lá, os vídeos abrem no canal original. Contas verificadas veem sem esse limite: o pedido de verificação fica na sua conta.</span></div>${fora}`, "Vídeos"); }
+  openSheet(shead("Vídeos") + `<div class="note">${ic("info")}<span><b>Você chegou ao limite de vídeos destas 12 horas.</b> Mais às ${horaDe(g.volta)}, ou verifique a conta com o CPF e assista sem limite. Até lá, os vídeos abrem no canal original.</span></div><button class="btn primary block" type="button" data-act="verificacpf" style="margin-top:12px">Verificar com CPF</button>${fora}`, "Vídeos"); }
 function ytToca(box, id, titulo){ prevPara(); radioPara(); const g = acessoVideo("yt" + id); if (g) return ytNegado(id, g);
   ytPara(box);
   $$(".face.vid video, .tile video, video.pinvid").forEach(v=>{ if (!v.paused){ v.dataset.user = "paused"; v.pause(); } });
@@ -1902,8 +1902,9 @@ function gateNota(g){
   const note = (msg, acts) => `<div class="endnote gate" role="status"><p>${msg}</p><div class="acts">${acts}</div></div>`;
   const conta = `<a class="linkbtn" href="#conta" data-act="criarconta">Criar conta</a><a class="linkbtn" href="#conta" data-act="acessar">Já tenho conta</a>`;
   if (g.k==="cadastro") return note(`<b>Você viu ${g.videos ? "os " + g.lim + " primeiros vídeos" : "as " + g.lim + " primeiras publicações desta aba"}.</b> Para ver mais, crie sua conta ou entre. É grátis.`, conta);
-  return note(`<b>Você viu ${g.escopo==="aba" ? ACESSO.cadastrado.porAba + " publicações novas nesta aba" : ACESSO.cadastrado.total + " conteúdos novos"} na última hora.</b> Mais a partir das ${horaDe(g.volta)}. Contas verificadas veem sem esse limite: o pedido de verificação fica na sua conta.`,
-    `<button class="linkbtn" type="button" data-act="acessomais">Atualizar</button><button class="linkbtn" type="button" data-act="verifinfo" data-v="documento">Sobre a verificação</button>`); }
+  /* 18/11 (Amanda): mensagem curta e o caminho direto para o CPF */
+  return note(`<b>Você chegou ao limite desta hora.</b> Mais às ${horaDe(g.volta)}, ou verifique a conta com o CPF e leia sem limite.`,
+    `<button class="btn sm primary" type="button" data-act="verificacpf">Verificar com CPF</button><button class="linkbtn" type="button" data-act="acessomais">Atualizar</button>`); }
 function more(n=10){
   if (F.paused || F.ended) return;
   const src = source(); if (!src.length){ F.ended = true; renderStop(); return; }
@@ -4857,6 +4858,9 @@ function mockSB(o = {}){
         sessoes:tab("tat_sessoes").filter(x=>x.pagina_id === f.pagina_id && x.status === "verificada").length,
         referendos:tab("pagina_referendos").filter(r=>r.pagina_id === f.pagina_id).map(r=>({por:r.por_pagina, nome:(tab("paginas").find(p=>p.id === r.por_pagina) || {}).nome || "Página"}))}; }),
     pagina_no_perfil:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (p){ p.no_perfil = !!a.p_valor; salva(); } return null; },
+    verifica_cpf:a=>{ const pf = tab("perfis").find(x=>x.id === eu()); if (pf && pf.verificado) return "ja"; if (String(a.p_cpf).length !== 11) throw {message:"valor: confira o CPF"};
+      db.dados = {nome:a.p_nome, sobrenome:a.p_sobrenome, nascimento:a.p_nascimento}; if (pf) pf.verificado = "cpf"; db.nivel = db.nivel === "admin" ? "admin" : "verificado"; salva(); return "verificada"; },
+    meus_dados_pessoais:()=>db.dados || {},
     verificacao_envia:a=>{ tab("verificacao_pedidos").push({id:novoId(), user_id:eu(), status:"pendente", tipo:a.p_tipo, doc_tipo:a.p_doc_tipo, criado_em:agora()}); salva(); return null; },
     denuncia_envia:()=>"TESTE" + Math.floor(Math.random()*9000 + 1000), fonte_sugere:()=>({ok:true}), fontes_recusadas:()=>[], fontes_pessoais_minhas:()=>({limite:10, fontes:[]}), fonte_pessoal_inclui:()=>({fonte_id:1, espera:false}), fonte_pessoal_remove:()=>true, fontes_pessoais_painel:()=>({total:0, teto:400, espera:0, fontes:[]}), checagens_fila:()=>[], divergencias_curadoria:()=>({analise:[], avisos:[]}), divergencia_vota:()=>({conta:true, contesta:1, confirma:0}), divergencia_decide:()=>true, checagem_decide:()=>true, feed_saude:()=>({cards:240, grande_pct:50, grande_teto:50, grupo_nome:"Grupo Exemplo", grupo_pct:6.2, grupo_teto:10, sem_imagem_pct:4.6, com_cobertura:45, ultima_coleta_min:8, novas_24h:900, titulos_quebrados_24h:2, fontes_ativas:253, fontes_coletando_7d:191, fontes_erro:[{nome:"Fonte Exemplo", erro:"Feed não respondeu (403)"}], fontes_paradas:[{nome:"Outra Fonte", ultima:null}], sem_feed:33}), minhas_sugestoes:()=>[], minhas_avaliacoes:()=>tab("pagina_avaliacoes").filter(a=>a.autor === eu()), prioridades:()=>({}),
     apagar_conta:()=>{ db = testeSemente(); db.logada = false; salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
@@ -6042,8 +6046,17 @@ function screenConta(){
   if (!ME.pronto) return topo + `<div class="container"><p class="empty">Conectando…</p></div>`;
   if (ME.offline) return topo + `<div class="container cform">${contaAviso()}</div>`;
   if (ME.user){ const pf = ME.perfil || {nome:ME.user.user_metadata && ME.user.user_metadata.nome || "", cidade:"", bio:"", papel:"membro"};
-    return topo + `<div class="container cform">
-      <div class="cme">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : "Ainda não verificado: a curadoria verifica pessoas com documento e fontes oficiais"}</small></span></div>
+    /* 18/11 (Amanda): Sua conta em abas: Perfil · Verificação · Anúncios (só com pedido) · Dados e segurança */
+    const abas = [["perfil","Perfil"],["verificacao","Verificação"]].concat(AD_PEDIDOS && AD_PEDIDOS.length ? [["anuncios","Anúncios"]] : [], [["dados","Dados e segurança"]]);
+    const ab = abas.some(x=>x[0]===S.contaAba) ? S.contaAba : "perfil";
+    const tabs = `<div class="tabs contabs" role="tablist" aria-label="Sua conta">${abas.map(([k, n])=>`<button class="tab" type="button" role="tab" data-act="contaaba" data-a="${k}" aria-selected="${ab===k}">${n}</button>`).join("")}</div>`;
+    if (ab === "verificacao") return topo + `<div class="container cform">${tabs}${acessoCard()}</div>`;
+    if (ab === "anuncios") return topo + `<div class="container cform">${tabs}<div id="adpedidos">${adPedidosHTML()}</div></div>`;
+    if (ab === "dados") return topo + `<div class="container cform">${tabs}${contaSeguranca()}
+      <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
+      <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`;
+    return topo + `<div class="container cform">${tabs}
+      <div class="cme">${avatar({cor:"#141615", sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
       <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
@@ -6052,24 +6065,21 @@ function screenConta(){
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
       <h2 class="sectitle">Passaporte</h2>
       <div class="list"><button class="setting l1" type="button" data-act="passaporte"><span class="t"><b>Meu passaporte</b><small>Um carimbo por atendimento verificado · só você vê</small></span>${ic("back","sm flip")}</button></div>
-      ${PERFIL_MOSTRA()}
-${/* 15/11: Sua conta fica só com os dados da conta. Publicar está no Criar; sugerir fonte, em "Origem das notícias"; a fila do coletor, no Painel (Conteúdo › Fila de notícias). */""}
-      <div class="note">${ic("lock")}<span>Seu e-mail não aparece para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
-      ${acessoCard()}<div id="histbox"></div><div id="adpedidos">${adPedidosHTML()}</div>${contaSeguranca()}
-      <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`; }
+      ${PERFIL_MOSTRA()}<div id="histbox"></div></div>`; }
   const t = S.contaTab || "entrar";
   return topo + `<div class="container cform">
     <p class="cintro">Com conta você vê mais publicações, comenta, publica e guarda o que curtiu. É grátis.</p>
     <div class="tabs" role="tablist" aria-label="Conta"><button class="tab" type="button" role="tab" data-act="contatab" data-t="entrar" aria-selected="${t==="entrar"}">Entrar</button><button class="tab" type="button" role="tab" data-act="contatab" data-t="criar" aria-selected="${t==="criar"}">Criar conta</button></div>
     ${t==="criar" ? `
     ${passosConta(1)}
-    <div class="field"><label for="cnome">Seu nome</label><input id="cnome" type="text" autocomplete="name" maxlength="80" required minlength="2"></div>
+    <div class="row2"><div class="field"><label for="cnome">Nome</label><input id="cnome" type="text" autocomplete="given-name" maxlength="60" required minlength="2"></div>
+      <div class="field"><label for="csobre">Sobrenome</label><input id="csobre" type="text" autocomplete="family-name" maxlength="80" required minlength="2"></div></div>
+    <div class="field"><label for="cnasc">Data de nascimento</label><input id="cnasc" type="date" autocomplete="bday" required min="1900-01-01" max="${dataMaior18()}"><small class="hint">A rede.online é para maiores de 18 anos. A data não aparece no perfil.</small></div>
     <div class="field"><label for="cmail">E-mail</label><input id="cmail" type="email" autocomplete="email" inputmode="email" maxlength="254" autocapitalize="none" spellcheck="false" required><small class="hint">Não aparece para ninguém. Serve para confirmar a conta e recuperar a senha.</small></div>
     <div class="field"><label for="csen">Senha</label>${senhaCampo("csen")}</div>
     <div class="field"><label for="ccid">Cidade (opcional)</label><input id="ccid" type="text" maxlength="80" placeholder="Ex.: São Paulo, SP"><small class="hint">Aparece no seu perfil e ajuda a mostrar o que acontece perto de você. <button class="linkbtn inl" type="button" data-act="localpede" data-para="ccid">Usar minha localização</button></small></div>
     <div class="hpot" aria-hidden="true"><label for="csite">Não preencha este campo</label><input id="csite" type="text" tabindex="-1" autocomplete="off"></div>
     ${seusDadosNota()}
-    <label class="ichk"><input type="checkbox" id="c18" required><span>Tenho 18 anos ou mais. A rede.online é para adultos.</span></label>
     <label class="ichk"><input type="checkbox" id="cok" required><span>Li e aceito os <a href="#termos" target="_blank" rel="noopener">Termos de uso</a> e a <a href="#privacidade" target="_blank" rel="noopener">Privacidade</a>.</span></label>
     <p class="ferr" role="alert" hidden></p>
     <button class="btn primary block" type="button" data-act="cadastrar" data-trava>Criar conta</button>
@@ -6093,12 +6103,20 @@ const seusDadosNota = () => `<div class="dnota"><b>${ic("lock","sm")} Seus dados
 function acessoCard(){ const nv = nivel(), a = ME.acesso || {}, ped = a.pedido, A = ACESSO;
   const li = (n, t, d, on, feito) => `<li class="${feito ? "feito" : on ? "on" : ""}"><span class="nb">${feito ? ic("check","sm") : n}</span><span><b>${t}</b><small>${d}</small></span></li>`;
   const usados = nv==="cadastrado" && a.novos_na_hora !== undefined ? `<p class="inota">${ic("info","sm")}<span>Nesta hora você recebeu ${a.novos_na_hora} de ${A.cadastrado.total} conteúdos novos.</span></p>` : "";
+  const pf = ME.perfil || {};
+  if (nv !== "cadastrado") return `<section class="acard" aria-label="Verificação da conta">
+    <div class="vfyhead">${verifIco(pf.verificado || (nv==="admin" ? "curadoria" : ""), "big")}<span><b>${nv==="admin" ? "Administração" : (VERIF[pf.verificado] || ["Conta verificada"])[0]}</b><small>${nv==="admin" ? "Tudo, mais a curadoria." : "Sem limite de leitura. Pode votar, apoiar propostas e criar páginas."}</small></span></div></section>`;
+  if (!S.vInst) return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Verifique com o CPF</h2>
+    <p class="vsub">Sem documento e sem fila: leva um minuto. Conta verificada lê sem limite, vota, apoia propostas e cria páginas.</p>
+    ${verifCpfForm()}
+    <p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">É uma instituição? Envie o documento</button></p>
+    <ol class="nsteps">${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}${li(2, "Conta com e-mail", `${A.cadastrado.porAba} novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, true, false)}${li(3, "Conta verificada", "Sem esses limites", false, false)}</ol>${usados}</section>`;
   const pedido = nv!=="cadastrado" ? "" : ped && ped.status==="pendente" && ped.doc
     ? `<div class="note okn">${ic("check")}<span><b class="ntit">Documento enviado, em análise</b>Enviado em ${new Date(ped.doc_enviado_em || ped.criado_em).toLocaleDateString("pt-BR", {day:"numeric", month:"long"})}. Só a curadoria vê o arquivo, e ele é apagado assim que o pedido é decidido.<span class="nact"><button class="linkbtn" type="button" data-act="desisteverif">Desistir do pedido</button></span></span></div>`
     : (ped && ped.status==="recusada" ? `<div class="note">${ic("info")}<span><b class="ntit">Pedido não aprovado</b>${ped.motivo ? esc(ped.motivo) + " " : ""}O documento já foi apagado. Você pode enviar de novo.</span></div>`
       : ped && ped.status==="pendente" ? `<p class="inota">${ic("info","sm")}<span>Você já está na fila. Para a curadoria decidir, envie o documento abaixo.</span></p>`
       : `<p class="inota">${ic("info","sm")}<span>O nível 3 é para quem confirma a identidade, como pessoa ou como instituição.</span></p>`) + verifForm();
-  return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Seu acesso</h2><ol class="nsteps">
+  return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Instituição</h2><p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">Voltar à verificação com CPF</button></p><ol class="nsteps" hidden>
     ${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}
     ${li(2, "Conta com e-mail", `Até ${A.cadastrado.porAba} publicações novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, nv==="cadastrado", nv!=="cadastrado")}
     ${li(3, nv==="admin" ? "Administração" : "Conta verificada", nv==="admin" ? "Tudo, mais a curadoria" : "Sem esses limites", nv!=="cadastrado", false)}</ol>${usados}${pedido}</section>`; }
@@ -6107,20 +6125,32 @@ function acessoCard(){ const nv = nivel(), a = ME.acesso || {}, ped = a.pedido, 
    Conta verificada é exigida para votar, propor votação, apoiar proposta, assinar abaixo-assinado e pedir organização (escolhas da Amanda). */
 /* GUARDADO (13 nov 2026): no período de testes a Amanda manteve tudo aberto. A regra identidade_exigida (Regras e parâmetros) liga o pacote. */
 let IDENT_EXIGE = false;
+/* 18/11 (Amanda): data de nascimento no cadastro e na verificação; a rede é para maiores de 18 */
+const dataMaior18 = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); };
+const ehMaior18 = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "") && v >= "1900-01-01" && v <= dataMaior18();
+const cpfMascara = v => { const d = cpfDig(v).slice(0, 11); return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2"); };
 const cpfDig = v => String(v || "").replace(/\D/g, "");
 function cpfOk(v){ const d = cpfDig(v); if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
   const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += +d[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
   return dv(9) === +d[9] && dv(10) === +d[10]; }
 function precisaVerif(acao){ if (!IDENT_EXIGE) return false; const nv = nivel(); if (nv === "verificado" || nv === "admin") return false;
   openSheet(shead("Conta verificada") + `<p style="margin:0 0 12px">Para ${esc(acao)}, a rede precisa saber que cada conta é uma pessoa: uma pessoa, um voto.</p>
-    <ul class="aplista"><li>${ic("check","sm")}<span>Você envia um documento com foto e informa o CPF, ou a curadoria verifica sua conta diretamente.</span></li>
-      <li>${ic("lock","sm")}<span>A rede não guarda o CPF: só um código embaralhado, que serve para a mesma pessoa não verificar duas contas.</span></li>
-      <li>${ic("lock","sm")}<span>O documento é apagado assim que a curadoria decide.</span></li></ul>
-    ${ME.user ? `<a class="btn primary block" href="#conta" data-act="close">Verificar minha conta</a>` : `<a class="btn primary block" href="#conta" data-act="criarconta">Criar conta</a><a class="btn block" href="#conta" data-act="acessar">Já tenho conta</a>`}`, "Conta verificada");
+    <ul class="aplista"><li>${ic("check","sm")}<span>Basta o número do CPF, nome e data de nascimento. Sem documento e sem fila.</span></li>
+      <li>${ic("lock","sm")}<span>A rede não guarda o CPF: só um código embaralhado, para o mesmo CPF não verificar duas contas.</span></li></ul>
+    ${ME.user ? `<button class="btn primary block" type="button" data-act="verificacpf">Verificar com CPF</button>` : `<a class="btn primary block" href="#conta" data-act="criarconta">Criar conta</a><a class="btn block" href="#conta" data-act="acessar">Já tenho conta</a>`}`, "Conta verificada");
   return true; }
-function verifForm(){ return `<div class="vform"><fieldset class="vtipo"><legend>Quem pede</legend>
-    <label><input type="radio" name="vtipo" value="pessoa" checked> <span><b>Pessoa</b><small>RG, CNH ou passaporte, com foto e nome legíveis</small></span></label>
-    <label><input type="radio" name="vtipo" value="instituicao"> <span><b>Instituição</b><small>Cartão CNPJ ou documento que mostre que você responde por ela</small></span></label></fieldset>
+/* 18/11 (Amanda): pessoa verifica só com o número do CPF (dígitos conferidos no campo, um CPF por conta). O documento ficou só para instituição. */
+function verifCpfForm(){ const d = ME.dadosPessoais || {}, pf = ME.perfil || {}, pn = d.nome || (pf.nome || "").split(" ")[0] || "", sn = d.sobrenome || (pf.nome || "").split(" ").slice(1).join(" ");
+  if (!ME.dadosPessoais && SB && !ME.dpPede){ ME.dpPede = 1; SB.rpc("meus_dados_pessoais").then(({data})=>{ ME.dadosPessoais = data || {}; if (route()==="conta" && S.contaAba==="verificacao" && !$("#vcpf:focus, #vnome:focus, #vsobre:focus, #vnasc:focus")) render(); }, ()=>{}); }
+  return `<div class="vform cpfform">
+    <div class="row2"><div class="field"><label for="vnome">Nome</label><input id="vnome" type="text" autocomplete="given-name" maxlength="60" required minlength="2" value="${esc(pn)}"></div>
+      <div class="field"><label for="vsobre">Sobrenome</label><input id="vsobre" type="text" autocomplete="family-name" maxlength="80" required minlength="2" value="${esc(sn)}"></div></div>
+    <div class="field"><label for="vnasc">Data de nascimento</label><input id="vnasc" type="date" autocomplete="bday" required min="1900-01-01" max="${dataMaior18()}" value="${esc(d.nascimento || "")}"></div>
+    <div class="field"><label for="vcpf">CPF</label><input id="vcpf" inputmode="numeric" autocomplete="off" maxlength="14" required placeholder="000.000.000-00" data-cpf><small class="hint cpfst" id="vcpfst" aria-live="polite">Só os números. Conferimos na hora.</small></div>
+    <p class="inota">${ic("lock","sm")}<span>A rede não guarda o número do CPF: só um código embaralhado, para o mesmo CPF não verificar duas contas. Nome e data não aparecem no perfil.</span></p>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="verificacpfok" data-trava>Verificar agora</button></div>`; }
+function verifForm(){ return `<div class="vform"><input type="radio" name="vtipo" value="instituicao" checked hidden>
+    <p class="vsub">Envie o cartão CNPJ ou um documento que mostre que você responde pela instituição. A curadoria confere.</p>
   ${IDENT_EXIGE ? "" : "<!--"}<div class="field vcpf"><label for="vcpf">CPF de quem pede (pessoa)</label><input id="vcpf" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00">
     <small class="muted">Serve para garantir uma pessoa, uma conta verificada. A rede não guarda o número: guarda só um código embaralhado, que não dá para desfazer. Enquanto o pedido está em análise, a curadoria vê só os 5 últimos dígitos, para conferir com o documento.</small></div>${IDENT_EXIGE ? "" : "-->"}
   <label class="vfile"><span>Foto ou PDF do documento (até 5 MB)</span><input id="vdoc" type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"></label>
@@ -6280,6 +6310,10 @@ const formErro = t => { const e = $("#layer .ferr") || $("#main .ferr"); if (e){
   ["pointerup","pointercancel","pointerleave"].forEach(k=>document.addEventListener(k, fim));
   document.addEventListener("click", e=>{ const a = e.target.closest && e.target.closest("[data-pesc][data-segurou]"); if (a){ e.preventDefault(); e.stopPropagation(); delete a.dataset.segurou; } }, true);
   document.addEventListener("contextmenu", e=>{ if (e.target.closest && e.target.closest("[data-pesc]")){ e.preventDefault(); sheetPescLista(); } }); }
+document.addEventListener("input", e=>{ const i = e.target; if (!i.matches || !i.matches("[data-cpf]")) return;
+  const pos = i.value.length === i.selectionStart; i.value = cpfMascara(i.value); if (pos) i.setSelectionRange(i.value.length, i.value.length);
+  const d = cpfDig(i.value), st = $("#vcpfst"), ok = cpfOk(d); i.setCustomValidity(d.length === 11 && !ok ? "CPF inválido" : "");
+  if (st){ st.classList.toggle("ok", ok); st.classList.toggle("bad", d.length === 11 && !ok); st.innerHTML = ok ? `${ic("check","sm")} Número válido` : d.length === 11 ? "Confira o número: os dois últimos não batem com os outros." : "Só os números. Conferimos na hora."; } });
 document.addEventListener("change", async e=>{ if (e.target.id !== "msgfotos") return; const id = e.target.dataset.id, l = FOTO.nova[id] = FOTO.nova[id] || [];
   const fs = [...e.target.files].filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type)); if (fs.length < e.target.files.length) toast("Use fotos em JPG, PNG ou WEBP.");
   if (l.length + fs.length > FOTOS_MSG) toast(`Até ${FOTOS_MSG} fotos por mensagem. Ficaram as primeiras.`);
@@ -6334,9 +6368,10 @@ function travaCampoOk(e, sc){
   if (e.type === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   if (e.type === "url") return /^\S+\.\S+$/.test(v);
   return true; }
+function travaCpfOk(sc){ const i = sc.querySelector("[data-cpf]"); return !i || cpfOk(i.value); }
 function travaConfere(){ document.querySelectorAll("[data-trava]").forEach(b=>{ if (b.dataset.ocupado) return;
   const sc = b.closest("[data-tform]") || b.closest(".sheet") || b.closest(".container") || document.body;
-  const ok = [...sc.querySelectorAll("[required]")].filter(e=>!e.disabled && travaVisivel(e)).every(e=>travaCampoOk(e, sc));
+  const ok = [...sc.querySelectorAll("[required]")].filter(e=>!e.disabled && travaVisivel(e)).every(e=>travaCampoOk(e, sc)) && travaCpfOk(sc);
   if (b.disabled === ok) b.disabled = !ok; }); }
 /* 18/11 (Amanda): a barra do topo nunca passa da largura da tela. Se não couber, o Apoie mostra só o raio (o nome segue no aria-label). */
 /* 18/11 (Amanda): as abas cabem inteiras sempre que possível (aperta o espaçamento); se ainda não couberem, rolam, com esmaecido no fim */
@@ -6642,6 +6677,16 @@ const A = {
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
     if (row) row.remove(); toast(st==="publicada" ? "Publicada no feed." : "Recusada."); if (st==="publicada") noticiasCarrega(); },
+  contaaba: b => { S.contaAba = b.dataset.a; S.vInst = false; render(); window.scrollTo(0, 0); },
+  vinst: () => { S.vInst = !S.vInst; render(); },
+  verificacpf: () => { closeSheet(); S.contaAba = "verificacao"; S.vInst = false; if (!ME.user){ S.contaTab = "criar"; go("conta"); return; } if (route() === "conta") render(); else go("conta"); setTimeout(()=>{ const i = ["#vnome","#vsobre","#vnasc","#vcpf"].map(q=>$(q)).find(x=>x && !x.value) || $("#vcpf"); if (i){ i.scrollIntoView({block:"center"}); i.focus({preventScroll:true}); } }, 250); },
+  verificacpfok: async b => { const pn = $("#vnome").value.replace(/\s+/g, " ").trim(), sn = $("#vsobre").value.replace(/\s+/g, " ").trim(), nasc = $("#vnasc").value, cpf = cpfDig($("#vcpf").value);
+    if (pn.length < 2 || sn.length < 2) return formErro("Escreva nome e sobrenome."); if (!ehMaior18(nasc)) return formErro(nasc ? "A rede.online é para maiores de 18 anos." : "Informe a data de nascimento.");
+    if (!cpfOk(cpf)) return formErro("Confira o CPF: os dois últimos números não batem com os outros.");
+    ocupado(b, true, "Verificando…"); const {data, error} = await SB.rpc("verifica_cpf", {p_cpf:cpf, p_nome:pn, p_sobrenome:sn, p_nascimento:nasc}); ocupado(b, false);
+    if (error) return formErro(msgErr(error));
+    ME.dadosPessoais = {nome:pn, sobrenome:sn, nascimento:nasc}; if (ME.perfil){ ME.perfil.verificado = ME.perfil.verificado || "cpf"; } if (ME.acesso) ME.acesso.nivel = "verificado";
+    try{ await perfilCarrega(); }catch(e){} F.gate = null; toast(data === "ja" ? "Sua conta já estava verificada." : "Conta verificada. Pode ler sem limite."); render(); },
   contatab: b => { S.contaTab = b.dataset.t; ME.pend = null; S.contaAbriu = Date.now(); render(); },
   criarconta: (b, e) => { if (e) e.preventDefault(); closeSheet(); S.contaTab = b && b.dataset.entrar ? "entrar" : "criar"; ME.pend = null; S.contaAbriu = Date.now(); go("conta"); },
   enviaverif: async b => { const box = b.closest(".vform"), err = box.querySelector(".ferr"), f = ($("#vdoc").files || [])[0], tipo = (box.querySelector('input[name="vtipo"]:checked') || {}).value || "pessoa";
@@ -6701,8 +6746,9 @@ const A = {
     const [perfil, publicacoes, contas, orgs, aceites, verif, comentarios, guardados, sigo] = await Promise.all([q("perfis","id,nome,usuario,cidade,bio,criado_em,verificado,verificado_em,colaborador","id"), q("publicacoes","*","autor"), q("contas_externas","*"), q("org_pedidos","*"), q("aceites","*"), q("verificacao_pedidos","*"), q("comentarios","id,noticia_id,publicacao_id,texto,marca,fonte_url,uteis,status,criado_em","autor"), q("conta_dados","chave,valor,atualizada_em"), q("seguidores","seguido,criado_em","seguidor")]);
     const [pedidos, mensagens, horarios, avaliacoes] = await Promise.all([q("tat_pedidos","id,pagina_id,tipo,item,preco,descricao,local,tamanho,cor,status,criado_em","cliente"), q("tat_mensagens","pedido_id,de,texto,criado_em","autor"), q("tat_sessoes","id,pagina_id,quando,duracao_min,valor,status,checkin_em,avaliada","cliente"),
       SB.rpc("minhas_avaliacoes").then(r=>r.data || []).catch(()=>[])]);   /* 15/11 */
+    const dadosPessoais = await SB.rpc("meus_dados_pessoais").then(r=>r.data || {}).catch(()=>({}));   /* 18/11: nome, sobrenome e nascimento (o CPF não é guardado) */
     const local = {}; try{ for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith("arede-")) local[k] = store.get(k.slice(6), null); } }catch(e){}
-    const doc = {arquivo:"Dados da sua conta na rede.online", gerado_em:new Date().toISOString(),
+    const doc = {arquivo:"Dados da sua conta na rede.online", gerado_em:new Date().toISOString(), dados_pessoais:dadosPessoais,
       conta:{id:uid, email:ME.user.email, criada_em:ME.user.created_at, email_confirmado_em:ME.user.email_confirmed_at || null, ultimo_acesso:ME.user.last_sign_in_at || null, nivel:nivel()},
       perfil:perfil[0] || null, publicacoes, comentarios, contas_de_outras_redes:contas, pedidos_de_organizacao:orgs, aceites, pedido_de_verificacao:verif[0] || null, curtidas_pastas_e_votos:guardados, contas_que_voce_segue:sigo, pedidos_de_orcamento:pedidos, mensagens_que_voce_escreveu:mensagens, horarios_de_atendimento:horarios, avaliacoes_que_voce_fez:avaliacoes,
       guardado_so_neste_aparelho:local, nota:"A senha não está aqui: o servidor guarda só uma versão embaralhada, que ninguém consegue ler."};
@@ -6727,18 +6773,18 @@ const A = {
     if (error) return sheetErro(erroAuth(error)); closeSheet(); toast("Conta reativada. Tudo volta a aparecer."); render(); },
   contasai: async () => { try{ await SB.auth.signOut({scope:"local"}); }catch(e){} ME.user = null; ME.perfil = null; ME.acesso = null; closeSheet(); go("inicio"); },
   versenha: b => { const i = document.getElementById(b.dataset.for); if (!i) return; const v = i.type==="password"; i.type = v ? "text" : "password"; b.textContent = v ? "Esconder" : "Mostrar"; },
-  cadastrar: async b => { const nome = $("#cnome").value.trim(), mail = $("#cmail").value.trim().toLowerCase(), sen = $("#csen").value, cid = $("#ccid").value.trim();
-    if (nome.length < 2) return formErro("Escreva seu nome.");
+  cadastrar: async b => { const pnome = $("#cnome").value.replace(/\s+/g, " ").trim(), sobre = $("#csobre").value.replace(/\s+/g, " ").trim(), nasc = $("#cnasc").value, nome = pnome + " " + sobre, mail = $("#cmail").value.trim().toLowerCase(), sen = $("#csen").value, cid = $("#ccid").value.trim();
+    if (pnome.length < 2 || sobre.length < 2) return formErro("Escreva nome e sobrenome.");
+    if (!nasc) return formErro("Informe a data de nascimento."); if (!ehMaior18(nasc)) return formErro("A rede.online é para maiores de 18 anos.");
     if (!mailBom(mail)) return formErro("Confira o e-mail.");
     const sa = senhaAvalia(sen, nome.split(/\s+/).concat(mail.split("@")[0])); if (!sa.ok) return formErro("Senha: " + sa.msg);
-    if (!$("#c18").checked) return formErro("Para criar a conta, é preciso ter 18 anos ou mais.");
     if (!$("#cok").checked) return formErro("Para criar a conta, aceite os Termos de uso e a Privacidade.");
     if (!SB) return formErro("Sem conexão com o servidor. Verifique a internet.");
     formErro(""); ocupado(b, true, "Criando a conta…");
     /* a resposta é a mesma, exista ou não uma conta com esse e-mail: assim ninguém descobre quem está na rede testando endereços.
        Campo-armadilha preenchido ou formulário enviado em menos de 2 segundos é robô: recebe a mesma tela, sem ir ao servidor. */
     const robo = !!($("#csite") && $("#csite").value) || Date.now() - (S.contaAbriu || 0) < 2000;
-    const {error} = robo ? {error:null} : await SB.auth.signUp({email:mail, password:sen, options:{captchaToken:await capToken(), data:{nome, cidade:cid, aceite:ACEITE_VERSAO}, emailRedirectTo:SITE + "#perfil"}});
+    const {error} = robo ? {error:null} : await SB.auth.signUp({email:mail, password:sen, options:{captchaToken:await capToken(), data:{nome:pnome, sobrenome:sobre, nascimento:nasc, cidade:cid, aceite:ACEITE_VERSAO}, emailRedirectTo:SITE + "#perfil"}});
     ocupado(b, false);
     if (error && !/already registered|already been registered/i.test(error.message || "")) return formErro(erroAuth(error));
     S.contaTab = "entrar"; ME.pend = `${passosConta(2)}<b class="ntit">Confirme seu e-mail</b>Se <b>${esc(mail)}</b> ainda não tinha conta, enviamos um link de confirmação: toque nele e depois entre aqui. Se já tinha, é só entrar ou recuperar a senha.<span class="nact"><button class="linkbtn" type="button" data-act="reenviar" data-m="${esc(mail)}">Reenviar e-mail</button></span>`;
@@ -7597,7 +7643,7 @@ document.addEventListener("click", e=>{ const a = e.target.closest && e.target.c
 if (S.localAuto && navigator.permissions && navigator.permissions.query) navigator.permissions.query({name:"geolocation"}).then(q=>{ if (q.state==="granted" && Date.now() - (S.localQuando || 0) > 6 * 3600e3) localAtualiza(true); }).catch(()=>{});
 contaInicia();
 if (/[?&]teste=1/.test(location.search)) window.__arede = {feedDadosNovos, POOL, F, sheetSugFonte, adReal, AD_REAIS_set:l=>{ AD_REAIS = l; F.key = null; render(); }, donoDe, findItem, S, ME, navConta, LV, aoVivoPinta, adPrecosAplica, USO, uso, usoEnvia, csatTenta, prox, footCtx, footInfo, PRIO, prioDe, historicoPreenche, alvoDe, PENT, COMS, pentHTML, comsHTML, PREV, cidadeNoAparelho, munCarrega, lugarSinal, lugaresInteresse, lugarInteresse, localAtualiza, nivel, ACESSO, acessoVideo, acessoPub, ledger, FEED:F, itemDaPublicacao, POOL, source, ORG, SEAL, F, passa:(it)=>passa(it,S.filt), S, ME, render, go, F, altaTeste: d => { ALTA = d; altaDesenha(); }, noticiasTeste: d => noticiasAplica(d, Date.now())};
-if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS, PED, SES, ORC, MSGS, sheetSesNova, sheetSesDesiste});
+if (/[?&]teste=1/.test(location.search)) Object.assign(window.__arede, {sb:()=>SB, MUS, PED, SES, ORC, MSGS, sheetSesNova, sheetSesDesiste, ACESSO, resetFeed});
 window.addEventListener("scroll", ()=>{ const t = $("#top"); if (t) t.classList.toggle("scrolled", window.scrollY > 4); }, {passive:true});
 window.addEventListener("resize", debounce(()=>{
   placeLogoDots();
@@ -7652,7 +7698,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 14:04";
+const VERSAO = "v1 registrada · 18/11 14:20";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
