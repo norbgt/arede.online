@@ -12,6 +12,8 @@ const store = {
   set(k, v){ try{ localStorage.setItem("arede-"+k, JSON.stringify(v)); }catch(e){} }
 };
 const ICON = {
+  painel:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  grafico:'<path d="M5 20V11M12 20V5M19 20v-6"/>',
   cracha:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M10 5V3h4v2"/><circle cx="12" cy="11" r="2.2"/><path d="M8.5 17c.6-1.6 1.9-2.4 3.5-2.4s2.9.8 3.5 2.4"/>',
   nota:'<path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2L6 21z"/><path d="M9 9h6M9 13h6M9 17h3"/>',
   copia:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
@@ -2551,7 +2553,7 @@ function screenConversas(){ if (!ME.user) return header(`<div class="toprow"><h1
         return `<a class="setting l1 conv" href="#conversa-${x.id}">${avatar(o)}<span class="t"><b>${eu ? esc(limpo(x.cliente_nome || "Cliente")) + " → " : ""}${esc(limpo(p.nome || ""))}</b><small>${esc(pedResumo(x))}</small><small class="muted">${x.tipo === "tabela" ? "Pela tabela" : "Personalizado"} · ${quando(x.atualizado_em)}</small></span></a>`; }).join("")}</div>` : `<p class="empty">Nenhuma conversa ainda.</p>`}</div>`; }
 function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversa-" + id) render(); }); return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Conversa</h1></div>`) + `<div class="container"><p class="empty">Carregando…</p></div>`; }
   const x = PED.lista.find(y=>y.id === id); if (!x) return screenConversas();
-  if (S.convId !== id){ S.convId = id; S.convTab = "conversa"; }   /* 17/11, decisão da Amanda: Conversa e Atendimento em abas; abre sempre na conversa */
+  if (S.convId !== id){ S.convId = id; S.convTab = S.convTab0 || "conversa"; S.convTab0 = null; }   /* 17/11, decisão da Amanda: Conversa e Atendimento em abas; abre sempre na conversa */
   const p = pedPagina(x), eu = pedSouPagina(x), ms = PED.msgs[id];
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
@@ -2685,13 +2687,14 @@ function screenCheckin(arg){ const m = /^(.+)-(\d{6})$/.exec(arg) || [], id = m[
   return topo + `<div class="container"><div class="pedcard"><span class="ktipo">${ic("check","sm")}Check-in</span><b>Confirme que você está com a página agora.</b><small>Isso verifica a sessão e abre a avaliação.</small></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="ckurl" data-s="${esc(id || "")}" data-c="${esc(cod || "")}" style="margin-top:12px">Confirmar check-in</button></div>`; }
 function pgAgendaHTML(p){ const l = SES.pagina[p.id]; if (!l){ sesCarrega("pagina_id", p.id).then(r=>{ SES.pagina[p.id] = r; pgRepintaTab(p.id, "agenda"); }); return `<p class="empty">Carregando…</p>`; }
-  const prox = l.filter(y=>y.status === "proposta" || y.status === "marcada"), feitas = l.filter(y=>y.status === "verificada").reverse();
-  const lin = y => `<div class="setting l1 sesrow"><span class="t"><b>${dataHora(y.quando)} · ${esc(limpo(y.cliente_nome || "Cliente"))}</b><small><span class="pgsit ${SES_ST[y.status][1]}">${SES_ST[y.status][0]}</span>${y.valor ? " · " + esc(y.valor) : ""}${y.status === "verificada" && y.avaliada ? " · avaliou" : ""}</small></span>
-    ${y.status === "marcada" ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button>` : ""}<a class="btn sm ghost" href="#conversa-${y.pedido_id}">Conversa</a></div>`;
+  const prox = l.filter(y=>y.status === "proposta" || y.status === "marcada"), enc = l.filter(y=>y.status === "verificada" && !y.checkout_em), feitas = l.filter(y=>y.status === "verificada" && y.checkout_em).reverse();
+  const lin = y => `<div class="setting l1 sesrow"><span class="t"><b>${dataHora(y.quando)} · ${esc(limpo(y.cliente_nome || "Cliente"))}</b><small>${(st => `<span class="pgsit ${st[1]}">${st[0]}</span>`)(y.status === "verificada" ? (y.checkout_em ? ["Encerrado","ok"] : ["Serviço iniciado","ok"]) : SES_ST[y.status])}${y.valor ? " · " + esc(y.valor) : ""}${y.status === "verificada" && y.avaliada ? " · avaliou" : ""}</small></span>
+    ${y.status === "marcada" ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button>` : ""}${y.status === "verificada" && !y.checkout_em ? `<button class="btn sm primary" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${y.pedido_id}">Encerrar</button>` : ""}<a class="btn sm ghost" href="#conversa-${y.pedido_id}">Conversa</a></div>`;
   const ab = agAberta(p);
   return `<div class="orow agrow"><span class="ot"><b>Agenda ${ab ? "aberta" : "fechada"}</b><small>${ab ? "Aparece para quem visita a página. Feche quando não estiver aceitando novos pedidos." : "Quem visita vê que a agenda está fechada. Pedidos ainda chegam, com esse aviso."}</small></span><button class="switch" type="button" role="switch" data-act="agliga" data-p="${p.id}" aria-checked="${ab}" aria-label="Agenda aberta"></button></div>
-    <p class="lnote">Só você vê esta aba. As sessões nascem nas conversas dos pedidos; o check-in por QR é o que conta como atendimento verificado na reputação.</p>
+    <p class="lnote">Só você vê. As sessões nascem nas conversas dos pedidos; o check-in por QR é o que conta como atendimento verificado na reputação.</p>
     <h3 class="psec">Próximas</h3>${prox.length ? `<div class="list">${prox.map(lin).join("")}</div>` : `<p class="empty">Nada marcado.</p>`}
+    ${enc.length ? `<h3 class="psec">Para encerrar</h3><div class="list">${enc.map(lin).join("")}</div>` : ""}
     <h3 class="psec">Feitas</h3>${feitas.length ? `<div class="list">${feitas.map(lin).join("")}</div>` : `<p class="empty">Nenhum check-in ainda.</p>`}`; }
 function pgRepintaTab(pid, t){ if (route() !== "pg-" + pid || S.pgTab !== t) return; const b = $("#pgbody"); if (b) b.innerHTML = paginaCorpoTab(ORG["pg-" + pid], PAGS.lista.find(x=>x.id === pid), t); }
 function passaporteHTML(){ const l = SES.minhas; if (!l){ (async()=>{ SES.minhas = ME.user ? await sesCarrega("cliente", ME.user.id) : []; if (route() === "perfil") profShow(); })(); return `<p class="empty">Carregando…</p>`; }
@@ -2793,7 +2796,7 @@ async function capaGrava(alvo, v){ const [k, id] = alvo.split(/:(.+)/);
 function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.find(x=>x.id === pid);
   if (!o || !p) return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Página</h1></div>`) + `<div class="container"><p class="empty">${PAGS.carregou ? "Esta página não existe ou não está no ar." : "Carregando…"}</p></div>`;
   const meu = ME.user && p.dono === ME.user.id, f = S.follow.has(id), emp = p.tipo === "empresa", tt = tatDe(p);
-  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Portfólio") : "Publicações"], ["pastas", "Pastas"], meu && mod(p, "agenda") ? ["agenda","Agenda"] : null, mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, meu && o.mei ? ["fin","Financeiro"] : null, ["sobre","Sobre"]].filter(Boolean);
+  const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Portfólio") : "Publicações"], ["pastas", "Pastas"], mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, ["sobre","Sobre"]].filter(Boolean);
   const t = tabs.some(x=>x[0] === S.pgTab) ? S.pgTab : "pubs";
   const aviso = p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
   const ib = (act, icn, rot, extra, cl) => `<button class="iconbtn${cl ? " " + cl : ""}" type="button" data-act="${act}" ${extra || ""} aria-label="${rot}" title="${rot}">${ic(icn)}</button>`;
@@ -2814,7 +2817,7 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, forma:"esp pg", selo:pgSelo(pid) + (o.cnpj ? `<button class="cnpjselo" type="button" data-act="cnpjinfo" aria-label="CNPJ conferido pela curadoria: o que significa" title="CNPJ conferido pela curadoria">${ic("predio","sm")}CNPJ</button>` : "") + (o.mei ? `<button class="cnpjselo mei" type="button" data-act="meiinfo" aria-label="MEI: o que significa" title="MEI">${ic("cracha","sm")}MEI</button>` : "") + (o.nf ? `<button class="cnpjselo nf" type="button" data-act="nfinfo" aria-label="Nota fiscal: o que significa" title="Nota fiscal">${ic("nota","sm")}Nota fiscal</button>` : ""),
         linhas:[...(tt ? tatResumo(p).filter(Boolean).map(l=>`<span class="phcusto">${l}</span>`) : []), [`<span class="phtipo">${tipo}</span>`, est ? `<a href="#pg-${est.id}">${esc(limpo(est.nome))}</a>` : "", o.cidade ? esc(o.cidade) : ""].filter(Boolean).join(" · ")],
         acoes, bio:o.sobre,
-        extra:`<div class="phnovo">${aviso}${tt ? tatConvitesHTML(p) : ""}</div>`})}
+        extra:`<div class="phnovo">${aviso}${meu && p.status === "aprovada" ? gerBotao(p) : ""}${tt ? tatConvitesHTML(p) : ""}</div>`})}
       <div class="tabs" role="tablist" aria-label="Seções da página" style="margin-top:4px">${tabs.map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pgtab" data-tab="${k}" aria-selected="${t===k}">${n}</button>`).join("")}</div>
       <div id="pgbody" style="padding-top:var(--gap)">${paginaCorpoTab(o, p, t)}</div></div>`; }
 function paginaCorpoTab(o, p, t){
@@ -2948,7 +2951,7 @@ const finData = d => d ? String(d).slice(0, 10).split("-").reverse().join("/") :
 const finValor = t => { const m = String(t || "").replace(/\./g, "").match(/\d+(,\d{1,2})?/); return m ? +m[0].replace(",", ".") : null; };
 async function finCarrega(pid){ if (!SB || FIN[pid] === "carregando") return; FIN[pid] = "carregando";
   try{ const {data, error} = await SB.rpc("mei_financeiro", {p_pagina:pid}); FIN[pid] = error ? {erro:erroAuth(error)} : data; }catch(e){ FIN[pid] = {erro:"Não foi possível carregar agora."}; }
-  pgRepintaTab(pid, "fin"); }
+  pgRepintaTab(pid, "fin"); gerRepinta(pid); }
 function finHTML(p){ const d = FIN[p.id]; if (!d || d === "carregando"){ finCarrega(p.id); return `<p class="empty">Carregando…</p>`; } if (d.erro) return `<p class="empty">${esc(d.erro)}</p>`;
   const pct = Math.max(0, +d.pct || 0), pr = String(Math.round(pct*10)/10).replace(".", ",");
   const pend = (d.pendentes || []).map(x=>`<div class="finv"><b>${esc(x.item || "Atendimento")}</b><small>${esc(finData(x.quando))}${x.cliente ? " · " + esc(x.cliente) : ""}${x.combinado ? " · " + finBRL(x.combinado) : x.valor ? " · " + esc(x.valor) : ""}</small>
@@ -2969,6 +2972,39 @@ function sheetFinVenda(pid, x){ const hoje = new Date(Date.now() - 3*36e5).toISO
     <div class="field"><label for="fntom">Comprador (opcional)</label><input id="fntom" maxlength="120" value="${x ? esc(x.cliente || "") : ""}"><small class="hint">Nome ou identificação de quem comprou.</small></div>
     <div class="field"><label for="fndata">Data</label><input id="fndata" type="date" max="${hoje}" value="${x ? String(x.quando || hoje).slice(0, 10) : hoje}"></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="finsalva" data-p="${pid}"${x ? ` data-s="${esc(x.sessao)}"` : ""}>Registrar venda</button>`, "Registrar venda"); }
+/* GERENCIAR (17/11, pedido da Amanda: "tudo o que é oferecido em páginas é de fácil gestão para quem oferece o serviço").
+   Um lugar só para a dona: o que precisa dela agora, o que acontece hoje e atalhos. Agenda e Financeiro saíram das abas públicas. */
+const GER = {pede:{}};
+function gerDados(p){ let ok = true;
+  if (!PED.lista){ ok = false; if (!GER.ped){ GER.ped = 1; pedCarrega().then(()=>{ GER.ped = 0; gerRepinta(p.id); }); } }
+  if (mod(p, "agenda") && !SES.pagina[p.id]){ ok = false; if (!GER.pede[p.id]){ GER.pede[p.id] = 1; sesCarrega("pagina_id", p.id).then(r=>{ SES.pagina[p.id] = r; GER.pede[p.id] = 0; gerRepinta(p.id); }); } }
+  return ok; }
+function gerRepinta(pid){ const r = route(); if (r === "gerir-" + pid || r === "pg-" + pid) render(); }
+const gerNome = x => limpo(x.cliente_nome || "Cliente");
+function gerTarefas(p){ const peds = (PED.lista || []).filter(x=>x.pagina_id === p.id && x.status !== "fechado"), t = [];
+  peds.filter(x=>x.status === "aberto").forEach(x=>t.push(`<a class="gertask" href="#conversa-${x.id}">${ic("message","sm")}<span>Responder ${esc(gerNome(x))}${x.item ? " · " + esc(x.item) : ""}</span>${ic("back","sm flip")}</a>`));
+  if (mod(p, "agenda")) peds.filter(x=>x.status !== "aberto" && !x.valor_combinado).forEach(x=>t.push(`<button class="gertask" type="button" data-act="gerconv" data-id="${x.id}">${ic("msgcifrao","sm")}<span>Enviar orçamento · ${esc(gerNome(x))}</span>${ic("back","sm flip")}</button>`));
+  (SES.pagina[p.id] || []).filter(y=>y.status === "verificada" && !y.checkout_em).forEach(y=>t.push(`<button class="gertask" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${y.pedido_id}">${ic("check","sm")}<span>Encerrar atendimento · ${esc(gerNome(y))}, ${new Date(y.quando).toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"})}</span>${ic("back","sm flip")}</button>`));
+  return t; }
+function gerHoje(p){ const d = new Date().toDateString();
+  return (SES.pagina[p.id] || []).filter(y=>y.status === "marcada" && new Date(y.quando).toDateString() === d).sort((a, c)=>new Date(a.quando) - new Date(c.quando))
+    .map(y=>`<div class="gertask">${ic("clock","sm")}<span>${new Date(y.quando).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})} · ${esc(gerNome(y))}</span><button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">QR</button></div>`); }
+function gerBotao(p){ const n = gerDados(p) ? gerTarefas(p).length : 0;
+  return `<a class="btn block gerbtn" href="#gerir-${p.id}">${ic("painel","sm")} Gerenciar${n ? `<span class="gercount" aria-label="${n} ${n === 1 ? "pendência" : "pendências"}">${n}</span>` : ""}</a>`; }
+function screenGerir(pid){ const p = PAGS.lista.find(x=>x.id === pid), o = ORG["pg-" + pid];
+  const topo = (t, volta) => header(`<div class="toprow"><button class="iconbtn" type="button" data-act="${volta ? "gerver" : "back"}" data-v="" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">${t}</h1></div>`);
+  if (!p || !o) return topo("Gerenciar") + `<div class="container"><p class="empty">${PAGS.carregou ? "Página não encontrada." : "Carregando…"}</p></div>`;
+  if (!pgMeu(p)) return topo("Gerenciar") + `<div class="container"><p class="empty">Só quem é dono da página gerencia.</p></div>`;
+  const ok = gerDados(p);
+  if (S.gerVer === "agenda" && mod(p, "agenda")) return topo("Agenda", 1) + `<div class="container">${ok ? pgAgendaHTML(p) : `<p class="empty">Carregando…</p>`}</div>`;
+  if (S.gerVer === "fin" && o.mei) return topo("Financeiro", 1) + `<div class="container">${finHTML(p)}</div>`;
+  const t = ok ? gerTarefas(p) : [], h = ok ? gerHoje(p) : [];
+  const at = [mod(p, "agenda") ? `<button class="geratl" type="button" data-act="gerver" data-v="agenda">${ic("calplus")}<span>Agenda</span></button>` : "", o.mei ? `<button class="geratl" type="button" data-act="gerver" data-v="fin">${ic("grafico")}<span>Financeiro</span></button>` : "",
+    `<a class="geratl" href="#conversas">${ic("message")}<span>Pedidos</span></a>`, `<button class="geratl" type="button" data-act="paginaedita" data-id="${pid}">${ic("lapis")}<span>Editar página</span></button>`].filter(Boolean).join("");
+  return topo("Gerenciar") + `<div class="container"><p class="lnote osub" style="margin-top:0">${esc(o.nome)}</p>
+    <h3 class="psec">Para fazer agora</h3>${!ok ? `<p class="empty">Carregando…</p>` : t.length ? `<div class="gerlist">${t.join("")}</div>` : `<p class="empty">Nada pendente.</p>`}
+    ${h.length ? `<h3 class="psec">Hoje</h3><div class="gerlist">${h.join("")}</div>` : ""}
+    <div class="geratls">${at}</div></div>`; }
 /* ORGANIZAÇÕES (14/11, pedido da Amanda): comunidades e páginas dividem a mesma tela, num feed só que pode ser filtrado.
    O feed "Para você" usa as duas formas de ver do Início: cartões soltos (grade irregular) ou em blocos (grade regular).
    Os cartões são o mesmo molde; muda o rótulo de tipo (Comunidade / Página) e a forma da marca (quadrada / redonda). */
@@ -3877,6 +3913,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   else if (r==="comunidades-todas"){ main.innerHTML = screenCmnTodas(); }
   else if (r==="paginas-todas"){ main.innerHTML = screenPgTodas(); }
   else if (r==="conversas"){ main.innerHTML = screenConversas(); }
+  else if (r.startsWith("gerir-")){ if (S.gerPid !== r.slice(6)){ S.gerPid = r.slice(6); S.gerVer = ""; } main.innerHTML = screenGerir(r.slice(6)); }
   else if (r.startsWith("checkin-")){ main.innerHTML = screenCheckin(r.slice(8)); }
   else if (r.startsWith("conversa-")){ main.innerHTML = screenConversa(r.slice(9)); const m = $(".msgs"); if (m) m.scrollTop = m.scrollHeight; }
   else if (r==="participar"){ main.innerHTML = screenPartTodos(); }
@@ -6536,6 +6573,8 @@ const A = {
     if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
     ocupado(b, true, "Enviando…"); const {error} = await SB.from("tat_pedidos").update({valor_combinado:v, sessoes_prev:n}).eq("id", x.id); if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     x.valor_combinado = v; x.sessoes_prev = n; await sesSistema(x.id, `Orçamento: ${finBRL(v)}${n > 1 ? ` em ${n} sessões` : ""}.`); ocupado(b, false); closeSheet(); toast("Orçamento enviado na conversa."); PED.msgs = {}; render(); },
+  gerver: b => { if (!b.dataset.v && !S.gerVer) return history.back(); S.gerVer = b.dataset.v; render(); window.scrollTo(0, 0); },
+  gerconv: b => { S.convTab0 = "atendimento"; S.convId = null; go("conversa-" + b.dataset.id); },
   convtab: b => { S.convTab = b.dataset.tab; render(); },
   pgnf: b => b.setAttribute("aria-checked", b.getAttribute("aria-checked") !== "true"),
   finnova: b => sheetFinVenda(b.dataset.p),
@@ -6909,7 +6948,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:13";
+const VERSAO = "v1 registrada · 17/11 21:24";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
