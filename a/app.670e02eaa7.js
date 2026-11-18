@@ -5723,23 +5723,31 @@ async function sugFonteEnvia(b){ const url = ($("#sfurl").value || "").trim(); i
 /* APOIE (11 nov 2026): doação para manter a arede.online, sem produto, serviço ou vantagem em troca.
    Não precisa de conta; a rede não guarda quem apoiou. Pagamento no Mercado Pago (função apoio-cobra), conferido pela função apoio-aviso. */
 let APOIO_VALORES = [10, 25, 50, 100, 250];   /* 18/11: valores do business case, sempre com valor livre */
-let APOIO_V = 25;
+let APOIO_V = 25, APOIO_MES = false;   /* 18/11 (Amanda): "Uma vez" ou "Todo mês" (assinatura no Mercado Pago) */
+const apoioRotulo = () => `Apoiar com R$ ${apoioValor()}${APOIO_MES ? " por mês" : ""}`;
 function sheetApoie(){
   openSheet(shead("Apoie") + `<div class="sform">
     <p style="margin:0">Sua doação ajuda a manter a rede.online</p>
+    <div class="pilltabs apfreq" role="radiogroup" aria-label="Frequência do apoio">${[[false,"Uma vez"],[true,"Todo mês"]].map(([m, n])=>`<button class="ptab" type="button" role="radio" data-act="apoiemes" data-m="${m ? 1 : 0}" aria-checked="${APOIO_MES === m}" aria-selected="${APOIO_MES === m}">${n}</button>`).join("")}</div>
     <div class="apvals" role="group" aria-label="Valor do apoio">${APOIO_VALORES.map(v=>`<button type="button" data-act="apoieval" data-v="${v}" aria-pressed="${APOIO_V===v}">R$ ${v}</button>`).join("")}</div>
     <label class="apoutro">Outro valor: R$ <input id="apoutro" type="number" inputmode="numeric" min="5" max="5000" step="1" placeholder="5 a 5.000" value="${APOIO_VALORES.includes(APOIO_V) ? "" : APOIO_V}"></label>
     <ul class="aplista">
       <li>${ic("check","sm")}<span>Promovemos conteúdos responsáveis</span></li>
       <li>${ic("check","sm")}<span>O pagamento é feito no Mercado Pago</span></li>
-      <li>${ic("lock","sm")}<span>Não guardamos dados de cartão nem de banco</span></li></ul>
-    <button class="btn primary block" type="button" data-act="apoiepagar" style="margin-top:14px">${ic("raio","sm")} <span id="aptxt">Apoiar com R$ ${APOIO_V}</span></button></div>`, "Apoie"); }
+      <li>${ic("lock","sm")}<span>Não guardamos dados de cartão nem de banco</span></li>
+      <li id="apmesnota"${APOIO_MES ? "" : " hidden"}>${ic("clock","sm")}<span>Todo mês é uma assinatura no Mercado Pago: você cancela lá quando quiser</span></li></ul>
+    <button class="btn primary block" type="button" data-act="apoiepagar" style="margin-top:14px">${ic("raio","sm")} <span id="aptxt">${apoioRotulo()}</span></button></div>`, "Apoie"); }
 function apoioValor(){ const o = $("#apoutro"), n = o && o.value ? Math.round(+o.value) : APOIO_V; return n; }
 function apoioVolta(){ let q; try{ q = new URLSearchParams(location.search); }catch(e){ return; } const id = q.get("apoio"); if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
-  const pay = q.get("payment_id") || q.get("collection_id") || "", st = q.get("status") || q.get("collection_status") || "";
-  ["apoio","payment_id","collection_id","status","collection_status","external_reference","payment_type","merchant_order_id","preference_id","site_id","processing_mode","merchant_account_id"].forEach(k=>q.delete(k));
+  const pay = q.get("payment_id") || q.get("collection_id") || "", st = q.get("status") || q.get("collection_status") || "", pre = q.get("preapproval_id") || "";
+  ["apoio","preapproval_id","payment_id","collection_id","status","collection_status","external_reference","payment_type","merchant_order_id","preference_id","site_id","processing_mode","merchant_account_id"].forEach(k=>q.delete(k));
   try{ history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }catch(e){}
+  if (/^[\w-]{6,64}$/.test(pre)) return apoioMensalConfere(pre);   /* 18/11: volta da assinatura (Todo mês) */
   apoioConfere(/^\d{4,20}$/.test(pay) ? pay : "", st); }
+async function apoioMensalConfere(pre){ apoioSituacao("conferindo"); let r = null;
+  for (let i = 0; i < 4; i++){ try{ r = await fetch(`${SB_URL}/functions/v1/apoio-aviso?preapproval_id=${encodeURIComponent(pre)}`, {headers:{apikey:SB_KEY}}).then(x=>x.json()); }catch(e){}
+    if (r && r.situacao === "ativo") break; await new Promise(z=>setTimeout(z, 2500)); }
+  apoioSituacao(r && r.situacao === "ativo" ? "mensal" : "analise", r); }
 async function apoioConfere(pay, st){ apoioSituacao("conferindo"); let r = null;
   if (pay) for (let i = 0; i < 4; i++){ try{ r = await fetch(`${SB_URL}/functions/v1/apoio-aviso?payment_id=${pay}`, {headers:{apikey:SB_KEY}}).then(x=>x.json()); }catch(e){}
     if (r && r.situacao && r.situacao !== "aguardando") break; if (st !== "approved") break; await new Promise(z=>setTimeout(z, 2500)); }
@@ -5747,6 +5755,7 @@ async function apoioConfere(pay, st){ apoioSituacao("conferindo"); let r = null;
 function apoioSituacao(e, r){ const v = r && r.valor ? adBRL(+r.valor) : "", teste = r && r.teste ? `<p class="srcnote" style="margin-top:8px">Apoio em modo de teste: nenhum dinheiro de verdade foi movimentado.</p>` : "";
   const [t, x] = e==="conferindo" ? ["Conferindo o apoio…", "Só um instante: estamos confirmando com o Mercado Pago."]
     : e==="pago" ? ["Obrigada pelo apoio!", `Recebemos ${v || "o seu apoio"}. Ele ajuda a manter a rede.online no ar.`]
+    : e==="mensal" ? ["Obrigada pelo apoio mensal!", `Seu apoio mensal${v ? " de " + v : ""} está ativo. Para cancelar, é no Mercado Pago, em Assinaturas.`]
     : e==="analise" ? ["Pagamento em análise", "O Mercado Pago ainda está processando. Quando confirmar, o apoio entra sozinho."]
     : ["Apoio não concluído", "Nada foi cobrado. Se quiser, é só tentar de novo pelo botão Apoie."];
   openSheet(shead(t) + `<div class="sform"><p style="margin:0">${x}</p>${teste}${e==="conferindo" ? "" : `<button class="btn block" type="button" data-act="close" style="margin-top:14px">Fechar</button>`}</div>`, t); }
@@ -6180,10 +6189,12 @@ const A = {
     if (data) await SB.storage.from("verificacao-docs").remove([data]).catch(()=>{});
     toast(aprova ? "Conta verificada. Documento apagado." : "Pedido recusado. Documento apagado."); render(); },
   apoie: () => { uso("apoie", "abre"); sheetApoie(); },
-  apoieval: b => { APOIO_V = +b.dataset.v; const o = $("#apoutro"); if (o) o.value = ""; $$(".apvals button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); $("#aptxt").textContent = `Apoiar com R$ ${APOIO_V}`; },
+  apoieval: b => { APOIO_V = +b.dataset.v; const o = $("#apoutro"); if (o) o.value = ""; $$(".apvals button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); $("#aptxt").textContent = apoioRotulo(); },
+  apoiemes: b => { APOIO_MES = b.dataset.m === "1"; $$('[data-act="apoiemes"]').forEach(x=>{ const on = x === b; x.setAttribute("aria-checked", on); x.setAttribute("aria-selected", on); });
+    const n = $("#apmesnota"); if (n) n.hidden = !APOIO_MES; $("#aptxt").textContent = apoioRotulo(); },
   apoiepagar: async b => { const v = apoioValor(); if (!(v >= 5 && v <= 5000)) return toast("Escolha um valor entre R$ 5 e R$ 5.000.");
     ocupado(b, true, "Abrindo o pagamento…");
-    try{ const r = await fetch(`${SB_URL}/functions/v1/apoio-cobra`, {method:"POST", headers:{apikey:SB_KEY, "Content-Type":"application/json"}, body:JSON.stringify({valor:v})});
+    try{ const r = await fetch(`${SB_URL}/functions/v1/apoio-cobra`, {method:"POST", headers:{apikey:SB_KEY, "Content-Type":"application/json"}, body:JSON.stringify({valor:v, mensal:APOIO_MES})});
       const j = await r.json().catch(()=>({}));
       if (!r.ok || !j.url){ ocupado(b, false); return toast(j.erro ? j.erro.charAt(0).toUpperCase() + j.erro.slice(1) + "." : "Não foi possível abrir o pagamento. Tente de novo."); }
       uso("apoie", "pagamento"); location.href = j.url; }
@@ -7063,7 +7074,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:08";
+const VERSAO = "v1 registrada · 18/11 07:15";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

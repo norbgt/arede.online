@@ -2098,6 +2098,7 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .apoiebtn .icon{width:15px;height:15px;color:var(--brand)}
 .apoiebtn:hover{background:var(--surface)}
 @media (max-width:339px){ .apoiebtn{padding:0 10px;gap:0} .apoiebtn span{display:none} }
+.apfreq{margin:14px 0 0;padding:0;border-bottom:0}
 .apvals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0 10px}
 .apvals button{height:44px;padding:0 2px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
 .apvals button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
