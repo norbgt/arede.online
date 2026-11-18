@@ -2541,7 +2541,7 @@ const PED = {lista:null, msgs:{}};
 async function pedCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.from("tat_pedidos").select("*").order("atualizado_em", {ascending:false}); PED.lista = data || []; }catch(e){ PED.lista = []; } }
 const pedPagina = x => PAGS.lista.find(p=>p.id === x.pagina_id) || {};
 const pedSouPagina = x => !!(ME.user && pedPagina(x).dono === ME.user.id);
-const pedResumo = x => x.tipo === "tabela" ? `${x.item}${x.preco ? " · " + x.preco : ""}` : (x.descricao || "Pedido personalizado");
+const pedResumo = x => x.tipo === "tabela" ? `${x.item}${x.valor_combinado ? "" : x.preco ? " · " + x.preco : ""}` : (x.descricao || "Pedido personalizado");   /* com orçamento enviado, o valor está no progresso */
 function screenConversas(){ if (!ME.user) return header(`<div class="toprow"><h1 class="pagehead">Mensagens</h1></div>`) + `<div class="container"><p class="empty">Entre na sua conta para ver suas conversas.</p></div>`;
   if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversas") render(); }); }
   const l = PED.lista || [];
@@ -2557,8 +2557,8 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
   const meu = m => (m.de === "pagina") === eu;
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
     + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
-        <b>${esc(pedResumo(x))}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
-        <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small></div>
+        <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
+        <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
       ${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}</small></div>`).join("")}</div>
       <div class="composer"><textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
       <p class="lnote">Combine valor, sinal e data por aqui. ${mod(p, "agenda") ? "Quando a data estiver certa, a página marca a sessão; no dia, o check-in por QR confirma que vocês estiveram juntos." : ""}</p>`}</div>`; }
@@ -2611,13 +2611,30 @@ async function sesCarrega(campo, valor){ const {data} = await SB.from("tat_sesso
 function sesHTML(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "";
   const l = SES.pedido[x.id]; if (!l){ sesCarrega("pedido_id", x.id).then(r=>{ SES.pedido[x.id] = r; if (route() === "conversa-" + x.id) render(); }); return ""; }
   const ativa = l.find(y=>y.status === "proposta" || y.status === "marcada");
-  const card = y => { const st = y.status === "verificada" ? (y.checkout_em ? ["Encerrado","ok"] : ["Serviço iniciado","ok"]) : SES_ST[y.status], tat = modeloDe(p) === "tatuagem";
+  const card = (y, n) => { const st = y.status === "verificada" ? (y.checkout_em ? ["Encerrado","ok"] : ["Serviço iniciado","ok"]) : SES_ST[y.status], tat = modeloDe(p) === "tatuagem";
     let ac = "";
     if (y.status === "proposta") ac = eu ? `<small>Esperando a confirmação.</small><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sesconfirma" data-s="${y.id}">Confirmar</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Pedir outro horário</button>`;
     if (y.status === "marcada") ac = eu ? `<button class="btn sm primary" type="button" data-act="sesqr" data-s="${y.id}">${ic("check","sm")} Mostrar QR do check-in</button><button class="btn sm ghost" type="button" data-act="sescancela" data-s="${y.id}">Cancelar</button>` : `<button class="btn sm primary" type="button" data-act="sescheckin" data-s="${y.id}">${ic("check","sm")} Fazer check-in</button><small>No dia, aponte a câmera para o QR que a página mostra, ou digite o código.</small>`;
     if (y.status === "verificada") ac = eu ? (y.checkout_em ? `<small>${y.avaliada ? "A cliente já avaliou." : ""}</small>` : `<button class="btn sm primary" type="button" data-act="sesfim" data-s="${y.id}" data-pd="${x.id}">${ic("check","sm")} Encerrar atendimento</button>`) : y.avaliada ? `<small>Você avaliou esta ${tat ? "sessão" : "visita"}. Obrigada!</small>` : `<button class="btn sm primary" type="button" data-act="sesavalia" data-s="${y.id}">${ic("star","sm")} Avaliar</button>`;
-    return `<div class="sescard" data-s="${y.id}"><span class="ktipo">${ic("clock","sm")}${tat ? "Sessão" : "Horário"} · <span class="pgsit ${st[1]}">${st[0]}</span></span><b>${dataHora(y.quando)} · ${y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min"}</b>${y.status === "cancelada" ? "" : sesCiclo(x, y)}<div class="sesac">${ac}</div></div>`; };
-  return `${l.filter(y=>y.status !== "cancelada").map(card).join("")}${eu && !ativa ? `<button class="btn ghost" type="button" data-act="sesnova" data-id="${x.id}">${ic("calplus","sm")} Marcar ${modeloDe(p) === "tatuagem" ? "sessão" : "horário"}</button>` : ""}`; }
+    return `<div class="sescard" data-s="${y.id}"><span class="ktipo">${ic("clock","sm")}${tat ? "Sessão" : "Horário"}${n ? " " + n : ""} · <span class="pgsit ${st[1]}">${st[0]}</span></span><b>${dataHora(y.quando)} · ${y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min"}</b>${y.status === "cancelada" ? "" : sesCiclo(x, y)}<div class="sesac">${ac}</div></div>`; };
+  const tat0 = modeloDe(p) === "tatuagem", vivas = l.filter(y=>y.status !== "cancelada").sort((a, c)=>new Date(a.quando) - new Date(c.quando)), dur = y => y.duracao_min >= 60 ? (y.duracao_min / 60).toString().replace(".", ",") + " h" : y.duracao_min + " min";
+  const lin = (y, n) => y.checkout_em ? `<details class="sesfeita"><summary>${ic("check","sm")}<span><b>${tat0 ? "Sessão" : "Horário"} ${n} · ${new Date(y.quando).toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"})} · ${dur(y)}</b><small>Encerrado · pago ${finBRL(y.valor_pago)}${n === 1 && y.sinal ? " (com sinal)" : ""}</small></span></summary>${card(y, n)}</details>` : card(y, n);
+  const falta = Math.max(0, (+x.sessoes_prev || 1) - vivas.length);
+  return `${vivas.map((y, i)=>lin(y, i + 1)).join("")}${Array.from({length:falta}, (_, i)=>`<div class="sesamarcar">${ic("clock","sm")}<span>${tat0 ? "Sessão" : "Horário"} ${vivas.length + i + 1} · a marcar</span></div>`).join("")}
+    ${eu ? `<button class="btn ghost" type="button" data-act="sesnova" data-id="${x.id}">${ic("calplus","sm")} Adicionar ${tat0 ? "sessão" : "horário"}</button>` : ""}`; }
+/* 17/11, decisão da Amanda: trabalho em várias sessões. A página envia o orçamento (valor combinado e sessões previstas, que pode mudar);
+   cada checkout registra o valor pago daquela sessão; o sinal entra no 1º checkout. */
+function pedProgresso(x, eu){ const p = pedPagina(x); if (!mod(p, "agenda")) return "";
+  const l = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada"), pago = l.reduce((t, y)=>t + (+y.valor_pago || 0), 0), feitas = l.filter(y=>y.checkout_em).length, prev = Math.max(+x.sessoes_prev || 1, l.length), tot = +x.valor_combinado || 0;
+  return `${tot ? `<div class="finbar" style="margin:10px 0 6px"><i style="width:${Math.min(100, Math.round(pago*100/tot))}%;background:var(--ok)"></i></div><span class="pedprog"><span>Pago ${finBRL(pago)} de ${finBRL(tot)}</span><span>${feitas} de ${prev} ${feitas === 1 ? "feita" : "feitas"}</span></span>` : ""}
+    ${eu ? `<button class="btn sm ghost" type="button" data-act="orcenvia" data-id="${x.id}" style="align-self:flex-start;margin-top:8px">${tot ? "Alterar orçamento" : "Enviar orçamento"}</button>` : ""}`; }
+const sesSug = (x, y) => { const tot = +(x && x.valor_combinado) || 0; if (!tot) return sesComb(x, y);
+  const l = (SES.pedido[x.id] || []).filter(z=>z.status !== "cancelada"), pago = l.filter(z=>z.id !== y.id).reduce((t, z)=>t + (+z.valor_pago || 0), 0), rest = Math.max(1, (+x.sessoes_prev || 1) - l.filter(z=>z.checkout_em && z.id !== y.id).length);
+  return Math.max(0, Math.round((tot - pago) / rest * 100) / 100) || null; };
+function sheetOrcEnvia(x){ openSheet(shead(x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento") + `
+    <div class="row" style="gap:10px"><div class="field" style="flex:2"><label for="oevalor">Valor combinado (R$)</label><input id="oevalor" inputmode="decimal" maxlength="14" value="${x.valor_combinado ? String((+x.valor_combinado).toFixed(2)).replace(".", ",") : finValor(x.preco) ? String(finValor(x.preco).toFixed(2)).replace(".", ",") : ""}"></div>
+      <div class="field" style="flex:1"><label for="oesess">Sessões previstas</label><input id="oesess" type="number" min="1" max="20" value="${+x.sessoes_prev || 1}"></div></div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="orcsalva" data-id="${x.id}">${x.valor_combinado ? "Alterar orçamento" : "Enviar orçamento"}</button>`, "Orçamento"); }
 const sesComb = (x, y) => x && x.valor_combinado ? +x.valor_combinado : finValor(y && y.valor) || finValor(x && x.preco);
 function sesCiclo(x, y){ const c = sesComb(x, y), lin = (ok, rot, val) => `<span class="sescl${ok ? " ok" : ""}">${ic(ok ? "check" : "clock","sm")}<span>${rot}</span><b>${val}</b></span>`;
   return `<div class="sesciclo">${lin(!!c, "Orçamento · valor combinado", c ? finBRL(c) : "falta")}${lin(y.sinal != null, "Agendamento · sinal", y.sinal != null ? finBRL(y.sinal) : "sem sinal")}${lin(!!y.checkin_em, "Check-in · serviço iniciado", y.checkin_em ? new Date(y.checkin_em).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "falta")}${lin(!!y.checkout_em, "Checkout · valor pago", y.valor_pago ? finBRL(y.valor_pago) : "falta")}</div>`; }
@@ -2631,8 +2648,8 @@ function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0),
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdia">Dia</label><input id="sesdia" type="date"></div><div class="field" style="flex:1"><label for="seshora">Hora</label><input id="seshora" type="time"></div></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="sesdur">Duração</label><select id="sesdur">${[[30,"30 min"],[60,"1 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"],[360,"6 h"]].map(([v, t])=>`<option value="${v}"${v === 120 ? " selected" : ""}>${t}</option>`).join("")}</select></div>
-      <div class="field" style="flex:1"><label for="sesval">Valor combinado (opcional)</label><input id="sesval" maxlength="40" placeholder="R$ 350" value="${x.valor_combinado ? esc(finBRL(x.valor_combinado)) : esc(x.preco || "")}"></div></div>
-    <div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>
+      </div>
+    ${(SES.pedido[x.id] || []).some(y=>y.status !== "cancelada") ? "" : `<div class="field"><label for="sessinal">Sinal (opcional)</label><input id="sessinal" inputmode="decimal" maxlength="14" placeholder="R$ 100"></div>`}
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sescria" data-id="${pid0}">Propor</button>`, "Marcar"); }
 async function sheetSesQR(y){ if (!y.codigo && sesJanela(y)){ try{ const {data} = await SB.rpc("tat_sessao_codigo", {p_sessao:y.id}); if (data) y.codigo = data; }catch(e){} }   /* 15/11: o código fica no servidor; só a página o recebe */
   const url = location.origin + location.pathname + "#checkin-" + y.id + "-" + y.codigo, ok = sesJanela(y), cod = String(y.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
@@ -6415,9 +6432,8 @@ const A = {
   sescria: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id), d = $("#sesdia").value, h = $("#seshora").value; if (!x) return;
     if (!d || !h) return formErro("Escolha o dia e a hora."); const quando0 = new Date(d + "T" + h + ":00");
     if (quando0.getTime() < Date.now() - 36e5) return formErro("Escolha um horário que ainda não passou.");
-    ocupado(b, true, "Propondo…"); const vc = finValor($("#sesval").value), sn = $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
-    if (vc && vc !== +x.valor_combinado){ const r = await SB.from("tat_pedidos").update({valor_combinado:vc}).eq("id", x.id); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } x.valor_combinado = vc; }
-    const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:$("#sesval").value.trim() || null, sinal:sn, status:"proposta"});
+    ocupado(b, true, "Propondo…"); const sn = $("#sessinal") && $("#sessinal").value.trim() ? finValor($("#sessinal").value) : null;
+    const {error} = await SB.from("tat_sessoes").insert({pagina_id:x.pagina_id, pedido_id:x.id, cliente:x.cliente, cliente_nome:x.cliente_nome, quando:quando0.toISOString(), duracao_min:+$("#sesdur").value, valor:x.valor_combinado ? finBRL(x.valor_combinado) : (x.preco || null), sinal:sn, status:"proposta"});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await sesSistema(x.id, `Horário proposto: ${dataHora(quando0)}.`); ocupado(b, false); closeSheet(); toast("Proposta enviada na conversa."); sesRecarrega(); },
   sesconfirma: async b => { const y = sesAchar(b.dataset.s); if (!y) return; const {error} = await SB.from("tat_sessoes").update({status:"marcada"}).eq("id", y.id); if (error) return toast(erroAuth(error));
@@ -6510,11 +6526,16 @@ const A = {
       const r = await SB.rpc("pagina_cnpj", {p_id:b.dataset.id, p_cnpj:cn}); if (r.error){ ocupado(b, false); return formErro(erroAuth(r.error)); } aviso = "Página salva. A curadoria vai conferir o CNPJ."; }
     ocupado(b, false); closeSheet(); await paginasCarrega(); toast(aviso); render(); },
   vitnovo: b => sheetVitrineNovo(b.dataset.p),
-  sesfim: b => { const y = sesAchar(b.dataset.s), x = (PED.lista || []).find(z=>z.id === b.dataset.pd); if (y) sheetSesFim(y.id, sesComb(x, y), y.pagina_id); },
+  sesfim: b => { const y = sesAchar(b.dataset.s), x = (PED.lista || []).find(z=>z.id === b.dataset.pd); if (y) sheetSesFim(y.id, sesSug(x, y), y.pagina_id); },
   finfim: b => { const d = FIN[b.dataset.p] || {}, x = (d.pendentes || []).find(y=>y.sessao === b.dataset.s); if (x) sheetSesFim(x.sessao, x.combinado || finValor(x.valor), b.dataset.p); },
   sesfimok: async b => { const v = finValor($("#sfval").value); if (!v || v <= 0) return formErro("Informe o valor pago.");
     ocupado(b, true, "Encerrando…"); const {data, error} = await SB.rpc("tat_checkout", {p_sessao:b.dataset.s, p_valor:v}); ocupado(b, false); if (error) return formErro(erroAuth(error));
     closeSheet(); if (b.dataset.p) delete FIN[b.dataset.p]; toast(data && data.venda ? "Atendimento encerrado. A venda entrou no Financeiro." : "Atendimento encerrado."); sesRecarrega(); },
+  orcenvia: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetOrcEnvia(x); },
+  orcsalva: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; const v = finValor($("#oevalor").value), n = Math.round(+$("#oesess").value);
+    if (!v || v <= 0) return formErro("Informe o valor combinado."); if (!(n >= 1 && n <= 20)) return formErro("Sessões previstas: de 1 a 20.");
+    ocupado(b, true, "Enviando…"); const {error} = await SB.from("tat_pedidos").update({valor_combinado:v, sessoes_prev:n}).eq("id", x.id); if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
+    x.valor_combinado = v; x.sessoes_prev = n; await sesSistema(x.id, `Orçamento: ${finBRL(v)}${n > 1 ? ` em ${n} sessões` : ""}.`); ocupado(b, false); closeSheet(); toast("Orçamento enviado na conversa."); PED.msgs = {}; render(); },
   convtab: b => { S.convTab = b.dataset.tab; render(); },
   pgnf: b => b.setAttribute("aria-checked", b.getAttribute("aria-checked") !== "true"),
   finnova: b => sheetFinVenda(b.dataset.p),
@@ -6888,7 +6909,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:07";
+const VERSAO = "v1 registrada · 17/11 21:13";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
