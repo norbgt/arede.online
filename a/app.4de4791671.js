@@ -438,7 +438,7 @@ const EXTAG = `<span class="extag" title="Conteúdo de exemplo, para mostrar com
 const ficTag = o => o && o.ficticia ? EXTAG : "";
 const exTag = it => ehExemplo(it) ? EXTAG : "";
 /* 18/11 (Amanda): o site de origem pode pedir assinatura (amostra diária da fonte ou a própria matéria; a curadoria confirma no painel) */
-const pagoTag = it => it && it.assinatura ? `<span class="pagotag" title="O site de origem pode pedir assinatura para ler a matéria inteira">${ic("lock","sm")}Pode pedir assinatura</span>` : "";
+const pagoTag = it => it && it.assinatura ? `<span class="pagotag" title="O site de origem pode pedir assinatura para ler a matéria inteira">${ic("lock","sm")}Assinatura</span>` : "";   /* 18/11 (Amanda): só "Assinatura" */
 const NUCLEOS = [["Núcleo Centro",48,"toda segunda"],["Núcleo Jardim",36,"quinzenal"],["Comissão de comunicação",12,"às quintas"],["Comissão de finanças",7,"mensal"]];
 /* BANDEIRAS: país (como está na base de fontes) para o código de duas letras e a bandeira em emoji */
 const ISO = {"Brasil":"BR","EUA":"US","Reino Unido":"GB","Irlanda do Norte":"GB","Canadá":"CA","Austrália":"AU","Irlanda":"IE","Nova Zelândia":"NZ","África do Sul":"ZA",
@@ -2417,8 +2417,8 @@ function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa
   return id; }
 async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
 async function paginasCarrega0(){ if (!SB) return;
-  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa").order("criada_em", {ascending:false}).limit(300);
-    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em").order("criada_em", {ascending:false}).limit(300);
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-|gerir-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
@@ -2829,7 +2829,9 @@ function screenPagina(pid){ const id = "pg-" + pid, o = ORG[id], p = PAGS.lista.
   const meu = ME.user && p.dono === ME.user.id, f = S.follow.has(id), emp = p.tipo === "empresa", tt = tatDe(p);
   const tabs = [["pubs", tt ? ((MODELOS[modeloDe(p)] || {}).aba || "Publicações") : "Publicações"], ["pastas", "Portfólio"], mod(p, "reputacao") ? ["reputacao","Reputação"] : null, mod(p, "equipe") ? ["equipe","Equipe"] : null, mod(p, "loja") ? ["vitrine","Loja"] : null, ["sobre","Sobre"]].filter(Boolean);
   const t = tabs.some(x=>x[0] === S.pgTab) ? S.pgTab : "pubs";
-  const aviso = p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
+  const fimAp = p.apagar_em ? new Date(p.apagar_em).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "") : "";
+  const aviso = fimAp ? `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span><b>Página apagada.</b> Só você vê. Ela some de vez em ${fimAp}.<span style="display:block;margin-top:10px"><button class="btn sm" type="button" data-act="pgreativa" data-id="${p.id}">Reativar página</button></span></span></div>`
+    : p.status === "aprovada" ? "" : `<div class="note warnnote" style="margin:10px 0">${ic("info")}<span>${p.status === "pendente" ? "<b>Esperando a curadoria.</b> Só você vê esta página até ela ser aprovada." : `<b>Página ${PG_SIT[p.status][0]}.</b> ${esc(o.motivo || "")}`}</span></div>`;
   const ib = (act, icn, rot, extra, cl) => `<button class="iconbtn${cl ? " " + cl : ""}" type="button" data-act="${act}" ${extra || ""} aria-label="${rot}" title="${rot}">${ic(icn)}</button>`;
   /* 15/11: o QR é uma ação. Quem é atendido faz o check-in ali e começa a sessão; quem atende mostra o QR da próxima sessão. O número é o de sessões já verificadas. */
   /* 16/11: o QR continua: quem atende mostra o QR do dia; quem é atendido vê o QR só quando tem sessão marcada nesta página (em destaque na janela do check-in). As sessões verificadas foram para a linha das estrelas. */
@@ -2976,13 +2978,14 @@ async function sheetPaginaApaga(pid){ const p = PAGS.lista.find(x=>x.id === pid)
   const vai = n("publicacoes","publicação","publicações") + n("pedidos","pedido, com a conversa","pedidos, com as conversas") + n("vendas","registro do Financeiro","registros do Financeiro") + n("seguidores","pessoa que segue a página","pessoas que seguem a página");
   if (r.marcadas) return openSheet(shead("Apagar página") + `<p>Antes de apagar, encerre ou cancele ${r.marcadas === 1 ? "o atendimento marcado" : "os " + r.marcadas + " atendimentos marcados"}. Quem marcou precisa saber.</p>
     <div class="sheetacts"><button class="btn primary block" type="button" data-act="pgapagaver" data-id="${pid}">Ver atendimentos</button><button class="btn ghost block" type="button" data-act="close">Voltar</button></div>`, "Apagar página");
-  openSheet(shead("Apagar página") + `<p>Apagar <b>${esc(p.nome)}</b> tira a página da rede para sempre. Não dá para desfazer.</p>
-    ${vai ? `<p style="margin:10px 0 4px"><b>Vai junto:</b></p><ul class="dlist">${vai}</ul>` : ""}
+  openSheet(shead("Apagar página") + `<div class="cform sform">
+    <div class="note">${ic("info")}<span><b class="ntit">Você tem 15 dias para voltar atrás</b>A página <b>${esc(p.nome)}</b> e as publicações dela somem na hora para todo mundo. Para reativar, abra a página em até 15 dias e toque em Reativar. Depois disso, tudo é apagado de vez.</span></div>
+    ${vai ? `<p style="margin:12px 0 4px"><b>Vai junto, depois dos 15 dias:</b></p><ul class="dlist">${vai}</ul>` : ""}
     ${r.vendas ? `<p class="lnote">Se você usa o Financeiro para o MEI, copie os registros antes.</p>` : ""}
-    <div class="field" style="margin-top:12px"><label for="pgapnome">Para confirmar, escreva o nome da página</label><input id="pgapnome" autocomplete="off" placeholder="${esc(p.nome)}"></div>
+    <div class="field" style="margin-top:12px"><label for="pgapsen">Sua senha</label><div class="pw"><input id="pgapsen" type="password" autocomplete="current-password"><button class="linkbtn" type="button" data-act="versenha" data-for="pgapsen">Mostrar</button></div></div>
     <p class="ferr" role="alert" hidden></p>
-    <div class="sheetacts"><button class="btn block perigo" type="button" data-act="pgapagaok" data-id="${pid}" disabled>${ic("trash","sm")} Apagar para sempre</button><button class="btn ghost block" type="button" data-act="close">Cancelar</button></div>`, "Apagar página");
-  const inp = $("#pgapnome"), bt = $('[data-act="pgapagaok"]'); if (inp && bt) inp.addEventListener("input", ()=>{ bt.disabled = inp.value.trim().toLowerCase() !== p.nome.trim().toLowerCase(); }); }
+    <button class="btn perigo block" type="button" data-act="pgapagaok" data-id="${pid}">${ic("trash","sm")} Apagar página</button>
+    <button class="btn ghost block" type="button" data-act="close">Cancelar</button></div>`, "Apagar página"); }
 function sheetVitrineNovo(pid){ openSheet(shead("Adicionar à vitrine") + `
     <div class="field"><label for="vinome">Serviço ou produto</label><input id="vinome" maxlength="120"></div>
     <div class="field"><label>Foto (opcional)</label><div class="orcrefs" id="vifotobox"></div><label class="btn ghost sm" style="cursor:pointer">${ic("plus","sm")} Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" id="vifoto" hidden></label></div>
@@ -4464,10 +4467,10 @@ function mockSB(o = {}){
       const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
         marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
         vendas:tab("mei_vendas").filter(x=>x.pagina_id === p.id).length, seguidores:tab("pagina_seguidores").filter(x=>x.pagina_id === p.id).length}; },
-    pagina_apaga:a=>{ const t = tab("paginas"), i = t.findIndex(x=>x.id === a.p_id && x.dono === eu()); if (i < 0) return {erro:"Só quem criou a página pode apagá-la."};
-      if (String(a.p_nome || "").trim().toLowerCase() !== t[i].nome.trim().toLowerCase()) return {erro:"O nome não confere. Escreva o nome da página igual ao que aparece no topo."};
+    pagina_apaga:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
       const agora = Date.now(), m = tab("tat_sessoes").filter(x=>x.pagina_id === a.p_id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length; if (m) return {erro:"marcadas", marcadas:m};
-      t.splice(i, 1); ["publicacoes","tat_pedidos","tat_sessoes","mei_vendas","pagina_seguidores","pagina_itens","pagina_secoes","pagina_avaliacoes"].forEach(k=>{ db.t[k] = tab(k).filter(x=>x.pagina_id !== a.p_id); }); salva(); return {ok:true}; },
+      p.apagar_em = new Date(agora + 15 * 864e5).toISOString(); salva(); return {ok:true, fim:p.apagar_em}; },
+    pagina_reativa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p || !p.apagar_em) return {erro:"Não deu para reativar."}; p.apagar_em = null; salva(); return {ok:true}; },
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
@@ -6362,13 +6365,20 @@ const A = {
   csatenvia: () => { csatManda(true); closeSheet(); toast("Obrigada! Sua resposta ajuda a melhorar a rede."); },
   pgapaga: b => sheetPaginaApaga(b.dataset.id),
   pgapagaver: b => { closeSheet(); S.gerVer = "agenda"; go("gerir-" + b.dataset.id); },
-  pgapagaok: async b => { const pid = b.dataset.id, inp = $("#pgapnome"), er = $(".sheet .ferr"); b.disabled = true;
-    let r; try{ r = await SB.rpc("pagina_apaga", {p_id:pid, p_nome:inp ? inp.value : ""}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
+  pgapagaok: async b => { const pid = b.dataset.id, sen = ($("#pgapsen") || {}).value || "";
+    if (!sen) return sheetErro("Escreva sua senha."); sheetErro(""); ocupado(b, true, "Conferindo…");
+    const c = await SB.auth.signInWithPassword({email:ME.user.email, password:sen, options:{captchaToken:await capToken()}});   /* a mesma conferência de Apagar minha conta */
+    if (c.error){ ocupado(b, false); return sheetErro(/invalid/i.test(c.error.message) ? "A senha não confere." : erroAuth(c.error)); }
+    let r; try{ r = await SB.rpc("pagina_apaga", {p_id:pid}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
     const d = r.data || {}, msg = r.error ? r.error.message : d.erro === "marcadas" ? "Há atendimentos marcados. Encerre ou cancele antes." : d.erro;
-    if (msg){ if (er){ er.textContent = msg; er.hidden = false; } b.disabled = false; return; }
-    PAGS.lista = PAGS.lista.filter(x=>x.id !== pid); delete ORG["pg-" + pid];
+    ocupado(b, false); if (msg) return sheetErro(msg);
+    const pg = PAGS.lista.find(x=>x.id === pid); if (pg) pg.apagar_em = d.fim || new Date(Date.now() + 15 * 864e5).toISOString();
     for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].pagina_id === pid) POOL.splice(i, 1);
-    F.key = null; closeSheet(); toast("Página apagada."); go("organizacoes"); },
+    F.key = null; closeSheet(); render();
+    toast(`Página apagada. Para reativar, abra a página até ${new Date(pg ? pg.apagar_em : Date.now()).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "")}.`); },
+  pgreativa: async b => { ocupado(b, true, "Reativando…"); let r; try{ r = await SB.rpc("pagina_reativa", {p_id:b.dataset.id}); }catch(e){ r = {error:{message:"Sem conexão agora."}}; }
+    ocupado(b, false); const msg = r.error ? r.error.message : (r.data || {}).erro; if (msg) return toast(msg);
+    const pg = PAGS.lista.find(x=>x.id === b.dataset.id); if (pg) pg.apagar_em = null; F.key = null; publicacoesCarrega && publicacoesCarrega(); render(); toast("Página reativada. Tudo volta a aparecer."); },
   anunciar: b => { closeSheet(); S.adPasso = 0; if (b && b.dataset && b.dataset.fmt){ adDraft().fmt = b.dataset.fmt; adGuarda(); } go("anunciar"); },   /* 15/11: o "Anuncie aqui" do feed já abre na Faixa */
   adconta: () => { S.adConta = !S.adConta; adRefaz(); },
   adpasso: b => { if (b.dataset.checa && !S.adPasso && adFalta()) return adMostraFalta(); S.adPasso = +b.dataset.v; adRefaz(); const t = $(".adpassos"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({block:"start"}); },
@@ -7074,7 +7084,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:15";
+const VERSAO = "v1 registrada · 18/11 07:22";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
