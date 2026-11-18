@@ -2437,8 +2437,8 @@ function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa
   return id; }
 async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
 async function paginasCarrega0(){ if (!SB) return;
-  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em").order("criada_em", {ascending:false}).limit(300);
-    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario").order("criada_em", {ascending:false}).limit(300);
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-|gerir-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
@@ -3096,6 +3096,18 @@ function sheetPaginaNova(){
     <button class="btn primary block" type="button" data-act="paginacria" data-trava>Enviar para a curadoria</button>
     <p class="lnote" style="margin-top:8px">A curadoria confere antes de a página ir ao ar e avisa você no sino.</p>`, "Criar página");
   $("#pgcnpjbox").hidden = !emp0; }
+/* 18/11 (Amanda): domínio próprio da página. Quem tem a página compra o domínio (a rede nunca compra nem cobra) e pede aqui;
+   a administração conduz a ativação pelo painel e responde por notificação e e-mail. Ainda feito um a um. */
+const PG_DOM = {};
+async function pgDominioCarrega(pid){ try{ const {data} = await SB.from("dominio_pedidos").select("id,dominio,status,nota,criado_em").eq("pagina_id", pid).order("criado_em", {ascending:false}).limit(1); PG_DOM[pid] = (data || [])[0] || null; }catch(e){ PG_DOM[pid] = null; } }
+const DOM_ST = {pedido:["Pedido recebido","A rede.online confere e responde com o próximo passo."], em_andamento:["Em andamento","Siga o próximo passo que enviamos."], ativo:["No ar","Este endereço abre a sua página."]};
+async function sheetPgDominio(pid){ if (PG_DOM[pid] === undefined) await pgDominioCarrega(pid); const x = PG_DOM[pid], aberto = x && DOM_ST[x.status];
+  openSheet(shead("Domínio próprio") + (aberto ? `<div class="setting static"><span class="t"><b>${esc(x.dominio)}</b><small>${DOM_ST[x.status][0]} · ${DOM_ST[x.status][1]}</small>${x.nota ? `<small>${esc(x.nota)}</small>` : ""}</span></div>
+      <button class="btn ghost block perigo" type="button" data-act="pgdomcancela" data-id="${x.id}" data-p="${pid}" style="margin-top:12px">${x.status === "ativo" ? "Desligar domínio" : "Cancelar pedido"}</button>`
+    : `${x && x.status === "recusado" ? `<p class="inota">${ic("info","sm")}<span>O pedido de ${esc(x.dominio)} não foi aceito.${x.nota ? " " + esc(x.nota) : ""}</span></p>` : ""}
+      <ol class="domsteps"><li><b>Compre o domínio</b><small>Numa registradora, no seu nome. O .com.br custa R$&nbsp;40 por ano no Registro.br.</small></li><li><b>Peça aqui</b><small>O endereço com www, como www.seunegocio.com.br.</small></li><li><b>Faça o ajuste que enviamos</b><small>A rede.online responde por notificação e e-mail.</small></li></ol>
+      <div class="rform"><label class="olbl" for="pgdomin">Endereço</label><input id="pgdomin" class="input" type="text" inputmode="url" autocapitalize="none" spellcheck="false" maxlength="120" placeholder="www.seunegocio.com.br"><p class="ferr" role="alert" hidden></p>
+      <button class="btn primary block" type="button" data-act="pgdompede" data-p="${pid}">Pedir domínio</button></div>`), "Domínio próprio"); }
 function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (!p) return; const o = ORG["pg-" + pid], v = x => esc(x || "");
   const temas = TEMAS_LISTA.map(t=>`<option${t === p.tema ? " selected" : ""}>${esc(t)}</option>`).join("");
   openSheet(shead("Editar página") + `<div class="pilltabs" role="tablist" aria-label="Partes da página">${[["perfil","Perfil"],["negocio","Negócio"],["servicos","Serviços"]].map(([k, n], i)=>`<button class="ptab" type="button" role="tab" data-edsec="${k}" aria-selected="${!i}">${n}</button>`).join("")}</div>
@@ -3104,7 +3116,9 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3">${v(p.descricao)}</textarea></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80" value="${v(p.cidade)}"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
     <div class="field"><label for="pgsite">Site</label><input id="pgsite" type="url" maxlength="300" value="${v(p.site)}" placeholder="https://"></div>
-    <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div></div>
+    <div class="field"><label for="pgcont">Contato</label><input id="pgcont" maxlength="300" value="${v(p.contato)}"></div>
+    <div class="field"><label for="pgusu">Endereço da página</label><div class="usucampo"><span aria-hidden="true">@</span><input id="pgusu" type="text" maxlength="30" autocapitalize="none" spellcheck="false" value="${v(p.usuario)}" aria-describedby="pgusudica"></div><small id="pgusudica" class="hint">arede.online/#@${v(p.usuario || "nome")}</small></div>
+    <button class="setting l1" type="button" data-act="pgdominio" data-id="${pid}" style="width:100%">${ic("globe")}<span class="t"><b>Domínio próprio</b><small>Um endereço seu, como www.seunegocio.com.br</small></span>${ic("back","sm flip")}</button></div>
     <div data-sec="negocio" hidden>${p.tipo === "empresa" ? `<div class="field"><label for="pgcnpj">CNPJ (opcional)</label><input id="pgcnpj" inputmode="numeric" maxlength="18" placeholder="${o && o.cnpj ? "Conferido. Para trocar, digite o novo" : "00.000.000/0000-00"}"><small class="hint">${o && o.cnpj ? "O selo <b>CNPJ conferido</b> está na página. Trocar o número tira o selo até a curadoria conferir de novo." : "Com CNPJ, a página ganha o selo <b>CNPJ conferido</b> depois que a curadoria confere. O número só a curadoria vê."}</small></div>` : ""}
     ${o && o.cnpj ? `<div class="setting"><span class="t"><b>Emito nota fiscal</b><small>Liga o selo Nota fiscal na página.</small></span><button class="switch" type="button" role="switch" id="pgnf" data-act="pgnf" aria-checked="${!!p.emite_nf}" aria-label="Emito nota fiscal"></button></div>` : ""}</div>
     <div data-sec="servicos" hidden>${tatFichaCampos(p)}</div>
@@ -4340,8 +4354,8 @@ const go = r => { if (route()===r) render(); else location.hash = r; };
 /* 18/11: arede.online/#@nome abre o perfil de quem tem esse nome de usuário */
 async function arrobaAbre(n = 0){ const h = decodeURIComponent((location.hash || "").slice(1)); if (!/^@[a-z0-9_.]{3,30}$/i.test(h)) return false;
   if (!SB && n < 40){ setTimeout(()=>arrobaAbre(n + 1), 250); return true; }   /* espera a conexão com o servidor */
-  let id = null; try{ const r = SB ? await SB.rpc("perfil_por_usuario", {p_usuario:h.slice(1)}) : {data:null}; id = r.data || null; }catch(e){}
-  if (id) location.replace("#org-u-" + id); else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
+  let x = null; try{ const r = SB ? await SB.rpc("rota_usuario", {p_usuario:h.slice(1)}) : {data:null}; x = r.data || null; }catch(e){}
+  if (x && x.id) location.replace((x.tipo === "pagina" ? "#pg-" : "#org-u-") + x.id); else { location.replace("#inicio"); setTimeout(()=>toast("Não achamos esse perfil."), 300); } return true; }
 addEventListener("hashchange", ()=>arrobaAbre()); setTimeout(()=>arrobaAbre(), 0);
 function goBack(){ NAV.pop(); location.hash = NAV.pop() || "inicio"; }
 /* sair do ambiente do manifesto: volta para a última tela do app (pula as páginas do próprio ambiente) */
@@ -4936,6 +4950,13 @@ function mockSB(o = {}){
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
+    pagina_usuario_define:({p_pagina, p_usuario})=>{ const pg = tab("paginas").find(x=>x.id === p_pagina && x.dono === eu()); if (!pg) throw {message:"valor: página não encontrada"}; const u = String(p_usuario || "").replace(/^@+/, "").toLowerCase().trim(); if (!u){ pg.usuario = null; salva(); return null; }
+      if (!/^[a-z0-9_.]{3,30}$/.test(u)) throw {message:"valor: use de 3 a 30 letras minúsculas, números, ponto ou _"}; if (/arede/.test(u)) throw {message:"valor: esse nome é reservado. Escolha outro"};
+      if (tab("perfis").some(x=>x.usuario === u) || tab("paginas").some(x=>x.usuario === u && x.id !== p_pagina)) throw {message:"valor: esse nome já está em uso"}; pg.usuario = u; salva(); return u; },
+    rota_usuario:({p_usuario})=>{ const u = String(p_usuario || "").replace(/^@+/, "").toLowerCase(), pf = tab("perfis").find(x=>x.usuario === u), pg = tab("paginas").find(x=>x.usuario === u && x.status === "aprovada"); return pf ? {tipo:"perfil", id:pf.id} : pg ? {tipo:"pagina", id:pg.id} : null; },
+    pagina_dominio_pede:({p_pagina, p_dominio})=>{ const l = tab("dominio_pedidos"); if (l.some(x=>x.pagina_id === p_pagina && ["pedido","em_andamento","ativo"].includes(x.status))) throw {message:"valor: esta página já tem um pedido de domínio. Cancele antes de pedir outro"};
+      const x = {id:novoId(), pagina_id:p_pagina, user_id:eu(), dominio:String(p_dominio).toLowerCase(), status:"pedido", nota:null, criado_em:agora()}; l.push(x); salva(); return x.id; },
+    pagina_dominio_cancela:({p_id})=>{ const x = tab("dominio_pedidos").find(y=>y.id === p_id && y.user_id === eu()); if (!x) throw {message:"valor: pedido não encontrado"}; x.status = "cancelado"; salva(); return null; },
     perfil_usuario_define:({p_usuario})=>{ const pf = perfil(eu()), u = String(p_usuario || "").replace(/^@+/, "").toLowerCase().trim(); if (!u){ pf.usuario = null; salva(); return null; }
       if (!/^[a-z0-9_.]{3,30}$/.test(u)) throw {message:"valor: use de 3 a 30 letras minúsculas, números, ponto ou _"}; if (/arede/.test(u) || ["admin","contato","rede","suporte"].includes(u)) throw {message:"valor: esse nome é reservado. Escolha outro"};
       if (tab("perfis").some(x=>x.usuario === u && x.id !== eu())) throw {message:"valor: esse nome já está em uso"}; pf.usuario = u; salva(); return u; },
@@ -7088,7 +7109,8 @@ const A = {
   saveto: b => { const id = b.dataset.uid, k = b.dataset.f; store.set("ultimaPasta", k); S.saved.add(id); S.savedIn[id] = k; persist("saved"); persist("savedIn"); closeSheet(); refresh(id); toast(`Salvo em ${folderName(k)}. Suas pastas ficam no Perfil.`); },
   like: b => { const id = b.dataset.uid; if (!S.liked.has(id)) lugarSinal(findItem(id), "like"); S.liked.has(id) ? S.liked.delete(id) : S.liked.add(id); persist("liked"); refresh(id); },
   share: b => { if (b.dataset.uid && !S.shared.has(b.dataset.uid)){ lugarSinal(findItem(b.dataset.uid), "share"); S.shared.add(b.dataset.uid); persist("shared"); }
-    const pu = b.dataset.perfil && /^u-/.test(b.dataset.perfil) ? b.dataset.perfil.slice(2) : "", usu = pu ? (ME.user && ME.user.id === pu ? (ME.perfil || {}).usuario : (PESS_VIT[pu] || {}).usuario) : "";   /* 18/11: com @, o link é arede.online/#@nome */
+    const pu = b.dataset.perfil && /^u-/.test(b.dataset.perfil) ? b.dataset.perfil.slice(2) : "", pgp = b.dataset.perfil && /^pg-/.test(b.dataset.perfil) ? (PAGS.lista || []).find(x=>"pg-" + x.id === b.dataset.perfil) : null;
+    const usu = pu ? (ME.user && ME.user.id === pu ? (ME.perfil || {}).usuario : (PESS_VIT[pu] || {}).usuario) : pgp ? pgp.usuario : "";   /* 18/11: com @, o link é arede.online/#@nome */
     const url = location.href.split("#")[0] + (b.dataset.uid ? "#pin-" + b.dataset.uid : usu ? "#@" + usu : b.dataset.perfil ? (/^pg-/.test(b.dataset.perfil) ? "#" : "#org-") + b.dataset.perfil : location.hash); try{ navigator.clipboard.writeText(url).then(()=>toast("Link copiado."), ()=>toast("Não foi possível copiar o link.")); }catch(e){ toast("Não foi possível copiar o link."); } },
   moretext: b => { const pin = b.closest(".pin"), t = pin.querySelector(".pintext"); const open = !t.classList.contains("open"); t.classList.toggle("open", open); S.textOpen[b.dataset.uid] = open;
     b.textContent = open ? "Mostrar menos" : "Mostrar mais"; b.setAttribute("aria-expanded", open); layoutPin(pin); },
@@ -7228,6 +7250,14 @@ const A = {
   pgtab: b => { if (b.closest(".sheet")) closeSheet(); S.pgTab = b.dataset.tab; S.pgPasta = null; const pid = route().slice(3), p = PAGS.lista.find(x=>x.id === pid); if (!p) return;
     $$('[data-act="pgtab"]').forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===S.pgTab)); $("#pgbody").innerHTML = paginaCorpoTab(ORG["pg-" + pid], p, S.pgTab); paginaPreenche(pid); },
   paginova: () => sheetPaginaNova(),
+  pgdominio: b => { closeSheet(); sheetPgDominio(b.dataset.id); },
+  pgdompede: async b => { const pid = b.dataset.p, d = (($("#pgdomin") || {}).value || "").trim().toLowerCase(), err = $("#layer .ferr");
+    if (!/^([a-z0-9-]+\.){2,}[a-z]{2,}$/.test(d.replace(/^https?:\/\//, "").replace(/\/.*$/, ""))){ if (err){ err.textContent = "Escreva o endereço com www, por exemplo www.seunegocio.com.br."; err.hidden = false; } return; }
+    ocupado(b, true, "Enviando…"); const {error} = await SB.rpc("pagina_dominio_pede", {p_pagina:pid, p_dominio:d}); ocupado(b, false);
+    if (error){ if (err){ err.textContent = msgErr(error); err.hidden = false; } return; }
+    await pgDominioCarrega(pid); closeSheet(); sheetPgDominio(pid); toast("Pedido enviado."); },
+  pgdomcancela: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para confirmar"; return; }
+    const {error} = await SB.rpc("pagina_dominio_cancela", {p_id:b.dataset.id}); if (error) return toast(msgErr(error)); await pgDominioCarrega(b.dataset.p); closeSheet(); toast("Pedido de domínio cancelado."); },
   paginaedita: b => sheetPaginaEdita(b.dataset.id),
   selocomo: b => sheetSeloComo(b.dataset.k),
   sesnova: b => sheetSesNova(b.dataset.id),
@@ -7323,7 +7353,10 @@ const A = {
       await SB.from("pagina_tatuagem").upsert({pagina_id:data.id, modelo:S.pgModelo, papel, modulos:M.mods.concat(papel === "estudio" ? ["equipe"] : []), estilos:[], preco:null, preco_un:"hora", orc_ref:true, orc_tabela:false, tabela:[], atualizado_em:new Date().toISOString()}); }
     S.pgModelo = null; closeSheet(); await paginasCarrega(); toast(data && data.status === "aprovada" ? "Página no ar. Ajuste os módulos em Editar página." : "Página enviada. A curadoria avisa você no sino."); go("pg-" + data.id); },
   pgmodelo: b => { S.pgModelo = b.dataset.m || null; sheetPaginaNova(); },
-  paginasalva: async b => { ocupado(b, true, "Salvando…");
+  paginasalva: async b => { const pusu = (($("#pgusu") || {}).value || "").trim().replace(/^@+/, "").toLowerCase(), pg1 = PAGS.lista.find(x=>x.id === b.dataset.id) || {};
+    if (pusu && !/^[a-z0-9_.]{3,30}$/.test(pusu)) return formErro("Endereço da página: de 3 a 30 letras minúsculas, números, ponto ou _.");
+    ocupado(b, true, "Salvando…");
+    if ($("#pgusu") && pusu !== (pg1.usuario || "")){ const r = await SB.rpc("pagina_usuario_define", {p_pagina:b.dataset.id, p_usuario:pusu || null}); if (r.error){ ocupado(b, false); return formErro(msgErr(r.error)); } pg1.usuario = r.data || null; }
     const {error} = await SB.rpc("pagina_edita", {p_id:b.dataset.id, p_descricao:$("#pgdesc").value, p_cidade:$("#pgcid").value, p_tema:$("#pgtema").value, p_site:$("#pgsite").value, p_contato:$("#pgcont").value});
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     { const e2 = await tatFichaSalva(b.dataset.id); if (e2){ ocupado(b, false); return formErro(erroAuth(e2)); } }
@@ -7843,7 +7876,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 17:37";
+const VERSAO = "v1 registrada · 18/11 17:46";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
