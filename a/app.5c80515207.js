@@ -862,6 +862,7 @@ function aplicaRegras(g){ if (!g || typeof g !== "object") return false; const n
   poe("rep_sobe_pouco", 0, 101, x=>{ REP_POUCO = x; }); poe("rep_sobe_muito", 0, 101, x=>{ REP_MUITO = x; }); poe("selo_auto_rep", 0, 101, x=>{ SELO_AUTO_REP = x; });
   poe("selo_antigo_dias", 1, 3650, x=>{ SELO_ANTIGO_DIAS = x; }); poe("senha_min", 8, 128, x=>{ SENHA_MIN = x; });
   if (typeof g.identidade_exigida === "boolean") { IDENT_EXIGE = g.identidade_exigida; mudou = true; }
+  if (typeof g.aba_publicacoes === "boolean" && g.aba_publicacoes !== ABA_PUB) { ABA_PUB = g.aba_publicacoes; mudou = true; }
   if (Array.isArray(g.apoio_valores) && g.apoio_valores.length && g.apoio_valores.every(x=>Number.isInteger(x) && x > 0)) { APOIO_VALORES = g.apoio_valores.slice(0, 8); mudou = true; }
   return mudou; }
 async function regrasCarrega(){ if (!SB) return; try{ const r = await SB.rpc("parametros_publicos"); if (!r.error && aplicaRegras(r.data)) render(); }catch(e){} }
@@ -1869,7 +1870,8 @@ function nivel(){ if (NIVEL_TESTE) return NIVEL_TESTE;
   if (LOCAL) return "admin"; if (!ME.user) return "visitante";
   const pf = ME.perfil; return pf && pf.papel==="admin" ? "admin" : pf && pf.verificado ? "verificado" : "cadastrado"; }
 const veArte = () => nivel()==="admin";
-const ftabs = () => FTABS;   /* 18/11 (Amanda): a aba Arte volta a ser pública; o acervo Ativista fica com cadeado dentro dela */
+let ABA_PUB = false;   /* 18/11 (Amanda): a aba Publicações sai por enquanto (pouco conteúdo original, ficava quase igual ao Tudo). Volta pelo painel (Regras › Feed › Aba Publicações), que avisa quando houver volume. */
+const ftabs = () => FTABS.filter(t=>t[0] !== "publicacoes" || ABA_PUB);   /* 18/11 (Amanda): a aba Arte volta a ser pública; o acervo Ativista fica com cadeado dentro dela */
 const horaDe = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); };
 /* a conta do que foi visto fica no aparelho, por conta */
 let LG = null, LGk = "", lgT = 0;
@@ -1999,6 +2001,7 @@ function statusLine(){
     <button class="iconbtn tool" type="button" data-act="sort" aria-label="Ordenar: ${o}">${ic("sort")}${S.ord!=="padrao"?`<span class="badge dot2"></span>`:""}</button>`;
 }
 function screenHome(){
+  if (!ftabs().some(t=>t[0] === S.tab)) S.tab = "tudo";
   /* topo: marca e mensagens · abas · linha de controles do feed (algoritmo e ajuste à esquerda, filtrar e ordenar à direita) */
   return header(`<div class="toprow">${LOGO}<div class="spacer"></div>
       <button class="apoiebtn" type="button" data-act="apoie" aria-haspopup="dialog" aria-label="Apoie">${ic("raio","sm")}<span>Apoie</span></button>
@@ -3088,27 +3091,29 @@ function arteCorpo(){
   return `<div class="canaistopo artetopo"><section class="cmod" id="artemus" aria-label="Museus">${museusModHTML()}</section><section class="cmod" id="arteag" aria-label="Agenda cultural">${agendaModHTML()}</section></div>
     <div class="vidhead artehead"><div class="cmh"><span class="cmic" aria-hidden="true">${ic(at ? "lock" : "doc")}</span><h2>${at ? "Acervo ativista" : "Notícias de cultura"}</h2><span class="cmsub">${at ? "Só você vê" : "Feed das fontes"}</span></div>
       ${adm ? `<div class="lvlist rdfil artesw" role="group" aria-label="O que o feed mostra"><button class="rdf" type="button" data-act="artesub" data-v="cultura" aria-pressed="${!at}">Notícias</button><button class="rdf" type="button" data-act="artesub" data-v="ativista" aria-pressed="${at}">${ic("lock","sm")}Acervo ativista</button></div>` : ""}</div>`; }
-/* 18/11 (Amanda): Museus e Agenda são módulos como Ao vivo e Rádio: filtro em pílulas, faixa de botões que rola, nota curta. */
+/* 18/11 (Amanda): cada museu tem o seu cartão, com a prévia da agenda dentro. O módulo segue o molde de Canais (título, filtro em pílulas, faixa que rola). */
+const NAO_MUSEU = /^(parque|reserva|esta[cç][aã]o ecol|floresta|[aá]rea de prote|monumento natural|jardim bot)/i;
 const musLink = m => m.parceiro ? "#pg-" + m.pagina_id : urlOk(m.site) || (/^Q\d+$/.test(m.wd || "") ? "https://www.wikidata.org/wiki/" + m.wd : "");
-const musPilula = m => { const h = musLink(m), ext = !m.parceiro, tag = m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "");
-  return `<a class="lvch muspil" href="${esc(h)}"${ext ? ' target="_blank" rel="noopener"' : ""} aria-label="${esc(limpo(m.nome))}${m.cidade ? ", " + esc(limpo(m.cidade)) : ""}${m.parceiro ? ", parceiro com check-in por QR" : ""}">${ic(m.parceiro ? "qrselo" : "predio", "sm")}${esc(limpo(m.nome))}${tag ? `<span class="lgtag">${esc(tag)}</span>` : ""}</a>`; };
-function museusModHTML(){ if (!MUS.lista) musBusca();
-  const l = MUS.lista || [];
-  const faixa = !MUS.lista ? `<p class="lnote">Carregando…</p>` : l.length ? `<div class="lvlist">${l.map(musPilula).join("")}</div>` : `<p class="lnote">Nenhum museu com esse nome.</p>`;
+function musCartao(m){ const ev = m.parceiro && MUS.agenda ? (MUS.agenda.parceiros || []).filter(e=>e.pagina_id === m.pagina_id) : [], h = musLink(m), ext = !m.parceiro;
+  const lugar = [m.cidade, m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "")].filter(Boolean).join(" · ");
+  const agenda = m.parceiro ? (ev.length ? `<ul class="mcag">${ev.slice(0, 2).map(e=>`<li><b>${esc(limpo(e.titulo))}</b><small>${e.tipo === "evento" ? "Evento" : "Exposição"} · ${evPeriodo(e)}</small></li>`).join("")}${ev.length > 2 ? `<li class="mcmais">e mais ${ev.length - 2}</li>` : ""}</ul>` : `<p class="mcsem">Sem exposição anunciada na rede agora.</p>`)
+    : `<p class="mcsem">A agenda deste museu fica no site dele.</p>`;
+  return `<article class="muscard2${m.parceiro ? " parc" : ""}"><div class="mchead"><span class="mcic" aria-hidden="true">${ic("predio")}</span><span class="mct"><b>${esc(limpo(m.nome))}</b>${lugar ? `<small>${esc(lugar)}</small>` : ""}</span></div>
+    ${m.parceiro ? `<span class="mustag">${ic("qrselo","sm")}Check-in por QR</span>` : ""}${agenda}
+    ${h ? `<a class="btn sm block mcbtn" href="${esc(h)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${m.parceiro ? "Ver a página" : urlOk(m.site) ? "Site do museu" : "Ver no Wikidata"}${ext ? ic("ext","sm") : ""}</a>` : ""}</article>`; }
+function museusModHTML(){ if (!MUS.lista) musBusca(); if (!MUS.agenda) agendaCarrega();
+  const l = (MUS.lista || []).filter(m=>!NAO_MUSEU.test(m.nome || ""));
+  const faixa = !MUS.lista ? `<p class="lnote">Carregando…</p>` : l.length ? `<div class="lvlist mcfaixa">${l.map(musCartao).join("")}</div>` : `<p class="lnote">Nenhum museu com esse nome.</p>`;
   return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("predio")}</span><h2>Museus</h2><span class="cmsub">Guia do Brasil e do mundo</span></div>
     <div class="lvlist rdfil" role="group" aria-label="Onde">${[["br","Brasil"],["mundo","Mundo"]].map(([k, nm])=>`<button class="rdf" type="button" data-act="musonde" data-v="${k}" aria-pressed="${MUS.onde === k}">${nm}</button>`).join("")}</div>
     <div class="field musq"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Buscar museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div>
     ${MUS.semCidade ? `<p class="lnote" style="margin:0 0 8px">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${faixa}</div>
-    <p class="lnote lvnota">${ic("qrselo","sm")} Parceiro: a visita vira carimbo no seu passaporte. Dados abertos do Wikidata.</p>`; }
-function agendaModHTML(){ const cab = `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("calplus")}</span><h2>Agenda</h2><span class="cmsub">Exposições e eventos</span></div>`;
+    <p class="lnote lvnota">${ic("qrselo","sm")} Nos parceiros, a visita vira carimbo no seu passaporte. Guia com dados abertos do Wikidata.</p>`; }
+function agendaModHTML(){ const cab = `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("calplus")}</span><h2>Agendas oficiais</h2><span class="cmsub">Ibram, Ministério da Cultura, Iphan e Funarte</span></div>`;
   if (!MUS.agenda){ agendaCarrega(); return cab + `<p class="lnote">Carregando…</p>`; }
-  const par = MUS.agenda.parceiros || [], ofi = (MUS.agenda.oficiais || []).filter(n=>urlOk(n.url));
-  const pp = e => `<a class="lvch" href="#pg-${esc(e.pagina_id)}" aria-label="${esc(limpo(e.titulo))}, ${evPeriodo(e)}, ${esc(limpo(e.museu))}">${ic("qrselo","sm")}${esc(limpo(e.titulo))}<span class="lgtag">${evPeriodo(e)}</span></a>`;
-  const po = n => `<a class="lvch" href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="${esc(limpo(n.titulo))}, ${esc(limpo(n.fonte))}">${esc(limpo(n.titulo))}<span class="lgtag">${evDia(n.em)}</span></a>`;
-  return cab + (par.length ? `<p class="agrot">Museus parceiros</p><div class="lvlist">${par.map(pp).join("")}</div>` : "")
-    + (ofi.length ? `<p class="agrot">Agendas oficiais</p><div class="lvlist">${ofi.map(po).join("")}</div>` : "")
-    + (!par.length && !ofi.length ? `<p class="lnote">Nada na agenda agora.</p>` : "")
-    + `<p class="lnote lvnota">Agendas do Ibram, do Ministério da Cultura, do Iphan e da Funarte. Confira data e horário na fonte.</p>`; }
+  const ofi = (MUS.agenda.oficiais || []).filter(n=>urlOk(n.url));
+  return cab + (ofi.length ? `<div class="list">${ofi.slice(0, 6).map(n=>`<a class="setting l1" href="${esc(n.url)}" target="_blank" rel="noopener"><span class="t"><b>${esc(limpo(n.titulo))}</b><small>${esc(limpo(n.fonte))} · ${evDia(n.em)}</small></span>${ic("ext","sm")}</a>`).join("")}</div>` : `<p class="lnote">Nada publicado nas últimas semanas.</p>`)
+    + `<p class="lnote lvnota">Publicações dos sites oficiais. Confira data e horário na fonte.</p>`; }
 const musCard = m => `<div class="setting l1 muscard"><span class="music" aria-hidden="true">${ic("predio")}</span><span class="t"><b>${esc(limpo(m.nome))}</b><small>${esc([m.cidade, m.uf || (m.pais && m.pais !== "Brasil" ? m.pais : "")].filter(Boolean).join(" · "))}${m.km != null ? " · " + String(m.km).replace(".", ",") + " km" : ""}</small>
   ${m.parceiro ? `<a class="mustag" href="#pg-${esc(m.pagina_id)}">${ic("qrselo","sm")}Check-in por QR</a>` : ""}</span>${urlOk(m.site) ? `<a class="iconbtn" href="${esc(m.site)}" target="_blank" rel="noopener" aria-label="Site do museu ${esc(limpo(m.nome))}">${ic("ext")}</a>` : ""}</div>`;
 async function musBusca(){ const R = minhaRegiao(), q = MUS.q.trim() || (MUS.onde === "br" ? R.cidade : ""), k = MUS.onde + "|" + q;
@@ -7347,7 +7352,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 08:49";
+const VERSAO = "v1 registrada · 18/11 09:09";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
