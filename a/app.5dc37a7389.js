@@ -2712,11 +2712,11 @@ function orcCartao(o, x, eu){ const p = pedPagina(x), tat = modeloDe(p) === "tat
   const st = {proposto:[eu ? "Esperando resposta" : "Para você responder","warn"], aceito:["Aceito","ok"], ajuste:["Ajuste pedido",""], substituido:["Trocado por outro",""]}[o.status] || ["",""];
   const nSes = (SES.pedido[x.id] || []).filter(y=>y.status !== "cancelada").length;
   let ac = "";
-  if (o.status === "proposto" && vivo) ac = eu ? `<small>${esc(limpo(x.cliente_nome || "A cliente"))} vê este orçamento e responde aqui.</small><button class="btn sm ghost" type="button" data-act="orcenvia" data-id="${x.id}">Trocar orçamento</button>`
+  if (o.status === "proposto" && vivo) ac = eu ? `<small>${esc(limpo(x.cliente_nome || "A cliente"))} vê este orçamento e responde aqui.</small>`
     : `<button class="btn sm primary" type="button" data-act="orcaceita" data-o="${o.id}" data-id="${x.id}">Aceitar orçamento</button><button class="btn sm ghost" type="button" data-act="orcajuste" data-o="${o.id}" data-id="${x.id}">Pedir ajuste</button>`;
   if (o.status === "aceito" && vivo) ac = eu ? (mod(p, "agenda") && !nSes ? `<button class="btn sm primary" type="button" data-act="sesnova" data-id="${x.id}">${ic("calplus","sm")} Propor o horário${n > 1 ? " da 1ª sessão" : ""}</button>` : `<small>Combinado. Os horários ficam em Atendimento.</small>`)
     : (nSes ? `<small>Combinado. Os horários ficam em Atendimento.</small>` : "");
-  if (o.status === "ajuste" && vivo) ac = eu ? `<button class="btn sm primary" type="button" data-act="orcenvia" data-id="${x.id}">Enviar orçamento novo</button>` : `<small>Você pediu ajuste. Conte o que mudar na conversa.</small>`;
+  if (o.status === "ajuste" && vivo) ac = eu ? `<small>Combine o ajuste na conversa e envie um orçamento novo.</small>` : `<small>Você pediu ajuste. Conte o que mudar na conversa.</small>`;
   return `<div class="orccard${vivo ? "" : " velho"}"><div class="orchead"><span class="ktipo">${ic("cifrao","sm")}Orçamento</span>${st[0] ? `<span class="pgsit ${st[1]}">${st[0]}</span>` : ""}</div>
     <b class="orcval">${finBRL(+o.valor)}</b><small class="orcses">${n > 1 ? `${n} ${ses} · cerca de ${finBRL(Math.round(+o.valor / n * 100) / 100)} cada` : `1 ${tat ? "sessão" : "horário"}`}${o.estilo ? " · " + esc(limpo(o.estilo)) : ""}</small>
     ${o.nota ? `<p class="orcnota">${esc(limpo(o.nota))}</p>` : ""}${ac ? `<div class="sesac">${ac}</div>` : ""}<small class="orcq">${quando(o.criado_em)}</small></div>`; }
@@ -7444,7 +7444,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 10:16";
+const VERSAO = "v1 registrada · 18/11 10:19";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
