@@ -933,7 +933,7 @@ function art(item, h=1, label){
    sem cookies de rastreio (youtube-nocookie), quando a pessoa toca no play; antes disso, uma prévia curta e sem som (ver PRÉVIA DOS VÍDEOS). Um vídeo por vez: tocar outro, ou rolar para longe, para o anterior. */
 const ytCapa = (it, h=.5625) => `<span class="ytcapa" data-yt="${it.yt}">${art(it, h, false)}${it.capa ? `<img src="${esc(it.capa)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ""}</span>`;
 const ytPlayBtn = (it, big) => big ? `<button class="ytplay big" type="button" data-act="ytplay" data-yt="${it.yt}" aria-label="Assistir aqui: ${esc(it.titulo)}">${ic("play")}<span>Assistir</span></button>`
-  : `<button class="ytplay" type="button" data-act="ytabre" aria-label="Assistir e ver detalhes: ${esc(it.titulo)}">${ic("play")}<span>Assistir</span></button>`;
+  : `<button class="ytplay mini" type="button" data-act="ytabre" aria-label="Assistir e ver detalhes: ${esc(it.titulo)}">${ic("play")}</button>`;   /* 18/11 (Amanda): no cartão, só o botão redondo */
 /* tocar um cartão de vídeo do YouTube (a capa, o botão Assistir ou o bloco) abre o vídeo com os detalhes, e o vídeo já começa */
 document.addEventListener("click", e=>{ const f = e.target.closest && e.target.closest(".face.yt, .tbtn, .facewrap .ytplay"); if (!f) return;
   const c = (f.closest(".facewrap") || f).querySelector(".ytcapa[data-yt]"); if (c) S.ytAuto = c.dataset.yt; }, true);
@@ -1222,7 +1222,7 @@ function textParts(it){
 function face(item){
   switch(item.tipo){
     case "imagem": return {img:true, html: art(item, item.ph, false)};
-    case "video": if (item.yt) return {img:true, cls:"vid yt", html:`${ytCapa(item)}<span class="xplay ytcanal" aria-hidden="true">${ic("play")}<span>${esc(ORG[item.org].nome)} · YouTube</span></span>`, yt:true};
+    case "video": if (item.yt) return {img:true, cls:"vid yt", html:`${ytCapa(item)}`, yt:true};   /* 18/11 (Amanda): o canal sai de cima do vídeo e vai para a linha acima do título */
       if (!item.src) return {img:true, html:`${art(item, .75, false)}<span class="xplay" aria-hidden="true">${ic("play")}<span>${esc(item.plat||"vídeo")}${item.dur?" · "+item.dur:""}</span></span>`};
       return {img:true, vid:true, html:`<video src="${item.src}" poster="${item.poster}" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1" style="--ar:${(1/item.ar).toFixed(4)}"></video>`};
     default: { const t = textParts(item);
@@ -1237,7 +1237,7 @@ function face(item){
 }
 function card(item, mode){
   const o = ORG[item.org], f = face(item), s = sealOf(item), on = S.saved.has(item.uid);
-  return `<article class="card" data-card="${item.uid}" data-mode="${mode}">
+  return `<article class="card${f.yt ? " ytc" : ""}" data-card="${item.uid}" data-mode="${mode}">
     <div class="facewrap">
       <button class="face ${f.img?"img":"txt"} ${f.vid?"vid":""} ${f.cls||""} ${s.lv==="bad"?"low":""}" type="button" data-act="open" data-uid="${item.uid}" ${f.style?`style="${f.style}"`:""}
         aria-label="Abrir ${kindOf(item)}: ${esc(item.titulo)}. ${s.label}${s.sc!==null?", nota "+s.sc:""}">${f.html}
@@ -1249,7 +1249,7 @@ function card(item, mode){
       <span class="vprog" aria-hidden="true"><i></i></span>`:""}
       ${saveBtn(item.uid, "savebtn")}
     </div>
-    ${f.img ? `<div class="cap capimg">${capHTML(item,"capp")}
+    ${f.img ? `<div class="cap capimg">${f.yt ? `<span class="ytcol"><span class="ytmeta">${ic("play")}<span>${esc(o.nome)}</span></span>${capHTML(item,"capp")}</span>` : capHTML(item,"capp")}
       <button class="more" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button></div>`
       : `<button class="more morein" type="button" data-act="open" data-uid="${item.uid}" aria-label="Mais sobre ${esc(item.titulo)}">${ic("dots","sm")}</button>`}
   </article>`;
@@ -3690,7 +3690,7 @@ function profBody(){
     + `<h3 class="psec sovoce">${ic("lock","sm")} Só você vê</h3><div class="pfiltros"><div class="chips umalinha" role="group" aria-label="O que só você vê">${PFILT.map(([k,n])=>`<button class="chip" type="button" data-act="pfiltro" data-f="${k}" aria-pressed="${f===k}">${n}</button>`).join("")}</div></div>
     <div class="${ag ? "lwrap" : "rwrap"}"><div id="pfeed"></div></div>`;
   if (S.profTab==="redes"){ const t0 = S.pubTab; S.pubTab = "redes"; const h = pubBody(); S.pubTab = t0; return h; }
-  if (S.profTab==="algoritmo") return `<div class="algotab">${algoPanel()}</div>`;
+  if (S.profTab==="algoritmo") return `<div class="algotab">${algoPanel()}${ME.user ? `<section class="acard alrep"><h3>Sua reputação</h3><p class="anote">O algoritmo também usa a sua reputação para mostrar suas publicações a outras pessoas.</p><button class="linkbtn" type="button" data-act="repver">Ver sua reputação</button></section>` : ""}</div>`;   /* 18/11 (Amanda): Algoritmo e Reputação ficam separados, com esta ponte */
   if (S.profTab==="passaporte"){ if (!PASS.lista) passaporteCarrega(); return `<div id="passbody">${passaporteAba()}</div>`; }
   const pgs = S.profTab==="publicacoes" ? minhasPaginas() : [];
   return `<div class="rwrap"><div id="pfeed"></div></div>`;   /* 15/11: as suas páginas aparecem no cabeçalho, como na prévia */
@@ -3717,10 +3717,10 @@ const PERFIL_MOSTRA = () => `<h2 class="sectitle">O que o seu perfil mostra</h2>
 /* PASSAPORTE (18/11, Amanda): cada sessão com check-in confirmado pelas duas pessoas vira um carimbo. As coleções seguem só o que a rede confere.
    Só a própria pessoa vê. Sem ranking, sem sequência diária, sem prêmio. */
 const PASS = {lista:null, publico:false}, PASS_DE = {};
-async function passaporteCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.rpc("passaporte_de", {p_user:ME.user.id}); PASS.lista = data && Array.isArray(data.itens) ? data.itens : []; PASS.publico = !!(data && data.publico); }catch(e){ PASS.lista = []; }
+async function passaporteCarrega(){ if (!SB || !ME.user) return; try{ const {data} = await SB.rpc("passaporte_de", {p_user:ME.user.id}); PASS.lista = data && Array.isArray(data.itens) ? data.itens : []; PASS.publico = !!(data && data.publico); PASS.destaques = data && Array.isArray(data.destaques) ? data.destaques : []; }catch(e){ PASS.lista = []; }
   const b = $("#passbody"); if (b) b.innerHTML = passaporteAba(); }
 async function passaporteDeCarrega(uid){ if (!SB || PASS_DE[uid] !== undefined) return; PASS_DE[uid] = null;
-  try{ const {data} = await SB.rpc("passaporte_de", {p_user:uid}); PASS_DE[uid] = data && Array.isArray(data.itens) && data.itens.length ? data.itens : false; }catch(e){ PASS_DE[uid] = false; }
+  try{ const {data} = await SB.rpc("passaporte_de", {p_user:uid}); PASS_DE[uid] = data && Array.isArray(data.itens) && data.itens.length ? data.itens : false; PASS_DEST_DE[uid] = data && Array.isArray(data.destaques) ? data.destaques : []; }catch(e){ PASS_DE[uid] = false; }
   if (route() === "org-u-" + uid) render(); }
 /* a aba do próprio perfil: escolha de mostrar, carimbos e coleções, e a lista de atendimentos (essa fica sempre só com a pessoa) */
 function passaporteAba(){ if (!PASS.lista) return `<p class="empty">Carregando…</p>`;
@@ -3753,12 +3753,37 @@ function passaporteCorpo(l0, outro){ if (!l0) return `<p class="empty">Carregand
   const l = l0.filter(c=>!c.escondido), nEsc = l0.length - l.length;   /* 18/11 (Amanda): carimbo escondido sai do passaporte e das coleções e volta quando a pessoa quiser */
   const dia = (d, mes) => mes ? new Date(d).toLocaleDateString("pt-BR", {month:"short", year:"numeric"}).replace(".", "").replace(" de ", " ") : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
   const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}"${outro || !c.id ? "" : ` data-pesc="${c.id}"`} style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : c.modelo === "museu" ? "predio" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
-    : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento ou na primeira visita a um museu parceiro.</b> Cada check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
+    : `<p class="pvazio2">${ic("qrselo","sm")}<span>Cada check-in confirmado vira um carimbo aqui. <a href="#organizacoes">Ver páginas</a></span></p>`;   /* 18/11 (Amanda): passaporte vazio em uma linha */
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
     ${!outro && l0.length ? `<button class="linkbtn pescbtn" type="button" data-act="pesclista">${ic("lock","sm")}${nEsc ? `${nEsc} ${nEsc === 1 ? "carimbo escondido" : "carimbos escondidos"} · Mostrar ou esconder` : "Esconder carimbos"}</button>` : ""}
-    <h2 class="sectitle">Coleções</h2><div class="pmeds">${cols.map((c, i)=>`<div class="pmed${c.ok ? " ok" : c.n ? " anda" : ""}" style="--p:${Math.round(c.n / c.meta * 100)}%;--r:${[-6, 5, -3, 7][i % 4]}deg" title="${esc(c.desc)}"><span class="pring">${ic(c.ic)}</span><b>${esc(c.nome)}</b><small>${c.ok ? (c.meta === 1 ? "conquistada" : c.n + " de " + c.meta + " · conquistada") : c.n + " de " + c.meta}</small><small class="pdesc">${esc(c.desc)}</small></div>`).join("")}</div>
+    ${passDestaques(cols, outro)}
+    <h2 class="sectitle">Coleções</h2><div class="pcols">${cols.map(c=>`<div class="pcol${c.ok ? " ok" : ""}">${ic(c.ic)}<span class="t"><b>${esc(c.nome)}</b><small>${esc(c.desc)}</small></span>${c.ok && c.meta === 1 ? `<span class="pok">${ic("check","sm")}</span>` : `<span class="pprog"><small>${c.n} de ${c.meta}</small><span class="adbar"><i style="width:${Math.round(c.n / c.meta * 100)}%"></i></span></span>`}</div>`).join("")}</div>
     <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas e de visitas a museus parceiros pelo QR da entrada." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas e visitas a museus parceiros pelo QR da entrada: nada de ranking, sequência ou prêmio."}</p>`; }
+/* 18/11 (Amanda): passaporte volta às coleções em lista; em cima, uma linha só de destaques, mais soltos.
+   A pessoa escolhe até 5 entre as coleções conquistadas; sem escolha, entram as conquistadas e as mais perto de sair. */
+const PASS_DEST_MAX = 5, PASS_TINTAS = ["#B57BEE","#3FB58F","#E8902E","#5E9EE6","#E46F97","#C9A227"];
+/* a escolha fica na conta (conta_dados, chave pass_destaques) e vale para quem visita o passaporte público; lista vazia = automático */
+const PASS_DEST_DE = {};
+const passDestEscolha = (uid) => { const v = uid ? PASS_DEST_DE[uid] : (PASS.destaques !== undefined ? PASS.destaques : store.get("passDest", null)); return Array.isArray(v) && v.length ? v : null; };
+function passDestaques(cols, outro){
+  const esc0 = passDestEscolha(outro && outro !== true ? outro : null), ok = cols.filter(c=>c.ok);
+  let l = esc0 ? esc0.map(n=>ok.find(c=>c.nome === n)).filter(Boolean) : ok.concat(cols.filter(c=>!c.ok && c.n).sort((a, b)=>b.n / b.meta - a.n / a.meta));
+  l = l.slice(0, PASS_DEST_MAX); if (!l.length) return "";   /* sem nada para destacar, a linha não aparece */
+  return `<div class="pdhead"><h2 class="sectitle">Destaques</h2>${outro || !ok.length ? "" : `<button class="linkbtn" type="button" data-act="pdescolhe">Escolher</button>`}</div>
+    ${`<div class="pdest">${l.map((c, i)=>`<div class="pdm${c.ok ? " ok" : ""}" style="--t:${PASS_TINTAS[cols.indexOf(c) % PASS_TINTAS.length]};--r:${[-7, 6, -4, 8, -5][i]}deg" title="${esc(c.desc)}"><span class="pdring">${ic(c.ic)}</span><b>${esc(c.nome)}</b><small>${c.ok ? "conquistada" : c.n + " de " + c.meta}</small></div>`).join("")}</div>`}`; }
+async function passDestGuarda(l, msg){ PASS.destaques = l; store.set("passDest", l); closeSheet();
+  if (SB && ME.user){ try{ const {error} = await SB.from("conta_dados").upsert({user_id:ME.user.id, chave:"pass_destaques", valor:l, atualizada_em:new Date().toISOString()}); if (error) return toast(msgErr(error)); }catch(e){ return toast("Não deu para salvar agora. Tente de novo."); } }
+  const pb = $("#passbody"); if (pb) pb.innerHTML = passaporteAba(); if (route() === "perfil") profShow(); else render(); toast(msg); }
+function sheetPassDest(){ const cols = passColecoes((PASS.lista || []).filter(c=>!c.escondido)), ok = cols.filter(c=>c.ok), esc0 = passDestEscolha() || [];
+  openSheet(shead("Destaques") + `<p class="lnote osub">Escolha até ${PASS_DEST_MAX}. Sem escolha, aparecem as conquistadas e as mais perto de sair.</p>
+    <div class="list">${cols.map(c=>`<label class="setting l1${c.ok ? "" : " pdoff"}"><span class="t"><b>${esc(c.nome)}</b><small>${c.ok ? esc(c.desc) : c.n + " de " + c.meta + " · ainda não conquistada"}</small></span><input type="checkbox" class="pdck" value="${esc(c.nome)}"${esc0.includes(c.nome) ? " checked" : ""}${c.ok ? "" : " disabled"}></label>`).join("")}</div>
+    <p class="lnote pdconta" aria-live="polite">${esc0.length} de ${PASS_DEST_MAX} escolhidos</p>
+    <button class="btn primary block" type="button" data-act="pdsalva">Salvar</button>
+    ${esc0.length ? `<button class="btn ghost block" type="button" data-act="pdlimpa" style="margin-top:8px">Voltar ao automático</button>` : ""}`, "Destaques"); }
+document.addEventListener("change", e=>{ if (!e.target.classList || !e.target.classList.contains("pdck")) return;
+  const l = [...document.querySelectorAll("#layer .pdck:checked")]; if (l.length > PASS_DEST_MAX){ e.target.checked = false; toast(`Até ${PASS_DEST_MAX} destaques.`); }
+  const n = document.querySelectorAll("#layer .pdck:checked").length, c = $("#layer .pdconta"); if (c) c.textContent = `${n} de ${PASS_DEST_MAX} escolhidos`; });
 function sheetPescLista(){ const l = PASS.lista || [], dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short", year:"numeric"}).replace(/\./g, "");
   openSheet(shead("Carimbos") + `<p class="lnote osub">O escondido sai do passaporte e das coleções. A visita continua registrada.</p>
     <div class="list">${l.map(c=>`<div class="setting l1"><span class="t"><b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando)}</small></span><button class="switch" type="button" role="switch" data-act="pesc" data-i="${c.id}" aria-checked="${!c.escondido}" aria-label="Mostrar ${esc(limpo(c.nome))} no passaporte"></button></div>`).join("")}</div>`, "Carimbos"); }
@@ -3858,7 +3883,7 @@ function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu 
   return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
     + `<div class="container">${pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips:pgChips(uid)})}
       <div class="tabs" role="tablist" aria-label="Perfil">${(passaporteDeCarrega(uid), [["publicacoes","Publicações"],["pastas","Pastas"]].concat(PASS_DE[uid] ? [["passaporte","Passaporte"]] : [])).map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
-      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], true) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
+      <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : pessAba(uid) === "passaporte" && PASS_DE[uid] ? passaporteCorpo(PASS_DE[uid], uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
 /* PASTAS NO PERFIL DE OUTRA PESSOA (15/11): só as seções abertas, sem as pastas secretas, e só se o perfil é público.
    Quem decide é o servidor (perfil_pastas). Um item que existe aqui abre na rede; os outros, no link de origem. */
 const PESS_PASTAS = {};
@@ -3983,15 +4008,24 @@ const comCor = id => CORES_CONTA[parseInt(String(id || "0").replace(/-/g,"").sli
 async function comsCarrega(key){ const [col, id] = key.split(":"), st = COMS.get(key) || {aberto:false};
   if (!SB || ME.offline){ COMS.set(key, Object.assign(st, {lista:[], meus:new Set(), fora:true})); return; }
   let lista = [], meus = new Set(), erro = false;
-  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,autor,perfis(nome,verificado,colaborador)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
+  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,autor,perfis(nome,verificado,colaborador,selos)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
     if (r.error) erro = true; else lista = r.data || [];
     if (ME.user && lista.length){ const u = await SB.from("comentario_uteis").select("comentario_id").in("comentario_id", lista.map(c=>c.id)); if (!u.error) meus = new Set((u.data || []).map(x=>x.comentario_id)); } }catch(e){ erro = true; }
   COMS.set(key, Object.assign(st, {lista, meus, erro, fora:false})); }
+/* 18/11 (Amanda): selos públicos. Ao lado do nome, o selo principal escrito e o número dos outros; tocar abre a lista.
+   Ordem: Colaboradora, Comentários úteis, Cita fontes, Tempo de casa. Selo ganho não some (o servidor guarda em perfis.selos). */
+const SELO_INFO = {colaboradora:["Colaboradora","Destaque dado pela rede a quem contribui de forma construtiva.","star"], uteis:["Comentários úteis","Outras pessoas marcaram comentários como úteis.","check"], fontes:["Cita fontes","Comenta e publica com fonte.","doc"], casa:["Tempo de casa","Tem conta na rede há mais de 90 dias.","clock"]};
+const SELOS_PESSOA = {};
+const selosConta = pf => (pf && pf.colaborador ? ["colaboradora"] : []).concat(Object.keys(SELO_INFO).filter(k=>k !== "colaboradora" && pf && Array.isArray(pf.selos) && pf.selos.includes(k)));
+function seloResumo(pf, uid){ const l = selosConta(pf); if (!l.length || !uid) return ""; SELOS_PESSOA[uid] = {nome:limpo(pf.nome) || "Conta da rede", l};
+  return `<button class="cselo" type="button" data-act="selosde" data-u="${esc(uid)}" aria-label="Selos de ${esc(limpo(pf.nome) || "Conta da rede")}: ${l.map(k=>SELO_INFO[k][0]).join(", ")}"><span class="colab">${SELO_INFO[l[0]][0]}</span>${l.length > 1 ? `<small>+${l.length - 1}</small>` : ""}</button>`; }
+function sheetSelosDe(uid){ const x = SELOS_PESSOA[uid]; if (!x) return;
+  openSheet(shead("Selos de " + esc(x.nome)) + `<div class="list">${x.l.map(k=>`<div class="setting static rselo"><span class="rsic">${ic(SELO_INFO[k][2],"sm")}</span><span class="t"><b>${SELO_INFO[k][0]}</b><small>${SELO_INFO[k][1]}</small></span></div>`).join("")}</div>`, "Selos"); }
 const comDest = c => !!((c.perfis || {}).colaborador) || c.uteis >= COM_DEST;
 function comHTML(c, st){ const pf = c.perfis || {}, meu = ME.user && c.autor===ME.user.id, adm = ME.perfil && ME.perfil.papel==="admin", dest = comDest(c), url = /^https:\/\//.test(c.fonte_url || "") ? c.fonte_url : "", on = st.meus.has(c.id);
   return `<article class="com${dest ? " dest" : ""}" data-com="${c.id}">
     ${ehContaRede(c.autor) ? `<span class="av cav rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="av cav" style="background:${comCor(c.autor)}" aria-hidden="true">${esc(siglaDe(pf.nome))}</span>`}
-    <div class="cb"><div class="comh"><span class="cn">${esc(pf.nome || "Conta da rede")}</span>${verifBtn(pf.verificado)}${pf.colaborador ? `<span class="colab" title="Usuário colaborador: destaque dado pela rede a quem contribui de forma construtiva">Colaborador</span>` : ""}<small>${quando(c.criado_em)}${c.marca && MARCAS[c.marca] ? " · " + MARCAS[c.marca].toLowerCase() : ""}</small>${dest && !pf.colaborador && pf.papel!=="admin" ? `<span class="ctag d">Em destaque</span>` : ""}</div>
+    <div class="cb"><div class="comh"><span class="cn">${esc(pf.nome || "Conta da rede")}</span>${verifBtn(pf.verificado)}${seloResumo(pf, c.autor)}<small>${quando(c.criado_em)}${c.marca && MARCAS[c.marca] ? " · " + MARCAS[c.marca].toLowerCase() : ""}</small>${dest && !pf.colaborador && pf.papel!=="admin" ? `<span class="ctag d">Em destaque</span>` : ""}</div>
       <p class="ctx">${esc(c.texto)}</p>
       ${url ? `<a class="cfonte" href="${esc(url)}" target="_blank" rel="noopener nofollow ugc">Fonte: ${esc(hostOf(url).replace(/^www\./,""))} ${ic("ext","sm")}</a>` : ""}
       <div class="cacts"><button class="linkbtn cutil" type="button" data-act="comutil" data-id="${c.id}" aria-pressed="${on}"${meu ? " disabled" : ""} aria-label="Marcar como útil${c.uteis ? ". " + c.uteis + " pessoas marcaram" : ""}">${ic("heart","sm")} Útil${c.uteis ? " · " + c.uteis : ""}</button>
@@ -4373,8 +4407,8 @@ const TESTE_NIVEIS = {admin:["Administração","Tudo liberado, como a sua conta"
 function testeSemente(){ const t = new Date().toISOString(), h = n => new Date(Date.now() - n*3600e3).toISOString();
   return {v:1, nivel:"admin", logada:true, t:{
     perfis:[{id:TESTE_EU, nome:"Amanda (teste)", usuario:"amanda_teste", cidade:"São Paulo, SP", bio:"Conta simulada para testar o HTML.", papel:"admin", criado_em:h(400), verificado:"curadoria", verificado_em:h(300), colaborador:false, vista:null},
-      {id:TESTE_M, nome:"Jim", usuario:"maria_teste", cidade:"Recife, PE", bio:"Professora e horta comunitária.", papel:"membro", criado_em:h(300), verificado:"documento", verificado_em:h(200), colaborador:true, vista:null},
-      {id:TESTE_C, nome:"Caio Teste", usuario:"caio_teste", cidade:"Curitiba, PR", bio:"", papel:"membro", criado_em:h(100), verificado:null, colaborador:false, vista:null}],
+      {id:TESTE_M, nome:"Jim", usuario:"maria_teste", cidade:"Recife, PE", bio:"Professora e horta comunitária.", papel:"membro", criado_em:h(300), verificado:"documento", verificado_em:h(200), colaborador:true, selos:["uteis","fontes","casa"], vista:null},
+      {id:TESTE_C, nome:"Caio Teste", usuario:"caio_teste", cidade:"Curitiba, PR", bio:"", papel:"membro", criado_em:h(100), verificado:null, colaborador:false, selos:["casa"], vista:null}],
     publicacoes:[{id:"00000000-0000-4000-8000-0000000000b1", autor:TESTE_M, tipo:"texto", titulo:"Feira de trocas de sementes no sábado (teste)", texto:"Publicação simulada do modo de teste. Traga sementes crioulas e mudas; a troca começa às 9h na praça.", tema:"Alimentação e campo", cidade:"Recife, PE", imagem_url:null,
         extra:{fonte_url:"https://agenciabrasil.ebc.com.br/", fonte:{dominio:"agenciabrasil.ebc.com.br", situacao:"base", id:1, nome:"Agência Brasil", nota:86}}, publicada:true, criada_em:h(5), editada_em:null, pagina_id:null},
       {id:"00000000-0000-4000-8000-0000000000b2", autor:TESTE_M, tipo:"texto", titulo:"Cesta da semana: o que chegou da roça (teste)", texto:"Publicação simulada feita pela página Horta Viva (teste).", tema:"Alimentação e campo", cidade:"Recife, PE", imagem_url:null,
@@ -4830,7 +4864,7 @@ function mockSB(o = {}){
       if (!ja){ tab("museu_visitas").push({id:novoId(), pagina_id:a.p_pagina, user_id:eu(), em:agora(), dia}); salva(); } return {nome:p.nome, novo:!ja}; },
     passaporte_publica:a=>{ db.passPub = !!a.p_on; salva(); return {ok:true, publico:db.passPub}; },
     passaporte_esconde:a=>{ db.pesc = (db.pesc || []).filter(i=>i !== a.p_item); if (a.p_esconde) db.pesc.push(a.p_item); salva(); return a.p_esconde; },
-    passaporte_de:a=>{ const eu0 = a.p_user === eu(); if (!eu0) return null; return {publico:!!db.passPub, itens:tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
+    passaporte_de:a=>{ const eu0 = a.p_user === eu(); if (!eu0) return null; return {publico:!!db.passPub, destaques:(tab("conta_dados").find(r=>r.user_id === eu() && r.chave === "pass_destaques") || {}).valor || [], itens:tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
       return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false, escondido:(db.pesc || []).includes(x.id)}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false, escondido:(db.pesc || []).includes(v.id)}; }))}; },
     meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
       return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false, escondido:(db.pesc || []).includes(x.id)}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false, escondido:(db.pesc || []).includes(v.id)}; })),
@@ -6049,11 +6083,12 @@ function screenConta(){
   if (!ME.pronto) return topo + `<div class="container"><p class="empty">Conectando…</p></div>`;
   if (ME.offline) return topo + `<div class="container cform">${contaAviso()}</div>`;
   if (ME.user){ const pf = ME.perfil || {nome:ME.user.user_metadata && ME.user.user_metadata.nome || "", cidade:"", bio:"", papel:"membro"};
-    /* 18/11 (Amanda): Sua conta em abas: Perfil · Verificação · Anúncios (só com pedido) · Dados e segurança */
-    const abas = [["perfil","Perfil"],["verificacao","Verificação"]].concat(AD_PEDIDOS && AD_PEDIDOS.length ? [["anuncios","Anúncios"]] : [], [["dados","Dados e segurança"]]);
+    /* 18/11 (Amanda): Sua conta em abas: Perfil · Reputação · Anúncios (só com pedido) · Dados e segurança.
+       Reputação junta a escala de verificação da rede (o progresso de nível) com a nota e os selos. */
+    const abas = [["perfil","Perfil"],["verificacao","Reputação"]].concat(AD_PEDIDOS && AD_PEDIDOS.length ? [["anuncios","Anúncios"]] : [], [["dados","Dados e segurança"]]);
     const ab = abas.some(x=>x[0]===S.contaAba) ? S.contaAba : "perfil";
     const tabs = `<div class="tabs contabs" role="tablist" aria-label="Sua conta">${abas.map(([k, n])=>`<button class="tab" type="button" role="tab" data-act="contaaba" data-a="${k}" aria-selected="${ab===k}">${n}</button>`).join("")}</div>`;
-    if (ab === "verificacao") return topo + `<div class="container cform">${tabs}${acessoCard()}</div>`;
+    if (ab === "verificacao") return topo + `<div class="container cform">${tabs}${acessoCard()}<div id="histbox"></div></div>`;
     if (ab === "anuncios") return topo + `<div class="container cform">${tabs}<div id="adpedidos">${adPedidosHTML()}</div></div>`;
     if (ab === "dados") return topo + `<div class="container cform">${tabs}${contaSeguranca()}
       <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
@@ -6068,7 +6103,7 @@ function screenConta(){
       <button class="btn primary block" type="button" data-act="perfilsalva">Salvar</button>
       <h2 class="sectitle">Passaporte</h2>
       <div class="list"><button class="setting l1" type="button" data-act="passaporte"><span class="t"><b>Meu passaporte</b><small>Um carimbo por atendimento verificado · só você vê</small></span>${ic("back","sm flip")}</button></div>
-      ${PERFIL_MOSTRA()}<div id="histbox"></div></div>`; }
+      ${PERFIL_MOSTRA()}</div>`; }
   const t = S.contaTab || "entrar";
   return topo + `<div class="container cform">
     <p class="cintro">Com conta você vê mais publicações, comenta, publica e guarda o que curtiu. É grátis.</p>
@@ -6107,13 +6142,15 @@ function acessoCard(){ const nv = nivel(), a = ME.acesso || {}, ped = a.pedido, 
   const li = (n, t, d, on, feito) => `<li class="${feito ? "feito" : on ? "on" : ""}"><span class="nb">${feito ? ic("check","sm") : n}</span><span><b>${t}</b><small>${d}</small></span></li>`;
   const usados = nv==="cadastrado" && a.novos_na_hora !== undefined ? `<p class="inota">${ic("info","sm")}<span>Nesta hora você recebeu ${a.novos_na_hora} de ${A.cadastrado.total} conteúdos novos.</span></p>` : "";
   const pf = ME.perfil || {};
-  if (nv !== "cadastrado") return `<section class="acard" aria-label="Verificação da conta">
-    <div class="vfyhead">${verifIco(pf.verificado || (nv==="admin" ? "curadoria" : ""), "big")}<span><b>${nv==="admin" ? "Administração" : (VERIF[pf.verificado] || ["Conta verificada"])[0]}</b><small>${nv==="admin" ? "Tudo, mais a curadoria." : `Lê ${A.cadastrado.porAba * 2} novas por aba a cada hora, vídeos sem limite. Pode votar, apoiar propostas e criar páginas.`}</small></span></div></section>`;
-  if (!S.vInst) return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Verifique com o CPF</h2>
+  const escala = (atual) => `<ol class="nsteps">${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}${li(2, "Conta com e-mail", `${A.cadastrado.porAba} novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, atual === 2, atual > 2)}${li(3, "Conta verificada", `O dobro: ${A.cadastrado.porAba * 2} novas por aba e ${A.cadastrado.total * 2} no total a cada hora; vídeos sem limite`, false, atual > 3)}</ol>`;
+  if (nv !== "cadastrado") return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Nível da conta</h2>
+    <div class="vfyhead">${verifIco(pf.verificado || (nv==="admin" ? "curadoria" : ""), "big")}<span><b>${nv==="admin" ? "Administração" : (VERIF[pf.verificado] || ["Conta verificada"])[0]}</b><small>${nv==="admin" ? "Tudo, mais a curadoria." : `Lê ${A.cadastrado.porAba * 2} novas por aba a cada hora, vídeos sem limite. Pode votar, apoiar propostas e criar páginas.`}</small></span></div>${escala(4)}</section>`;
+  if (!S.vInst) return `<section class="acard" aria-labelledby="hacesso"><h2 id="hacesso">Nível da conta</h2>
+    ${escala(2)}${usados}
+    <h3 class="hsel">Próximo passo: verificar com o CPF</h3>
     <p class="vsub">Sem documento e sem fila: leva um minuto. Conta verificada lê o dobro, vota, apoia propostas e cria páginas.</p>
     ${verifCpfForm()}
-    <p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">É uma instituição? Envie o documento</button></p>
-    <ol class="nsteps">${li(1, "Visitante", `${A.visitante.porAba} publicações por aba e ${A.visitante.videos} vídeos`, false, true)}${li(2, "Conta com e-mail", `${A.cadastrado.porAba} novas por aba e ${A.cadastrado.total} no total a cada hora; ${A.cadastrado.videos} vídeos a cada 12 horas`, true, false)}${li(3, "Conta verificada", `O dobro: ${A.cadastrado.porAba * 2} novas por aba e ${A.cadastrado.total * 2} no total a cada hora; vídeos sem limite`, false, false)}</ol>${usados}</section>`;
+    <p class="vinst"><button class="linkbtn inl" type="button" data-act="vinst">É uma instituição? Envie o documento</button></p></section>`;
   const pedido = nv!=="cadastrado" ? "" : ped && ped.status==="pendente" && ped.doc
     ? `<div class="note okn">${ic("check")}<span><b class="ntit">Documento enviado, em análise</b>Enviado em ${new Date(ped.doc_enviado_em || ped.criado_em).toLocaleDateString("pt-BR", {day:"numeric", month:"long"})}. Só a curadoria vê o arquivo, e ele é apagado assim que o pedido é decidido.<span class="nact"><button class="linkbtn" type="button" data-act="desisteverif">Desistir do pedido</button></span></span></div>`
     : (ped && ped.status==="recusada" ? `<div class="note">${ic("info")}<span><b class="ntit">Pedido não aprovado</b>${ped.motivo ? esc(ped.motivo) + " " : ""}O documento já foi apagado. Você pode enviar de novo.</span></div>`
@@ -6298,14 +6335,18 @@ async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.d
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
   const faixa = h.nota >= REP_MUITO ? "Ótima" : h.nota >= REP_POUCO ? "Boa" : h.nota >= CMN_MIN ? "Em atenção" : "Baixa", efeito = h.nota >= REP_MUITO ? "Suas publicações sobem bastante no feed." : h.nota >= REP_POUCO ? "Suas publicações sobem um pouco no feed." + (h.verificado ? "" : " Verificada, a conta vai a 100.") : h.nota >= CMN_MIN ? "Suas publicações seguem a ordem normal do feed." : "Suas publicações descem um pouco no feed.";
   const SI = {colaboradora:"star", uteis:"check", fontes:"doc", casa:"clock"};
-  const tem = k => selos.some(x=>x.k === k), prox = [!tem("uteis") && ["Comentários úteis", `faltam ${f.uteis} de ${mn.uteis} pessoas marcando seus comentários como úteis`], !tem("fontes") && ["Cita fontes", `faltam ${f.fontes} de ${mn.fontes} comentários ou publicações com fonte`], !tem("casa") && ["Tempo de casa", `faltam ${f.dias} dias`]].filter(Boolean);
+  const tem = k => selos.find(x=>x.k === k), pct = (a, b) => Math.max(0, Math.min(100, Math.round(a / (b || 1) * 100)));
+  const linhas = [
+    {k:"uteis", nome:"Comentários úteis", de:tem("uteis") ? tem("uteis").de : `${mn.uteis} pessoas marcando comentários seus como úteis`, sim:!!tem("uteis"), p:pct(mn.uteis - f.uteis, mn.uteis), st:tem("uteis") ? "Conquistado" : `${mn.uteis - f.uteis} de ${mn.uteis}`},
+    {k:"fontes", nome:"Cita fontes", de:tem("fontes") ? tem("fontes").de : `${mn.fontes} comentários ou publicações com fonte`, sim:!!tem("fontes"), p:pct(mn.fontes - f.fontes, mn.fontes), st:tem("fontes") ? "Conquistado" : `${mn.fontes - f.fontes} de ${mn.fontes}`},
+    {k:"casa", nome:"Tempo de casa", de:tem("casa") ? tem("casa").de : `${mn.dias} dias de conta`, sim:!!tem("casa"), p:pct(mn.dias - f.dias, mn.dias), st:tem("casa") ? "Conquistado" : `faltam ${f.dias} dias`},
+    {k:"colaboradora", nome:"Colaboradora", de:"Dado pela rede a quem contribui de forma construtiva", sim:!!tem("colaboradora"), st:tem("colaboradora") ? "Conquistado" : "pela rede"}];
   box.innerHTML = `<section class="acard" aria-labelledby="hhist"><h2 id="hhist">Sua reputação</h2>
     <div class="hist"><span class="hnum" aria-label="${h.nota} de 100"><b>${h.nota}</b><small>de 100</small></span><span class="htx"><b>${faixa}</b><small>${efeito}</small></span></div>
     <div class="hbar" aria-hidden="true"><i style="width:${h.nota}%"></i></div>
     ${h.removidos ? `<p class="inota">${ic("info","sm")}<span>${h.removidos} ${h.removidos === 1 ? "comentário removido" : "comentários removidos"} pela moderação nos últimos 90 dias. Cada um tira pontos.</span></p>` : `<p class="inota">${ic("check","sm")}<span>A nota só desce quando a moderação remove um comentário seu.</span></p>`}
-    <h3 class="hsel">Selos</h3>${selos.length ? `<div class="selos">${selos.map(x=>`<span class="selo">${ic(SI[x.k] || "check","sm")}<b>${esc(x.nome)}</b><small>${esc(x.de)}</small></span>`).join("")}</div>` : `<p class="hvazio">Nenhum ainda.</p>`}
-    ${prox.length ? `<ul class="hlist">${prox.map(([t, d])=>`<li><b>${t}</b><small>${d}</small></li>`).join("")}</ul>` : ""}
-    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota e os seus selos. Para as outras pessoas aparece apenas o selo Colaboradora, quando a rede o dá.</span></p></section>`; }
+    <h3 class="hsel">Selos · ${selos.length} de 4</h3><ul class="rsls">${linhas.map(x=>`<li class="${x.sim ? "sim" : "nao"}"><span class="rsic">${ic(SI[x.k],"sm")}</span><span><b>${x.nome}</b><small>${esc(x.de)}</small>${x.p !== undefined && !x.sim ? `<span class="rsbar"><i style="width:${x.p}%"></i></span>` : ""}</span><span class="rsst">${x.st}</span></li>`).join("")}</ul>
+    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome nos comentários.</span></p></section>`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
@@ -6686,6 +6727,7 @@ const A = {
     const {error} = await SB.from("noticias").update({status:st, revisada_por:ME.user.id, revisada_em:new Date().toISOString()}).eq("id", id);
     if (error){ ocupado(b, false); return toast(erroAuth(error)); }
     if (row) row.remove(); toast(st==="publicada" ? "Publicada no feed." : "Recusada."); if (st==="publicada") noticiasCarrega(); },
+  repver: () => { S.contaAba = "verificacao"; S.vInst = false; go("conta"); window.scrollTo(0, 0); },
   contaaba: b => { S.contaAba = b.dataset.a; S.vInst = false; render(); window.scrollTo(0, 0); },
   vinst: () => { S.vInst = !S.vInst; render(); },
   verificacpf: () => { closeSheet(); S.contaAba = "verificacao"; S.vInst = false; if (!ME.user){ S.contaTab = "criar"; go("conta"); return; } if (route() === "conta") render(); else go("conta"); setTimeout(()=>{ const i = ["#vnome","#vsobre","#vnasc","#vcpf"].map(q=>$(q)).find(x=>x && !x.value) || $("#vcpf"); if (i){ i.scrollIntoView({block:"center"}); i.focus({preventScroll:true}); } }, 250); },
@@ -7269,7 +7311,11 @@ const A = {
     const m = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m){ m.apagada_em = new Date().toISOString(); m.texto = "Mensagem apagada"; m.fotos = []; } render(); },
   fotoescolhe: b => { const i = $("#msgfotos"); if (!i) return; if ((FOTO.nova[b.dataset.id] || []).length >= FOTOS_MSG) return toast(`Até ${FOTOS_MSG} fotos por mensagem.`); i.value = ""; i.click(); },
   fototira: b => { const l = FOTO.nova[b.dataset.id] || []; const [f] = l.splice(+b.dataset.i, 1); if (f) URL.revokeObjectURL(f.url); fotoPrev(b.dataset.id); },
+  selosde: b => sheetSelosDe(b.dataset.u),
   fotover: b => { const u = FOTO.url[b.dataset.foto]; if (!u) return; openSheet(shead("Foto") + `<img class="fotogrande" src="${esc(u)}" alt="Foto enviada na conversa">`, "Foto"); },
+  pdescolhe: () => sheetPassDest(),
+  pdsalva: () => passDestGuarda([...document.querySelectorAll("#layer .pdck:checked")].map(x=>x.value).slice(0, PASS_DEST_MAX), "Destaques salvos."),
+  pdlimpa: () => passDestGuarda([], "Destaques no automático."),
   pesclista: () => sheetPescLista(),
   pesc: async b => { const c = (PASS.lista || []).find(y=>y.id === b.dataset.i); if (!c) return; const esconde = b.getAttribute("aria-checked") === "true"; b.disabled = true;
     const {error} = await SB.rpc("passaporte_esconde", {p_item:c.id, p_esconde:esconde}); b.disabled = false; if (error) return toast(msgErr(error));
@@ -7707,7 +7753,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 15:11";
+const VERSAO = "v1 registrada · 18/11 16:16";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
