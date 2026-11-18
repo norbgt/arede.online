@@ -3502,8 +3502,17 @@ function orgMembrosHTML(o){ return mandatoNote(o, true) + `<div class="list two"
     <div class="setting"><span class="t"><b>Lista de membros privada</b><small>Só a coordenação vê nomes. Participar de uma organização política é dado sensível.</small></span></div></div>`;
   return "";
 }
+/* 18/11: perfil aberto pelo link de quem ainda não apareceu no feed: busca nome e selo no servidor */
+const PESS_BUSCA = {};
+async function pessoaBusca(uid){ if (PESS_BUSCA[uid] !== undefined) return; PESS_BUSCA[uid] = null;
+  if (ME.user && uid === ME.user.id && ME.perfil){ orgDaPessoa({id:uid, nome:ME.perfil.nome, verificado:ME.perfil.verificado}); PESS_BUSCA[uid] = true; return render(); }
+  try{ const {data} = await SB.from("perfis").select("id,nome,verificado").eq("id", uid).maybeSingle(); if (data){ orgDaPessoa(data); PESS_BUSCA[uid] = true; } else PESS_BUSCA[uid] = false; }catch(e){ PESS_BUSCA[uid] = false; }
+  if (route() === "org-u-" + uid) render(); }
 function screenOrg(id){
-  const o = ORG[id]; if (!o) return screenOrgs(); if (o.comunidade) return screenCmn(o); if (o.pessoa && ehPessoaReal(id)) return ME.user ? screenPessoa(o, id) : `<div class="empty-state" style="padding:48px 16px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">Perfis são vistos por quem tem conta</h1><p class="lnote" style="margin:0 0 16px">Entre ou crie sua conta para ver o perfil de ${esc(o.nome || "quem publica")}. Leva menos de um minuto.</p><button class="btn primary" type="button" data-act="cnconta">Entrar ou criar conta</button></div>`; const f = S.follow.has(id);
+  const o = ORG[id];
+  if (!o && /^u-[0-9a-f-]{36}$/.test(id) && SB) pessoaBusca(id.slice(2));
+  if (!o && /^u-[0-9a-f-]{36}$/.test(id) && SB && (!PUB_OK || PESS_BUSCA[id.slice(2)] !== false)) return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Perfil</h1></div>`) + `<div class="container"><p class="empty">Carregando…</p></div>`;   /* 18/11: perfil aberto pelo link antes de as publicações chegarem não cai mais em Organizações */
+  if (!o) return screenOrgs(); if (o.comunidade) return screenCmn(o); if (o.pessoa && ehPessoaReal(id)) return ME.user ? screenPessoa(o, id) : `<div class="empty-state" style="padding:48px 16px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">Perfis são vistos por quem tem conta</h1><p class="lnote" style="margin:0 0 16px">Entre ou crie sua conta para ver o perfil de ${esc(o.nome || "quem publica")}. Leva menos de um minuto.</p><button class="btn primary" type="button" data-act="cnconta">Entrar ou criar conta</button></div>`; const f = S.follow.has(id);
   const tabs = [["mural","Mural"],["nucleos","Núcleos"],["eventos","Movimentos"],["votacoes","Votações"],["documentos","Documentos"],["sobre","Sobre"]].filter(([k])=>o.fonte || o.pessoa ? k==="mural" : !(o.real && k==="nucleos"));   /* 15/11: membros e detalhes vão para Sobre, como na página */
   if (!tabs.some(t=>t[0]===S.orgTab)) S.orgTab = "mural";
   const eu0 = ehPessoaReal(id) && ME.user && id === "u-" + ME.user.id, rot = o.real ? "Seguir" : "Participar", rot2 = o.real ? "Seguindo" : "Participando";
@@ -5255,14 +5264,14 @@ const PRIO = {}, PRIO_HORAS = 6;
 const prioDe = it => it.conta && it.autorId ? (PRIO[it.autorId] || 0) : 0;
 async function prioridadesCarrega(ids){ const falta = [...new Set(ids)].filter(Boolean); if (!SB || !falta.length) return;
   try{ const r = await SB.rpc("prioridades", {p_autores:falta}); if (!r.error && r.data){ falta.forEach(id=>{ PRIO[id] = r.data[id] || 0; }); } }catch(e){} }
-let PUB_TENTA = 0;
+let PUB_TENTA = 0, PUB_OK = false;
 async function publicacoesCarrega(){ if (!SB) return;
   /* 16/11 (Amanda): perfis só para quem tem conta. Visitante recebe só nome e selo do autor; com conta, também o texto sobre a pessoa
      e a cidade, se ela escolheu mostrar (cidade_publica). O servidor recusa o resto. */
   const AUTOR = ME.user ? "perfis(id, nome, cidade_publica, bio, verificado)" : "perfis(id, nome, verificado)";
   const {data, error} = await SB.from("publicacoes").select(`*, ${AUTOR}, paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)`).order("criada_em", {ascending:false}).limit(200);
   if (error || !data){ PUB_TENTA = (PUB_TENTA || 0) + 1; if (PUB_TENTA <= 4) setTimeout(publicacoesCarrega, 1500 * PUB_TENTA); return; }   /* 18/11: falha passageira do servidor não deixa a página vazia até recarregar */
-  PUB_TENTA = 0;
+  PUB_TENTA = 0; PUB_OK = true;
   data.forEach(p=>{ if (p.perfis){ p.perfis.cidade = p.perfis.cidade_publica || ""; p.perfis.bio = p.perfis.bio || ""; } });
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].conta) POOL.splice(i, 1);
   let ex = []; if (SBX){ try{ const r = await SBX.from("publicacoes").select("*, perfis(id, nome, cidade, bio, verificado), paginas(id, tipo, nome, descricao, cidade, tema, site, contato, cor, status, dono, cnpj_conferido, foto)").order("criada_em", {ascending:false}); ex = exLimpa((r.data || []).filter(p=>exPagId(p.pagina_id) && p.autor !== TESTE_EU)); }catch(e){} }
@@ -7937,7 +7946,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:15";
+const VERSAO = "v1 registrada · 18/11 19:18";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
