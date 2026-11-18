@@ -3278,7 +3278,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + `<div class="container">${pessoaHead({nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, meta:pf && pf.cidade ? esc(pf.cidade) : "", bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -3484,7 +3484,7 @@ const phSep = h => String(h).split(/(<[^>]+>)/).map(t=>t.startsWith("<") ? t : t
 function pessoaHead(x){ const temChips = x.chips && x.chips.trim();
   /* 15/11, página e comunidade: avatar e tipo ficam sobre a capa; aqui, o nome alinhado aos botões e uma informação por linha. O detalhe vai para Sobre e Reputação. */
   if (x.capa) return `<section class="phd phcapa${x.forma ? " " + x.forma : ""}"><div class="phtop"><h1>${esc(x.nome)}${verifBtn(x.verificado)}${x.selo || ""}</h1></div>
-    ${(x.linhas || []).filter(Boolean).map(l=>`<p class="phmeta">${phSep(l)}</p>`).join("")}${x.seg || ""}${x.bio ? `<p class="phbio">${esc(x.bio)}</p>` : ""}${x.rep || ""}${x.extra || ""}</section>`;
+    ${(x.linhas || []).filter(Boolean).map(l=>`<p class="phmeta">${phSep(l)}</p>`).join("")}${x.seg || ""}${x.bio ? `<p class="phbio">${esc(x.bio)}</p>` : ""}${temChips ? `<div class="phchips">${x.chips}</div>` : ""}${x.rep || ""}${x.extra || ""}</section>`;
   return `<section class="phd${x.forma ? " " + x.forma : ""}">${x.av || `<span class="phav" style="${x.cor ? "background:" + x.cor + ";color:#fff" : ""}" aria-hidden="true">${esc(siglaDe(x.nome))}</span>`}
     <div class="phn">${x.tag || (x.tipo ? lugarTag(x.tipo) : "")}<h1>${esc(x.nome)}${verifBtn(x.verificado)}${x.selo || ""}</h1>${x.meta || x.vis ? `<p class="phmeta">${phSep((x.vis || "") + (x.meta || ""))}</p>` : ""}${x.uid ? `<p class="phseg segnum" data-segnum="${x.uid}" hidden></p>` : ""}${x.seg || ""}</div>
     <div class="phacoes">${x.acoes || ""}</div>
@@ -3494,14 +3494,16 @@ function pessoaHead(x){ const temChips = x.chips && x.chips.trim();
 const LUGAR = {perfil:["pessoa","Perfil"], pagina:["doc","Página"], comunidade:["people","Comunidade"], fonte:["check","Fonte"], organizacao:["globe","Organização"]};
 const lugarTag = k => `<span class="ktipo lugar ${k}">${ic(LUGAR[k][0],"sm")}${LUGAR[k][1]}</span>`;
 const capaSobre = av => av;
+const pessoaAv = (nome, cor) => `<span class="phav redondo" style="background:${cor || "#555"};color:#fff" aria-hidden="true">${esc(siglaDe(nome || "?"))}</span>`;
+const capaSo = (seed, av) => `<div class="orghero comsobre">${capaHTML(null, seed)}<div class="capasobre"><div class="container capasobrein">${av}</div></div></div>`;   /* 17/11: perfis com o mesmo topo das páginas e comunidades */
 /* 14/11: no seu próprio perfil e na prévia, a etiqueta diz se o perfil é público ou privado (só você vê isso). Na prévia ela abre o que aparece e o que nunca aparece. */
 const perfilTag = bt => { const t = "Perfil " + (S.publico ? "público" : "privado"), i = ic(S.publico ? "cadaberto" : "lock","sm");
   return bt ? `<button class="ktipo lugar perfil lugarbt" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="${t}: ver o que aparece">${i}${t}</button>` : `<span class="ktipo lugar perfil">${i}${t}</span>`; };
 const pgChips = uid => paginasDoPerfil(uid).map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a class="chip" href="#pg-${p.id}">${avatar(o)}${esc(o.nome)}</a>`; }).join("");
 function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu = ME.user && ME.user.id === uid;
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
-  return header(`<div class="toprow">${topoLugar(`<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)}</div>`)
-    + `<div class="container">${pessoaHead({nome:o.nome, cor:o.cor, verificado:o.verificado, meta:esc(o.cidade || ""), bio:o.sobre, chips:pgChips(uid)})}
+  return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
+    + `<div class="container">${pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips:pgChips(uid)})}
       <div class="tabs" role="tablist" aria-label="Perfil">${[["publicacoes","Publicações"],["pastas","Pastas"]].map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pessaba" data-t="${k}" data-u="${uid}" aria-selected="${pessAba(uid)===k}">${n}</button>`).join("")}</div>
       <div id="orgbody" style="padding-top:var(--gap)">${pessAba(uid) === "pastas" ? pessPastasHTML(uid) : (S.orgTab = "mural", orgTabBody(o))}</div></div>`; }
 /* PASTAS NO PERFIL DE OUTRA PESSOA (15/11): só as seções abertas, sem as pastas secretas, e só se o perfil é público.
@@ -3534,11 +3536,11 @@ function pessPastasHTML(uid){ const l = PESS_PASTAS[uid]; if (!l){ pessPastasCar
 function screenPublic(){
   const orgs = ORGS.filter(o=>S.follow.has(o.id));
   const pf0 = (ME.user && ME.perfil) || {};
-  return header(`<div class="toprow">${topoLugar(perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)}</div>`)
+  return capaTopo(null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
   + `<div class="container">
     ${(()=>{ const pf = (ME.user && ME.perfil) || {nome:"Você"}, vis = `<button class="phvis" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="Perfil ${S.publico ? "público" : "privado"}: ver o que aparece" title="Perfil ${S.publico ? "público" : "privado"}">${ic(S.publico ? "cadaberto" : "lock","sm")}</button>`;
       const chips = S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") + (ME.user ? pgChips(ME.user.id) : "");
-      return pessoaHead({nome:pf.nome, verificado:pf.verificado, meta:pf.cidade ? esc(pf.cidade) : "", bio:pf.bio,
+      return pessoaHead({capa:true, nome:pf.nome, verificado:pf.verificado, linhas:[vis + (pf.cidade ? " · " + esc(pf.cidade) : "")], bio:pf.bio,
         chips}); })()}
     <div class="tabs pubtabs" role="tablist" aria-label="Perfil público">${[["publicacoes","Publicações"],["pastas","Pastas"],["redes","Outras redes"]].map(([k,n])=>`<button class="tab" type="button" role="tab" data-act="pubtab" data-tab="${k}" aria-selected="${S.pubTab===k}">${n}${tabVis(S.publico && (k!=="pastas" || pubFolders().length > 0))}</button>`).join("")}</div>
     <div class="status" id="pubstatus"${pubStatus() ? "" : " hidden"}>${pubStatus()}</div>
@@ -6959,7 +6961,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:54";
+const VERSAO = "v1 registrada · 17/11 21:56";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
