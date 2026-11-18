@@ -2544,13 +2544,23 @@ async function pedCarrega(){ if (!SB || !ME.user) return; try{ const {data} = aw
 const pedPagina = x => PAGS.lista.find(p=>p.id === x.pagina_id) || {};
 const pedSouPagina = x => !!(ME.user && pedPagina(x).dono === ME.user.id);
 const pedResumo = x => x.tipo === "tabela" ? `${x.item}${x.valor_combinado ? "" : x.preco ? " · " + x.preco : ""}` : (x.descricao || "Pedido personalizado");   /* com orçamento enviado, o valor está no progresso */
+/* MENSAGENS (17/11, pedido da Amanda): cada conversa diz o que espera de você, e o ícone conta. */
+const MSGS = {ses:null, pede:0};
+function msgsDados(){ if (!SB || !ME.user) return false; let ok = true;
+  if (!PED.lista){ ok = false; if (!MSGS.ped){ MSGS.ped = 1; pedCarrega().then(()=>{ MSGS.ped = 0; render(); }); } }
+  if (!MSGS.ses){ ok = false; if (!MSGS.pede){ MSGS.pede = 1; SB.from("tat_sessoes").select("*").then(({data})=>{ MSGS.ses = data || []; MSGS.pede = 0; render(); }, ()=>{ MSGS.pede = 0; }); } }
+  return ok; }
+function msgSituacao(x){ const eu = pedSouPagina(x), l = (MSGS.ses || []).filter(y=>y.pedido_id === x.id && y.status !== "cancelada"), p = pedPagina(x);
+  if (x.status === "fechado") return null;
+  if (eu){ if (x.status === "aberto") return ["Responder","warn"]; if (l.some(y=>y.status === "verificada" && !y.checkout_em)) return ["Encerrar atendimento","warn"]; if (mod(p, "agenda") && !x.valor_combinado) return ["Enviar orçamento","warn"]; return null; }
+  if (l.some(y=>y.status === "proposta")) return ["Confirmar horário","warn"]; if (l.some(y=>y.status === "verificada" && !y.avaliada)) return ["Avaliar","ok"]; return null; }
+const msgPendentes = () => msgsDados() ? (PED.lista || []).filter(x=>msgSituacao(x)).length : 0;
 function screenConversas(){ if (!ME.user) return header(`<div class="toprow"><h1 class="pagehead">Mensagens</h1></div>`) + `<div class="container"><p class="empty">Entre na sua conta para ver suas conversas.</p></div>`;
-  if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversas") render(); }); }
-  const l = PED.lista || [];
+  msgsDados(); const l = (PED.lista || []).slice().sort((a, c)=>(!!msgSituacao(c)) - (!!msgSituacao(a)));
   return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Mensagens</h1></div>`)
     + `<div class="container"><p class="lnote">Toda conversa nasce de um pedido: de orçamento a uma página de tatuagem, por enquanto. Ninguém manda mensagem solta para você.</p>
       ${!PED.lista ? `<p class="empty">Carregando…</p>` : l.length ? `<div class="list">${l.map(x=>{ const p = pedPagina(x), o = ORG["pg-" + p.id] || {nome:p.nome, sigla:"?", cor:"#888"}, eu = pedSouPagina(x);
-        return `<a class="setting l1 conv" href="#conversa-${x.id}">${avatar(o)}<span class="t"><b>${eu ? esc(limpo(x.cliente_nome || "Cliente")) + " → " : ""}${esc(limpo(p.nome || ""))}</b><small>${esc(pedResumo(x))}</small><small class="muted">${x.tipo === "tabela" ? "Pela tabela" : "Personalizado"} · ${quando(x.atualizado_em)}</small></span></a>`; }).join("")}</div>` : `<p class="empty">Nenhuma conversa ainda.</p>`}</div>`; }
+        return `<a class="setting l1 conv" href="#conversa-${x.id}">${avatar(o)}<span class="t"><b>${eu ? esc(limpo(x.cliente_nome || "Cliente")) + " → " : ""}${esc(limpo(p.nome || ""))}</b><small>${esc(pedResumo(x))}</small><small class="muted">${x.tipo === "tabela" ? "Pela tabela" : "Personalizado"} · ${quando(x.atualizado_em)}</small>${(st => st ? `<span class="pgsit ${st[1]}" style="align-self:flex-start;margin-top:4px">${st[0]}</span>` : "")(msgSituacao(x))}</span></a>`; }).join("")}</div>` : `<p class="empty">Nenhuma conversa ainda.</p>`}</div>`; }
 function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route() === "conversa-" + id) render(); }); return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Conversa</h1></div>`) + `<div class="container"><p class="empty">Carregando…</p></div>`; }
   const x = PED.lista.find(y=>y.id === id); if (!x) return screenConversas();
   if (S.convId !== id){ S.convId = id; S.convTab = S.convTab0 || "conversa"; S.convTab0 = null; }   /* 17/11, decisão da Amanda: Conversa e Atendimento em abas; abre sempre na conversa */
@@ -2644,7 +2654,7 @@ function sheetSesFim(sid, sug, pid){ openSheet(shead("Encerrar atendimento") + `
     <div class="field"><label for="sfval">Valor pago (R$)</label><input id="sfval" inputmode="decimal" maxlength="14" value="${sug ? String((+sug).toFixed(2)).replace(".", ",") : ""}"><small class="hint">Total recebido, com o sinal.</small></div>
     <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="sesfimok" data-s="${esc(sid)}"${pid ? ` data-p="${esc(pid)}"` : ""}>Encerrar atendimento</button>`, "Encerrar atendimento"); }
 function sesAchar(id){ for (const k in SES.pedido){ const y = (SES.pedido[k] || []).find(z=>z.id === id); if (y) return y; } for (const k in SES.pagina){ const y = (SES.pagina[k] || []).find(z=>z.id === id); if (y) return y; } return (SES.minhas || []).find(z=>z.id === id); }
-function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; PED.msgs = {}; render(); }
+function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; MSGS.ses = null; PED.msgs = {}; render(); }
 async function sesSistema(pedido, texto){ await SB.from("tat_mensagens").insert({pedido_id:pedido, de:"sistema", autor:ME.user.id, texto}); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString()}).eq("id", pedido); }
 function sheetSesNova(pid0){ const x = (PED.lista || []).find(y=>y.id === pid0), p = pedPagina(x), hoje = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   openSheet(shead("Marcar " + (modeloDe(p) === "tatuagem" ? "sessão" : "horário")) + `<p class="lnote osub">Com ${esc(limpo(x.cliente_nome || "a cliente"))}. Ela recebe a proposta na conversa e confirma.</p>
@@ -4579,7 +4589,7 @@ async function notifPrefs(){ if (!SB || !ME.user) return A.acessar();
       return `<div class="setting l1"><span class="t"><b>${esc(t.nome)}</b><small>${esc(t.descricao)}</small></span><button class="switch" type="button" role="switch" data-act="notifpref" data-k="${t.chave}" aria-checked="${on}" aria-label="${esc(t.nome)}"></button></div>`; }).join("")}</div>`).join(""), "Notificações"); }
 const topContaHTML = () => semConta()
   ? `<a class="iconbtn" href="#conta" data-act="acessar" aria-label="Entrar ou criar conta" title="Entrar ou criar conta">${ic("pessoa")}</a>`
-  : `<a class="iconbtn" href="#notificacoes" aria-label="Notificações${NOTIF.n ? ", " + NOTIF.n + (NOTIF.n === 1 ? " nova" : " novas") : ""}" title="Notificações">${ic("sino")}${NOTIF.n ? `<span class="ncount">${NOTIF.n > 9 ? "9+" : NOTIF.n}</span>` : ""}</a><button class="iconbtn" type="button" data-act="msgs" aria-label="Mensagens" title="Mensagens">${ic("message")}</button>`;
+  : `<a class="iconbtn" href="#notificacoes" aria-label="Notificações${NOTIF.n ? ", " + NOTIF.n + (NOTIF.n === 1 ? " nova" : " novas") : ""}" title="Notificações">${ic("sino")}${NOTIF.n ? `<span class="ncount">${NOTIF.n > 9 ? "9+" : NOTIF.n}</span>` : ""}</a>${(n => `<button class="iconbtn" type="button" data-act="msgs" aria-label="Mensagens${n ? ", " + n + (n === 1 ? " esperando você" : " esperando você") : ""}" title="Mensagens">${ic("message")}${n ? `<span class="ncount">${n > 9 ? "9+" : n}</span>` : ""}</button>`)(msgPendentes())}`;
 function navConta(){ const tc = $("#topconta"); if (tc) tc.innerHTML = topContaHTML(); const b = $('.navbtn[data-nav="perfil"]'); if (!b) return; const on = !!ME.user, nome = (on && ME.perfil && ME.perfil.nome) || "", m = b.querySelector(".navme"), l = b.querySelector(".lbl");
   b.classList.toggle("logada", on); if (m){ m.hidden = !on; m.textContent = on ? siglaDe(nome || (ME.user.email || "?").split("@")[0]) : ""; }
   if (l){ const n = nome.trim(), p = n.split(/\s+/)[0] || "";   /* o nome inteiro quando cabe; senão o primeiro nome; nome curto demais vira "Perfil" */
@@ -6538,8 +6548,8 @@ const A = {
     ocupado(b, false); closeSheet(); PED.lista = null; delete PED.msgs[data.id]; toast("Pedido enviado. A conversa está aberta."); go("conversa-" + data.id); },
   msgenvia: async b => { const t = $("#msgtx"), tx = (t.value || "").trim(), id = b.dataset.id, x = (PED.lista || []).find(y=>y.id === id); if (!tx || !x) return;
     ocupado(b, true, ""); const {error} = await SB.from("tat_mensagens").insert({pedido_id:id, de:pedSouPagina(x) ? "pagina" : "cliente", autor:ME.user.id, texto:tx}); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString(), status:pedSouPagina(x) ? "respondido" : x.status}).eq("id", id);
-    delete PED.msgs[id]; t.value = ""; render(); },
+    if (error) return toast(erroAuth(error)); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString(), status:pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto")}).eq("id", id);
+    x.status = pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto"); delete PED.msgs[id]; t.value = ""; render(); },
   paginacria: async b => { const tipo = ($('input[name="pgtipo"]:checked') || {}).value, nome = $("#pgnome").value.trim();
     if (nome.length < 2) return formErro("Dê um nome à página.");
     const cnpj = tipo === "empresa" ? $("#pgcnpj").value.replace(/\D/g, "") : ""; if (cnpj && cnpj.length !== 14) return formErro("Confira o CNPJ: são 14 números. Se não tiver, deixe em branco.");
@@ -6948,7 +6958,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:28";
+const VERSAO = "v1 registrada · 17/11 21:32";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
