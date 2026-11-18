@@ -397,7 +397,7 @@ const REAL_COR = ["#2A3FD4","#1F7A4D","#B8430F","#7A3E9D","#C2185B","#0E7490","#
 REAL.orgs.forEach((o,i)=>{ const x = Object.assign({cor:REAL_COR[i % REAL_COR.length], membros:null, real:true}, o); ORGS.push(x); ORG[x.id] = x; });
 REAL.itens.forEach(r=>{
   const it = {id:r.id, tipo:r.tipo, org:r.org, tema:(t => t !== TEMA_OUTROS ? t : temaNovo(r.tema))(temaDe(r.titulo, r.resumo)), titulo:r.titulo, texto:r.resumo, cidade:r.cidade || "", gancho:r.gancho || "",
-    min: Math.max(60, Math.round((HOJE - dmy(r.data)) / 60000)),
+    min: Math.max(60, Math.round((Date.now() - dmy(r.data)) / 60000)),   /* 18/11 (Amanda): idade pela data real; antes contava a partir de 8/11 e a notícia nunca envelhecia */
     ext: {url:r.url, dom:hostOf(r.url), data:r.data, verif:r.verificacao||[], motivo:r.motivo_nota||"", obs:r.obs||""}};
   if (r.imagem && r.imagem.url){ it.foto = FOTOS[r.id] || r.imagem.url; it.credito = r.imagem.credito || ""; }   /* foto da matéria, com crédito, carregada da fonte */
   const E = r.evento, C = r.chamado, V = r.votacao, Q = r.enquete, D = r.documento, VI = r.video;
@@ -1423,7 +1423,7 @@ function mixFormats(l){
 const generica = it => (it.tipo==="imagem" && !it.foto) || (it.tipo==="video" && !it.src && !it.yt);
 /* FEED VIVO (15/11, Amanda): em Tudo entra só conteúdo verdadeiro (o que importamos da internet e o que as contas publicam);
    os exemplos ficam em Publicações (um de cada tipo, no meio do verdadeiro), em Organizações e na Busca.
-   Nada de abrir sempre com as mesmas notícias: o que já apareceu em visitas anteriores vai para o fim da fila, do mais antigo ao mais novo.
+   Nada de abrir sempre com as mesmas notícias: o que já apareceu em visitas anteriores vai para o fim da fila, da notícia mais nova para a mais antiga (18/11).
    A memória fica no aparelho, por 14 dias. Dentro da mesma visita, a ordem não muda. */
 const ehExemplo = it => !!it && (!!it.exemplo || exPagId(it.pagina_id)) || !!it && !it.conta && !it.coletada && !it.daArte && !it.daRede && !it.copia && !!(ORG[it.org] || {}).ficticia;
 let FV = store.get("feedVistos", null) || {}, FV_T = null;
@@ -1431,7 +1431,7 @@ function fvMarca(id){ id = String(id); if (FV[id]) return; FV[id] = Date.now(); 
   FV_T = setTimeout(()=>{ const lim = Date.now() - 14*864e5; FV = Object.fromEntries(Object.entries(FV).filter(([, t])=>t > lim).sort((a,b)=>b[1]-a[1]).slice(0, 3000)); store.set("feedVistos", FV); }, 800); }
 const fvAntes = it => { const t = FV[String(it.id)]; return !!t && t < sessionStart; };
 function fvOrdena(l){ const novos = [], vistos = []; l.forEach(it=>(it.anuncio || !fvAntes(it) ? novos : vistos).push(it));
-  return novos.concat(vistos.sort((a,b)=>FV[String(a.id)] - FV[String(b.id)])); }
+  return novos.concat(vistos.sort((a,b)=>(a.min || 0) - (b.min || 0))); }   /* 18/11 (Amanda): o já visto vem do mais novo ao mais antigo (antes: o visto há mais tempo primeiro, sempre as mesmas no topo) */
 /* Publicações: um exemplo de cada tipo de conteúdo, trocando de exemplo a cada dia, espalhado no meio do que é verdadeiro */
 function exemplosPorTipo(fl){ const por = {}, dia = Math.floor(Date.now() / 864e5);
   POOL.filter(it=>ehExemplo(it) && !generica(it) && passa(it, fl)).sort((a,b)=>a.min - b.min).forEach(it=>{ (por[it.tipo] = por[it.tipo] || []).push(it); });
@@ -6985,7 +6985,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 22:35";
+const VERSAO = "v1 registrada · 18/11 06:07";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
