@@ -4420,7 +4420,7 @@ function mockSB(o = {}){
     tat_checkout:a=>{ const y = tab("tat_sessoes").find(x=>x.id === a.p_sessao), p = y && tab("paginas").find(x=>x.id === y.pagina_id); if (!p || p.dono !== eu()) throw {message:"valor: só a página encerra o atendimento"};
       if (y.status !== "verificada") throw {message:"valor: o atendimento precisa do check-in antes"}; if (y.checkout_em) throw {message:"valor: este atendimento já foi encerrado"};
       y.valor_pago = Math.round(a.p_valor*100)/100; y.checkout_em = agora(); let venda = null;
-      if (p.mei){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
+      if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
@@ -6961,7 +6961,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 17/11 21:56";
+const VERSAO = "v1 registrada · 17/11 22:00";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();

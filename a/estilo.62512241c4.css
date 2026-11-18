@@ -2297,7 +2297,7 @@ p.phrep{cursor:default}.phrep{display:flex;align-items:center;gap:6px;max-width:
 .pfnums{margin:0 0 10px;font-size:14px}
 /* 15/11: dois selos com formas diferentes. Azul redondo = pessoa responsável verificada; etiqueta verde com prédio = CNPJ conferido */
 .cnpjselo{display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px 0 5px;margin-left:6px;border:0;border-radius:6px;background:color-mix(in srgb,var(--ok) 13%,transparent);color:var(--ok);font:700 10.5px/1 var(--font-body,inherit);letter-spacing:.04em;vertical-align:4px;cursor:pointer;white-space:nowrap}
-.cnpjselo .icon{width:13px;height:13px;stroke-width:2}.cnpjselo.mei{background:color-mix(in srgb,#7F77DD 18%,transparent);color:#534AB7}.cnpjselo.nf{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.cnpjselo .icon{width:13px;height:13px;stroke-width:2}.cnpjselo.mei{background:color-mix(in srgb,#7F77DD 18%,transparent);color:#534AB7}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cnpjselo.mei{color:#AFA9EC}}:root[data-theme="dark"] .cnpjselo.mei{color:#AFA9EC}.cnpjselo.nf{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
 .cnpjselo.cnpjp{height:17px;padding:0 5px 0 4px;margin-left:4px;font-size:9.5px;vertical-align:1px;cursor:default}.cnpjselo.cnpjp .icon{width:11px;height:11px}
 .selosdif p{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;font-size:14px;line-height:1.45}.selosdif p > span:first-child{flex:none;margin:1px 0 0}.selosdif .vfy{color:var(--accent,#2A3FD4);display:inline-grid}.selosdif .vfy .icon{width:20px;height:20px}
 .psec.sovoce{display:flex;align-items:center;gap:6px;margin-top:22px}.psec.sovoce .icon{width:15px;height:15px;color:var(--muted)}
