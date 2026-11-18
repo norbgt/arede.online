@@ -597,7 +597,7 @@ function sheetOrigens(){
 /* FILTROS RÁPIDOS (9 nov 2026): na linha do algoritmo, um toque recorta o feed da aba atual; um por vez.
    Em alta: últimas 72 horas, com mais repercussão (a mesma notícia em mais fontes da base, ou mais participação).
    Perto de você: da sua cidade ou do seu estado. Desmentidos: checagens das agências da base que desmentem algo. */
-const RAPIDOS = [["alta","Em alta","raio"],["perto","Por perto","pin"],["desmentidos","Desmentidos","desm"],["analise","Em análise","clock"]];   /* 17/11 (Amanda): Divergências em análise */
+const RAPIDOS = [["alta","Em alta","raio"],["perto","Por perto","pin"],["desmentidos","Desmentidos","desm"],["analise","Em análise","clock"],["futura","Futura","calplus"]];   /* 18/11 (Amanda): notícia com data que ainda não chegou fica só aqui */   /* 17/11 (Amanda): Divergências em análise */
 const ehChecagem = it => (ORG[it.org] || {}).natureza==="Checagem de fatos";
 /* TheJournal.ie FactCheck entrega o feed geral do jornal, não só as checagens: fica fora até o feed ser corrigido */
 const CHECA_MISTO = /thejournal\.ie/;
@@ -610,6 +610,7 @@ const calor = it => (it.ext && it.ext.verif ? it.ext.verif.length * 12 : 0) + pa
 function rapidoAplica(l){
   if (S.rapido==="desmentidos") return l.filter(it=>desmente(it) || (it.diverg && it.diverg.status==="desmentida")).sort((a,b)=>a.min-b.min);
   if (S.rapido==="analise") return l.filter(it=>it.diverg && it.diverg.status==="em_analise").sort((a,b)=>a.min-b.min);
+  if (S.rapido==="futura") return l.filter(it=>it.futura).sort((a,b)=>(a.pubEm || 0) - (b.pubEm || 0));
   if (S.rapido==="perto"){ const R = minhaRegiao(); if (!R.cidade && !R.uf) return [];
     return l.map(it=>[it, prox(it)]).filter(x=>x[1]>=2).sort((a,b)=>b[1]-a[1] || a[0].min-b[0].min).map(x=>x[0]); }
   if (S.rapido==="alta") return l.filter(it=>!it.daArte && it.min <= 4320 && calor(it) > 0).sort((a,b)=>calor(b)-calor(a) || a.min-b.min);
@@ -1934,6 +1935,7 @@ function renderStop(){
     const msg = S.rapido==="perto" && !R.cidade && !R.uf ? `<b>Diga sua cidade.</b> Assim aparece o que acontece perto de você.`
       : S.rapido==="desmentidos" ? (F.cursor ? `<b>Esses são os desmentidos${tab}.</b> Vêm das agências de checagem da base, como Aos Fatos, Projeto Comprova e AFP Checamos, nas línguas que você escolheu em Origens.` : `<b>Nenhum desmentido${tab} agora.</b> Eles vêm das agências de checagem da base, nas línguas que você escolheu em Origens.`)
       : S.rapido==="analise" ? (F.cursor ? `<b>Essas são as divergências em análise${tab}.</b>` : `<b>Nada em análise${tab} agora.</b>`)
+      : S.rapido==="futura" ? (F.cursor ? `<b>Essas são as notícias com data futura${tab}.</b> A fonte marcou uma data que ainda não chegou.` : `<b>Nenhuma notícia com data futura${tab} agora.</b>`)
       : S.rapido==="alta" ? (F.cursor ? `<b>Isso é o que está em alta${tab}.</b> Últimas 72 horas, pela repercussão.` : `<b>Nada em alta${tab} nas últimas 72 horas.</b>`)
       : (F.cursor ? `<b>Isso é o que acontece perto de você${tab}.</b> ${esc(R.txt || "")}` : `<b>Nada perto de você${tab} agora.</b> ${esc(R.txt || "")}`);
     const extra = S.rapido==="perto" ? `${R.cidade || R.uf ? "" : `<button class="linkbtn" type="button" data-act="localpede">Usar minha localização</button>`}<button class="linkbtn" type="button" data-act="origens">${R.cidade || R.uf ? "Mudar a cidade" : "Definir a cidade"}</button>` : S.rapido==="desmentidos" ? `<button class="linkbtn" type="button" data-act="origens">Origens</button>` : "";
@@ -4715,7 +4717,7 @@ function noticiasAplica(data, ref){
        1 outra fonte: +3 · 2 ou mais: +6 · 3 ou mais de pelo menos 2 grupos diferentes do da fonte: +8. Checagem relacionada aparece no selo, sem mudar o número. */
     const oFont = new Set(outras.map(x=>(x.fontes||{}).nome || x.url)).size, oGrp = new Set(outras.map(x=>(x.fontes||{}).grupo_midia || (x.fontes||{}).nome).filter(g=>g && g !== f.grupo_midia && g !== f.nome)).size;
     const tri = !oFont ? 0 : oFont === 1 ? 3 : oFont >= 3 && oGrp >= 2 ? 8 : 6;
-    it.seloBase = f.nota; it.nid = n.id;
+    it.seloBase = f.nota; it.nid = n.id; if (n.futura){ it.futura = true; it.pubEm = Date.parse(n.publicada_em); }
     if (n.pessoal){ it.pessoal = true; if (n.recusada) it.recusadaMotivo = n.recusada; else if (f.tipo==="Pessoal") it.pessoalNova = true; }   /* 17/11: fonte pessoal, só quem incluiu vê */ it.seloTri = tri; if (n.checagem) it.checagem = n.checagem;
     SEAL[id] = Math.max(0, Math.min(100, f.nota + tri + (n.selo_ajuste || 0))); if (it.recusadaMotivo) SEAL[id] = Math.min(SEAL[id], 30); if (it.pessoalNova) SEAL[id] = null;   /* recusada: no máximo 30; fonte nova: sem número até a curadoria avaliar */ if (n.divergencia){ it.diverg = n.divergencia; if (n.divergencia.status==="desmentida"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; } }   /* 17/11: desmentida pela regra de volume ou pela curadoria: no máximo 20 */
     if (n.checagem && n.checagem.res==="desmente"){ SEAL[id] = Math.min(SEAL[id], 20); it.seloDesm = true; }   /* desmentido revisado pela curadoria: no máximo 20 */ if (n.selo_ajuste) it.seloAjuste = n.selo_ajuste;   /* ajuste: sinais da comunidade aceitos pela curadoria */
@@ -4816,7 +4818,7 @@ function redesAplica(){
       POOL.push(it); }); });
   F.key = null; }
 const redesMinhas = () => POOL.filter(it=>it.daRede && it.minha).sort((a,b)=>a.min-b.min).map(it=>withUid(it));
-const redePronta = it => !(it.daRede && !it.noFeed);   /* o que a pessoa deixou só no perfil não vai ao feed */
+const redePronta = it => !(it.daRede && !it.noFeed) && (!it.futura || S.rapido==="futura");   /* 18/11: data futura só no filtro Futura */   /* o que a pessoa deixou só no perfil não vai ao feed */
 async function redeAtualiza(c, forca){ const ca = REDE_CACHE[c.id]; if (!forca && ca && !ca.exemplo && Date.now() - ca.em < 30*60000) return true;
   const d = await redeBusca(c.rede, c.usuario); if (d.erro) return d;
   REDE_CACHE[c.id] = {em:Date.now(), itens:d.itens}; if (d.nome) c.nome = d.nome; if (d.perfil) c.perfil = d.perfil;
@@ -6988,7 +6990,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 06:12";
+const VERSAO = "v1 registrada · 18/11 06:21";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
