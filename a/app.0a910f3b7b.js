@@ -58,6 +58,7 @@ const ICON = {
   sort:'<path d="M8 4.5v15M4.5 8 8 4.5 11.5 8M16 19.5v-15M12.5 16l3.5 3.5 3.5-3.5"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  foto:'<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m21 15.5-4.6-4.6a1 1 0 0 0-1.4 0L6 19.5"/>',
   etiqueta:'<path d="M3.5 4.5a1 1 0 0 1 1-1h6.6a1 1 0 0 1 .7.3l8.6 8.6a1 1 0 0 1 0 1.4l-6.6 6.6a1 1 0 0 1-1.4 0l-8.6-8.6a1 1 0 0 1-.3-.7z"/><circle cx="8" cy="8" r="1.3"/>',
   people:'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.5" cy="8.5" r="2.5"/><path d="M16 13.6c2.4 0 4.2 1.6 4.6 4.6"/>',
   lapis:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
@@ -863,7 +864,7 @@ function aplicaRegras(g){ if (!g || typeof g !== "object") return false; const n
   poe("rep_sobe_pouco", 0, 101, x=>{ REP_POUCO = x; }); poe("rep_sobe_muito", 0, 101, x=>{ REP_MUITO = x; }); poe("selo_auto_rep", 0, 101, x=>{ SELO_AUTO_REP = x; });
   poe("selo_antigo_dias", 1, 3650, x=>{ SELO_ANTIGO_DIAS = x; }); poe("senha_min", 8, 128, x=>{ SENHA_MIN = x; });
   if (typeof g.identidade_exigida === "boolean") { IDENT_EXIGE = g.identidade_exigida; mudou = true; }
-  poe("mensagem_apaga_min", 1, 60, x=>{ MSG_APAGA_MIN = x; });
+  poe("mensagem_apaga_min", 1, 60, x=>{ MSG_APAGA_MIN = x; }); poe("fotos_por_mensagem", 1, 4, x=>{ FOTOS_MSG = x; });
   if (typeof g.aba_publicacoes === "boolean" && g.aba_publicacoes !== ABA_PUB) { ABA_PUB = g.aba_publicacoes; mudou = true; }
   if (Array.isArray(g.apoio_valores) && g.apoio_valores.length && g.apoio_valores.every(x=>Number.isInteger(x) && x > 0)) { APOIO_VALORES = g.apoio_valores.slice(0, 8); mudou = true; }
   return mudou; }
@@ -2149,6 +2150,14 @@ function cabeFrases(el, full, alt, fits, max=99){
   if (!best && alt){ el.textContent = alt; if (fits()) best = alt; }
   el.textContent = best; el.hidden = !best; return !!best;
 }
+/* 18/11 (Amanda): em cartão estreito o título diminui até a palavra mais longa caber inteira, em vez de quebrar no meio */
+const MEDE = document.createElement("canvas").getContext("2d");
+function tituloPalavraCabe(t){ const w = t.clientWidth; if (!w) return; const cs = getComputedStyle(t); let fs = parseFloat(cs.fontSize);
+  const pal = (t.textContent || "").split(/\s+/).filter(Boolean); if (!pal.length) return;
+  const maior = () => { MEDE.font = `${cs.fontStyle} ${cs.fontWeight} ${fs}px ${cs.fontFamily}`; return Math.max(...pal.map(x=>MEDE.measureText(x).width)); };
+  while (maior() > w && fs > 11){ fs -= 1; t.style.fontSize = fs + "px"; }
+  /* nem com a letra menor a palavra cabe porque a foto ocupa o lado: a foto passa para cima do título */
+  const f = t.closest(".tface"); if (maior() > w && f && f.classList.contains("lado")){ f.classList.remove("lado"); t.style.fontSize = ""; tituloPalavraCabe(t); } }
 function fitTiles(root, forca){
   /* cada cartão é ajustado uma vez por tamanho (11 nov 2026): antes, toda leva nova reajustava todos os cartões já prontos, e o celular travava.
      Sem "root" (fontes prontas, tela girada) ou com forca, ajusta de novo. */
@@ -2157,9 +2166,9 @@ function fitTiles(root, forca){
     const tam = f.clientWidth + "x" + f.clientHeight; if (!tudo && f.dataset.fit === tam) return; if (f.clientWidth) f.dataset.fit = tam; else delete f.dataset.fit;
     f.classList.remove("aperta", "aperta2"); feitas.push(f);
     if (!p){ /* cartão sem resumo (com foto, evento, enquete): o título diminui até o pé caber, em vez de cortar a fonte e a data */
-      t.style.fontSize = ""; let fs0 = parseFloat(getComputedStyle(t).fontSize); while (f.scrollHeight > f.clientHeight + 1 && fs0 > 12){ fs0 -= 1; t.style.fontSize = fs0 + "px"; } return; }
+      t.style.fontSize = ""; tituloPalavraCabe(t); let fs0 = parseFloat(getComputedStyle(t).fontSize); while (f.scrollHeight > f.clientHeight + 1 && fs0 > 12){ fs0 -= 1; t.style.fontSize = fs0 + "px"; } return; }
     /* 1. o título cabe inteiro: diminui a letra até caber junto com o cabeçalho e o pé */
-    p.hidden = true; t.style.fontSize = ""; let fs = parseFloat(getComputedStyle(t).fontSize);
+    p.hidden = true; t.style.fontSize = ""; if (t) tituloPalavraCabe(t); let fs = parseFloat(getComputedStyle(t).fontSize);
     while (f.scrollHeight > f.clientHeight + 1 && fs > 12){ fs -= 1; t.style.fontSize = fs + "px"; }
     /* 2. o resumo entra em frases inteiras no espaço que sobra */
     const ph = f.querySelector(".tph"); if (ph) ph.classList.remove("fill");
@@ -2597,7 +2606,18 @@ const etqAtende = () => (PED.lista || []).some(pedSouPagina);
 const etqChips = l => l.map(n=>`<span class="etqchip">${esc(limpo(n))}</span>`).join("");
 const orcsDe = id => (ORC.l || []).filter(o=>o.pedido_id === id).sort((a, b)=>new Date(a.criado_em) - new Date(b.criado_em));
 const orcUltimo = id => { const l = orcsDe(id).filter(o=>o.status !== "retirado" && o.status !== "substituido"); return l[l.length - 1] || null; };   /* o orçamento que vale: retirados e trocados não contam */
-let MSG_APAGA_MIN = 15;   /* 18/11 (Amanda): quem enviou apaga a mensagem nos primeiros minutos; no lugar fica "Mensagem apagada" */
+let MSG_APAGA_MIN = 15, FOTOS_MSG = 4;
+/* 18/11 (Amanda): fotos na conversa. Até 4 por mensagem, reduzidas no aparelho, num espaço privado (só as duas partes veem).
+   Somem 90 dias depois que a conversa é encerrada. O endereço de cada foto vale 1 hora e é pedido só quando a conversa abre. */
+const FOTO = {url:{}, pede:new Set(), nova:{}};
+function fotoUrls(paths){ const falta = paths.filter(p=>!FOTO.url[p] && !FOTO.pede.has(p)); if (!falta.length || !SB) return; falta.forEach(p=>FOTO.pede.add(p));
+  SB.storage.from("conversa").createSignedUrls(falta, 3600).then(({data})=>{ (data || []).forEach(d=>{ if (d.signedUrl) FOTO.url[d.path] = d.signedUrl; FOTO.pede.delete(d.path); });
+    document.querySelectorAll("[data-foto]").forEach(el=>{ const u = FOTO.url[el.dataset.foto]; if (u && !el.querySelector("img")) el.innerHTML = `<img src="${esc(u)}" alt="" loading="lazy">`; }); }, ()=>falta.forEach(p=>FOTO.pede.delete(p))); }
+const fotosHTML = m => { const l = m.fotos || []; if (!l.length) return m.fotos_expiradas ? `<p class="mfexp">${ic("foto","sm")}${m.fotos_expiradas === 1 ? "Foto expirada" : m.fotos_expiradas + " fotos expiradas"}</p>` : "";
+  fotoUrls(l); return `<div class="mfotos n${l.length}">${l.map((p, i)=>`<button class="mfoto" type="button" data-act="fotover" data-foto="${esc(p)}" aria-label="Abrir foto ${i + 1}">${FOTO.url[p] ? `<img src="${esc(FOTO.url[p])}" alt="" loading="lazy">` : ""}</button>`).join("")}</div>`; };
+const fotoPrevHTML = id => { const l = FOTO.nova[id] || []; return l.map((f, i)=>`<span class="mprev"><img src="${f.url}" alt="Foto ${i + 1}"><button class="mprevx" type="button" data-act="fototira" data-id="${id}" data-i="${i}" aria-label="Tirar a foto ${i + 1}">${ic("close","sm")}</button></span>`).join("")
+    + (l.length < FOTOS_MSG ? `<button class="mprevmais" type="button" data-act="fotoescolhe" data-id="${id}" aria-label="Adicionar foto">${ic("plus")}</button>` : ""); };
+function fotoPrev(id){ const box = $("#msgprev"); if (!box) return; box.innerHTML = fotoPrevHTML(id); box.hidden = !(FOTO.nova[id] || []).length; }   /* 18/11 (Amanda): quem enviou apaga a mensagem nos primeiros minutos; no lugar fica "Mensagem apagada" */
 const msgApagavel = m => !m.apagada_em && m.autor === (ME.user || {}).id && Date.now() - new Date(m.criado_em) < MSG_APAGA_MIN * 60000;
 const orcAceito = id => orcsDe(id).some(o=>o.status === "aceito");   /* com orçamento aceito, o sinal vem dele; sem orçamento (pedido pela tabela), é decidido ao marcar o horário */
 function orcCarrega(){ if (!SB || !ME.user || ORC.pede) return; ORC.pede = 1; SB.from("tat_orcamentos").select("*").order("criado_em").then(({data})=>{ ORC.l = data || []; ORC.pede = 0; render(); }, ()=>{ ORC.l = []; ORC.pede = 0; }); }
@@ -2630,9 +2650,9 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
         <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
       ${mod(p, "agenda") ? `<h3 class="psec atsec">Sessões</h3>` : ""}${sesHTML(x, eu)}` : `<div class="msgs">${!ms ? `<p class="empty">Carregando…</p>` : ms.map(m=>({t:new Date(m.criado_em).getTime(), h:m.de === "sistema" ? `<div class="msgsis">${esc(m.texto)}</div>` : m.apagada_em ? `<div class="bolha apagada${meu(m) ? " eu" : ""}"><p>Mensagem apagada</p><small>${quando(m.criado_em)}</small></div>`
-          : `<div class="bolha${meu(m) ? " eu" : ""}"><p>${esc(m.texto)}</p><small>${quando(m.criado_em)}${msgApagavel(m) ? ` · <button class="msgapaga" type="button" data-act="msgapaga" data-m="${m.id}" data-id="${id}">Apagar</button>` : ""}</small></div>`}))
+          : `<div class="bolha${meu(m) ? " eu" : ""}${(m.fotos || []).length ? " comfoto" : ""}">${fotosHTML(m)}${(m.texto || "").trim() ? `<p>${esc(m.texto)}</p>` : ""}<small>${quando(m.criado_em)}${msgApagavel(m) ? ` · <button class="msgapaga" type="button" data-act="msgapaga" data-m="${m.id}" data-id="${id}">Apagar</button>` : ""}</small></div>`}))
         .concat(orcsDe(id).map(o=>({t:new Date(o.criado_em).getTime() + 1, h:orcCartao(o, x, eu)}))).sort((a, b)=>a.t - b.t).map(z=>z.h).join("")}</div>
-      ${x.status === "fechado" ? `<div class="convfim"><span>Conversa encerrada. Nada foi apagado.</span><button class="btn sm" type="button" data-act="convreabre" data-id="${id}">Reabrir conversa</button></div>` : `<div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
+      ${x.status === "fechado" ? `<div class="convfim"><span>Conversa encerrada. Nada foi apagado.</span><button class="btn sm" type="button" data-act="convreabre" data-id="${id}">Reabrir conversa</button></div>` : `<div id="msgprev" class="msgprev"${(FOTO.nova[id] || []).length ? "" : " hidden"}>${fotoPrevHTML(id)}</div><input id="msgfotos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden data-id="${id}"><div class="composer">${convMais(x, eu).length ? `<button class="iconbtn convmais" type="button" data-act="convmais" data-id="${id}" aria-label="Mais ações: ${esc(convMais(x, eu).map(a=>a[3]).join(", "))}" title="Mais ações">${ic("plus")}</button>` : ""}<textarea id="msgtx" rows="1" maxlength="1000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea><button class="iconbtn solid" type="button" data-act="msgenvia" data-id="${id}" aria-label="Enviar">${ic("envia")}</button></div>
       ${orcUltimo(id) ? "" : `<p class="lnote">${eu ? "Toque no + para enviar o orçamento." : "O orçamento da página aparece aqui para você aceitar ou pedir ajuste."}</p>`}`}`}</div>`; }
 /* QR (14/11): gerador próprio, sem biblioteca de fora. Modo byte, correção L, versões 1 a 6, máscara 0.
    Basta para o endereço do check-in (até 134 caracteres). */
@@ -2726,6 +2746,7 @@ function sesRecarrega(){ SES.pedido = {}; SES.pagina = {}; SES.minhas = null; MS
 const sesDoPedido = id => (SES.pedido[id] || (MSGS.ses || []).filter(y=>y.pedido_id === id)).filter(y=>y.status !== "cancelada");
 function convMais(x, eu){ if (x.status === "fechado") return []; msgsDados(); const p = pedPagina(x), tat = modeloDe(p) === "tatuagem", o = orcUltimo(x.id), l = sesDoPedido(x.id), ag = mod(p, "agenda");
   const hoje = y => Math.abs(new Date(y.quando) - Date.now()) < 14 * 36e5, out = [];   /* [ação, atributos, ícone, título, explicação] */
+  out.push(["fotoescolhe", `data-id="${x.id}"`, "foto", "Enviar fotos", `Até ${FOTOS_MSG} por mensagem`]);
   if (eu){
     out.push(["orcenvia", `data-id="${x.id}"`, "cifrao", o && o.status === "proposto" ? "Trocar orçamento" : o && o.status === "aceito" ? "Enviar orçamento novo" : "Enviar orçamento", o && o.status === "proposto" ? "O anterior fica como trocado" : `${esc(limpo(x.cliente_nome || "A cliente"))} aceita ou pede ajuste aqui`]);
     if (o && o.status === "proposto") out.push(["orcretira", `data-o="${o.id}" data-id="${x.id}"`, "close", "Retirar orçamento", "Enquanto não houver resposta"]);
@@ -3196,7 +3217,7 @@ function museusModHTML(){ if (!MUS.lista) musBusca(); if (!MUS.agenda) agendaCar
   return `<div class="cmh"><span class="cmic" aria-hidden="true">${ic("predio")}</span><h2>Museus</h2><span class="cmsub">Guia do Brasil e do mundo</span></div>
     <div class="lvlist rdfil" role="group" aria-label="Onde">${[["br","Brasil"],["mundo","Mundo"]].map(([k, nm])=>`<button class="rdf" type="button" data-act="musonde" data-v="${k}" aria-pressed="${MUS.onde === k}">${nm}</button>`).join("")}</div>
     <div class="field musq"><label for="musq" class="sr">Buscar museu ou cidade</label><input id="musq" type="search" maxlength="60" placeholder="Buscar museu ou cidade" value="${esc(MUS.q)}" autocomplete="off"></div>
-    ${MUS.semCidade ? `<p class="lnote" style="margin:0 0 8px">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. Estes são os mais conhecidos do Brasil.</p>` : ""}<div id="muslista">${faixa}</div>
+    ${MUS.semCidade ? `<p class="lnote" style="margin:0 0 8px">Nenhum museu no guia em ${esc(minhaRegiao().txt.replace(/\s*[,\-–]\s*[A-Za-z]{2}$/, ""))}. ${MUS.semCidade === "uf" ? "Estes são do seu estado." : "Estes são os mais conhecidos do Brasil."}</p>` : ""}<div id="muslista">${faixa}</div>
     <p class="lnote lvnota">${ic("qrselo","sm")} Nos parceiros, a visita vira carimbo no seu passaporte. Guia com dados abertos do Wikidata.</p>`; }
 /* 18/11 (Amanda): editais de cultura de várias fontes, com link direto para a página oficial. Abertos: lidos das páginas de editais
    do Ministério da Cultura e da Funarte (duas vezes por dia). Nas notícias: matérias recentes sobre editais, das fontes da rede. */
@@ -3221,9 +3242,10 @@ const musCard = m => `<div class="setting l1 muscard"><span class="music" aria-h
   ${m.parceiro ? `<a class="mustag" href="#pg-${esc(m.pagina_id)}">${ic("qrselo","sm")}Check-in por QR</a>` : ""}</span>${urlOk(m.site) ? `<a class="iconbtn" href="${esc(m.site)}" target="_blank" rel="noopener" aria-label="Site do museu ${esc(limpo(m.nome))}">${ic("ext")}</a>` : ""}</div>`;
 async function musBusca(){ const R = minhaRegiao(), q = MUS.q.trim() || (MUS.onde === "br" ? R.cidade : ""), k = MUS.onde + "|" + q;
   if (MUS.chave === k && MUS.lista) return; MUS.chave = k; MUS.lista = null; MUS.semCidade = false;
-  const pede = async (qq) => { try{ const {data} = await SB.rpc("museus_busca", {p_q:qq || null, p_pais:MUS.onde === "br" ? "BR" : "*", p_lim:30}); return data || []; }catch(e){ return []; } };
+  const pede = async (qq, uf) => { try{ const {data} = await SB.rpc("museus_busca", {p_q:qq || null, p_pais:MUS.onde === "br" ? "BR" : "*", p_lim:30, p_uf:uf || null}); return data || []; }catch(e){ return []; } };
   let l = SB ? await pede(q) : [];
-  if (!l.length && !MUS.q.trim() && q && SB){ l = await pede(null); MUS.semCidade = !!l.length; }   /* sem museu no guia na sua cidade: os mais conhecidos do país */
+  /* 18/11: sem museu no guia na sua cidade, os do seu estado; sem estado, os mais conhecidos do país */
+  if (!l.length && !MUS.q.trim() && q && SB){ const uf = MUS.onde === "br" ? R.uf : ""; if (uf){ l = await pede(null, uf); MUS.semCidade = l.length ? "uf" : false; } if (!l.length){ l = await pede(null); MUS.semCidade = l.length ? "br" : false; } }
   if (MUS.chave !== k) return; MUS.lista = l; MUS.mais = false; const m = $("#artemus"), foco = document.activeElement && document.activeElement.id === "musq";
   if (m){ m.innerHTML = museusModHTML(); if (foco){ const i = $("#musq"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
 async function agendaCarrega(){ if (MUS.agenda || MUS.agPedindo || !SB) return; MUS.agPedindo = true;
@@ -3723,14 +3745,19 @@ function passColecoes(l){ const cont = (f) => { const m = {}; l.forEach(c=>{ con
   col("raio", "Apoiou quem começa", "Página com menos de 6 meses na rede", l.some(c=>c.nova) ? 1 : 0, 1);
   col("lapis", "Colecionável de estilos", "Estilos diferentes de trabalho", dist(c=>c.estilo), 3);
   return out; }
-function passaporteCorpo(l, outro){ if (!l) return `<p class="empty">Carregando…</p>`;
+function passaporteCorpo(l0, outro){ if (!l0) return `<p class="empty">Carregando…</p>`;
+  const l = l0.filter(c=>!c.escondido), nEsc = l0.length - l.length;   /* 18/11 (Amanda): carimbo escondido sai do passaporte e das coleções e volta quando a pessoa quiser */
   const dia = (d, mes) => mes ? new Date(d).toLocaleDateString("pt-BR", {month:"short", year:"numeric"}).replace(".", "").replace(" de ", " ") : new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
-  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : c.modelo === "museu" ? "predio" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
+  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}"${outro || !c.id ? "" : ` data-pesc="${c.id}"`} style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : c.modelo === "museu" ? "predio" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando, c.mes)}</small></a>`).join("")}${outro ? "" : `<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span>`}</div>`
     : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento ou na primeira visita a um museu parceiro.</b> Cada check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
+    ${!outro && l0.length ? `<button class="linkbtn pescbtn" type="button" data-act="pesclista">${ic("lock","sm")}${nEsc ? `${nEsc} ${nEsc === 1 ? "carimbo escondido" : "carimbos escondidos"} · Mostrar ou esconder` : "Esconder carimbos"}</button>` : ""}
     <h2 class="sectitle">Coleções</h2><div class="pmeds">${cols.map((c, i)=>`<div class="pmed${c.ok ? " ok" : c.n ? " anda" : ""}" style="--p:${Math.round(c.n / c.meta * 100)}%;--r:${[-6, 5, -3, 7][i % 4]}deg" title="${esc(c.desc)}"><span class="pring">${ic(c.ic)}</span><b>${esc(c.nome)}</b><small>${c.ok ? (c.meta === 1 ? "conquistada" : c.n + " de " + c.meta + " · conquistada") : c.n + " de " + c.meta}</small><small class="pdesc">${esc(c.desc)}</small></div>`).join("")}</div>
     <p class="lnote" style="margin-top:14px">${outro ? "Carimbos de atendimentos com check-in confirmado pelas duas pessoas e de visitas a museus parceiros pelo QR da entrada." : (PASS.publico ? "" : ic("lock","sm") + " Só você vê o seu passaporte. ") + "Ele conta só atendimentos com check-in confirmado pelas duas pessoas e visitas a museus parceiros pelo QR da entrada: nada de ranking, sequência ou prêmio."}</p>`; }
+function sheetPescLista(){ const l = PASS.lista || [], dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short", year:"numeric"}).replace(/\./g, "");
+  openSheet(shead("Carimbos") + `<p class="lnote osub">O escondido sai do passaporte e das coleções. A visita continua registrada.</p>
+    <div class="list">${l.map(c=>`<div class="setting l1"><span class="t"><b>${esc(limpo(c.nome))}</b><small>${esc(passLugarDe(c).cidade || "")}${passLugarDe(c).cidade ? " · " : ""}${dia(c.quando)}</small></span><button class="switch" type="button" role="switch" data-act="pesc" data-i="${c.id}" aria-checked="${!c.escondido}" aria-label="Mostrar ${esc(limpo(c.nome))} no passaporte"></button></div>`).join("")}</div>`, "Carimbos"); }
 function screenPassaporte(){ return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead">Meu passaporte</h1></div>`)
   + `<div class="container"><div id="passbody">${ME.user ? passaporteCorpo() : `<p class="empty">Entre na sua conta para ver o seu passaporte.</p>`}</div></div>`; }
 function screenConfig(){
@@ -4748,7 +4775,7 @@ function mockSB(o = {}){
       salva(); return {venda}; },
     museus_busca:a=>{ const M = tab("museus"); if (!M.length) [["Museu Nacional de Belas Artes","Rio de Janeiro","RJ","Brasil","BR","https://www.gov.br/museus/pt-br/museus-ibram/mnba",40],["Museu Oscar Niemeyer","Curitiba","PR","Brasil","BR","https://www.museuoscarniemeyer.org.br",30],["Pinacoteca de São Paulo","São Paulo","SP","Brasil","BR","https://pinacoteca.org.br",35],["Museu do Louvre","Paris",null,"França","FR","https://www.louvre.fr",200],["Museu do Prado","Madri",null,"Espanha","ES","https://www.museodelprado.es",120]].forEach((m, i)=>M.push({id:i + 1, nome:m[0], cidade:m[1], uf:m[2], pais:m[3], iso:m[4], site:m[5], rel:m[6]}));
       const q = (a.p_q || "").toLowerCase(), pm = tab("pagina_museu");
-      return M.filter(m=>(!q || (m.nome + " " + m.cidade).toLowerCase().includes(q)) && (!a.p_pais || a.p_pais === "*" || m.iso === a.p_pais)).map(m=>{ const v = pm.find(x=>x.museu_id === m.id && x.confirmado && x.ativo); return {id:m.id, nome:m.nome, cidade:m.cidade, uf:m.uf, pais:m.pais, site:m.site, km:null, parceiro:!!v, pagina_id:v ? v.pagina_id : null, rel:m.rel}; })
+      return M.filter(m=>(!q || semAcento(m.nome + " " + m.cidade).toLowerCase().includes(semAcento(q))) && (!a.p_pais || a.p_pais === "*" || m.iso === a.p_pais) && (!a.p_uf || m.uf === a.p_uf)).map(m=>{ const v = pm.find(x=>x.museu_id === m.id && x.confirmado && x.ativo); return {id:m.id, nome:m.nome, cidade:m.cidade, uf:m.uf, pais:m.pais, site:m.site, km:null, parceiro:!!v, pagina_id:v ? v.pagina_id : null, rel:m.rel}; })
         .sort((x, y)=>(y.parceiro - x.parceiro) || (y.rel - x.rel)).slice(0, a.p_lim || 30); },
     agenda_cultural:()=>({parceiros:tab("cultura_eventos").filter(e=>(e.fim || e.inicio) >= agora().slice(0, 10) && tab("pagina_museu").some(x=>x.pagina_id === e.pagina_id && x.ativo)).map(e=>{ const p = tab("paginas").find(x=>x.id === e.pagina_id) || {}; return Object.assign({museu:p.nome, cidade:p.cidade}, e); }).sort((x, y)=>x.inicio.localeCompare(y.inicio)),
       oficiais:[{id:"o1", titulo:"Exposição celebra o patrimônio afro-brasileiro", url:"https://www.gov.br/museus", fonte:"Instituto Brasileiro de Museus (Ibram)", em:agora()}]}),
@@ -4786,7 +4813,7 @@ function mockSB(o = {}){
       else { if (x.status !== "fechado") return x.status; x.status = x.status_antes && x.status_antes !== "fechado" ? x.status_antes : "respondido"; x.status_antes = null; x.fechado_por = null; }
       x.atualizado_em = agora(); tab("tat_mensagens").push({id:novoId(), pedido_id:x.id, de:"sistema", autor:eu(), criado_em:agora(), texto:`Conversa ${a.p_encerra ? "encerrada" : "reaberta"} por ${nome}.`}); salva(); return a.p_encerra ? "fechado" : "aberta"; },
     msg_apaga:a=>{ const m = tab("tat_mensagens").find(y=>y.id === a.p_id); if (!m || m.autor !== eu() || m.de === "sistema") throw {message:"valor: só quem enviou apaga a mensagem"};
-      if (Date.now() - new Date(m.criado_em) > 15 * 60000) throw {message:"valor: só dá para apagar nos primeiros 15 minutos"}; m.texto = "Mensagem apagada"; m.apagada_em = agora(); salva(); return true; },
+      if (Date.now() - new Date(m.criado_em) > 15 * 60000) throw {message:"valor: só dá para apagar nos primeiros 15 minutos"}; m.texto = "Mensagem apagada"; m.fotos = []; m.apagada_em = agora(); salva(); return true; },
     orc_responde:a=>{ const o = tab("tat_orcamentos").find(y=>y.id === a.p_orc), x = o && tab("tat_pedidos").find(y=>y.id === o.pedido_id); if (!x || x.cliente !== eu()) throw {message:"valor: só quem fez o pedido responde ao orçamento"};
       if (o.status !== "proposto") throw {message:"valor: este orçamento já foi respondido ou trocado por outro"}; o.status = a.p_aceita ? "aceito" : "ajuste"; o.respondido_em = agora();
       const brl = v => "R$ " + (+v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -4798,10 +4825,11 @@ function mockSB(o = {}){
       const dia = agora().slice(0, 10), ja = tab("museu_visitas").some(v=>v.pagina_id === a.p_pagina && v.user_id === eu() && v.dia === dia);
       if (!ja){ tab("museu_visitas").push({id:novoId(), pagina_id:a.p_pagina, user_id:eu(), em:agora(), dia}); salva(); } return {nome:p.nome, novo:!ja}; },
     passaporte_publica:a=>{ db.passPub = !!a.p_on; salva(); return {ok:true, publico:db.passPub}; },
+    passaporte_esconde:a=>{ db.pesc = (db.pesc || []).filter(i=>i !== a.p_item); if (a.p_esconde) db.pesc.push(a.p_item); salva(); return a.p_esconde; },
     passaporte_de:a=>{ const eu0 = a.p_user === eu(); if (!eu0) return null; return {publico:!!db.passPub, itens:tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
-      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false}; }))}; },
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false, escondido:(db.pesc || []).includes(x.id)}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false, escondido:(db.pesc || []).includes(v.id)}; }))}; },
     meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
-      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false}; })),
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false, escondido:(db.pesc || []).includes(x.id)}; }).concat(tab("museu_visitas").filter(v=>v.user_id === eu()).map(v=>{ const p = tab("paginas").find(y=>y.id === v.pagina_id) || {}, r = tab("pagina_museu").find(y=>y.pagina_id === v.pagina_id) || {}; return {id:v.id, quando:v.em, pagina_id:v.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:"museu", uf:r.uf || null, pais:r.pais || "Brasil", mei:false, nova:false, referencia:false, escondido:(db.pesc || []).includes(v.id)}; })),
     pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
       const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
         marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
@@ -4837,6 +4865,7 @@ function mockSB(o = {}){
   const sb = {
     from, rpc:(nome, args={}) => Promise.resolve().then(()=>{ try{ return {data:RPC[nome] ? RPC[nome](args || {}) : null, error:null}; }catch(e){ return {data:null, error:{message:e.message || String(e)}}; } }),
     storage:{from:()=>({upload:async (nome, blob)=>{ MID[nome] = URL.createObjectURL(blob); return {data:{path:nome}, error:null}; }, getPublicUrl:nome=>({data:{publicUrl:MID[nome] || ""}}),
+      createSignedUrls:async l=>({data:l.map(p=>({path:p, signedUrl:MID[p] || "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="#8D9BFF"/></svg>')})), error:null}),
       remove:async ()=>({data:null, error:null}), list:async ()=>({data:[], error:null})})},
     auth:{getSession:async ()=>({data:{session:db.logada ? {user:user()} : null}, error:null}),
       onAuthStateChange:f=>{ ouvintes.push(f); return {data:{subscription:{unsubscribe(){}}}}; },
@@ -5116,6 +5145,7 @@ async function pinNoticiaCarrega(){ const m = route().match(/^pin-n([0-9a-f]{32}
   try{ const {data} = await SB.rpc("noticia_uma", {p_id:id}); if (!data || data.erro) return;
     PIN_N = data; noticiasAplica(ULT_NOT ? ULT_NOT.data : [], ULT_NOT ? ULT_NOT.ref : Date.now()); pinPronto(false); }catch(e){} }
 function noticiasAplica(data, ref){
+  data = (data || []).filter(n=>!/%[A-Za-z_]+%?:|^%[A-Za-z_]+%$|\{\{|\$\{/.test(n.titulo || ""));   /* 18/11: título que é marcador de sistema ("%AutoEntityLabel: …") não entra, nem na cópia guardada */
   ULT_NOT = {data, ref}; if (PIN_N && !data.some(n=>n.id===PIN_N.id)) data = data.concat([PIN_N]);
   for (let i = POOL.length - 1; i >= 0; i--) if (POOL[i].coletada) POOL.splice(i, 1);
   const urls = new Set(POOL.filter(p=>p.ext).map(p=>p.ext.url)), porGrupo = {}, vistos = new Set();
@@ -6221,6 +6251,16 @@ function screenNovaSenha(){
     : `<p class="empty">Abra o link que enviamos por e-mail para criar uma nova senha.</p>`}</div>`;
 }
 const formErro = t => { const e = $("#layer .ferr") || $("#main .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
+{ let t0 = 0, alvo = null; const fim = () => { clearTimeout(t0); alvo = null; };
+  document.addEventListener("pointerdown", e=>{ const a = e.target.closest && e.target.closest("[data-pesc]"); if (!a) return; alvo = a; t0 = setTimeout(()=>{ if (alvo){ alvo.dataset.segurou = "1"; sheetPescLista(); } }, 550); });
+  ["pointerup","pointercancel","pointerleave"].forEach(k=>document.addEventListener(k, fim));
+  document.addEventListener("click", e=>{ const a = e.target.closest && e.target.closest("[data-pesc][data-segurou]"); if (a){ e.preventDefault(); e.stopPropagation(); delete a.dataset.segurou; } }, true);
+  document.addEventListener("contextmenu", e=>{ if (e.target.closest && e.target.closest("[data-pesc]")){ e.preventDefault(); sheetPescLista(); } }); }
+document.addEventListener("change", async e=>{ if (e.target.id !== "msgfotos") return; const id = e.target.dataset.id, l = FOTO.nova[id] = FOTO.nova[id] || [];
+  const fs = [...e.target.files].filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type)); if (fs.length < e.target.files.length) toast("Use fotos em JPG, PNG ou WEBP.");
+  if (l.length + fs.length > FOTOS_MSG) toast(`Até ${FOTOS_MSG} fotos por mensagem. Ficaram as primeiras.`);
+  for (const f of fs.slice(0, FOTOS_MSG - l.length)){ try{ const blob = await fotoComprime(f, 1440); l.push({blob, url:URL.createObjectURL(blob)}); }catch(er){ toast("Não deu para ler uma das fotos."); } }
+  fotoPrev(id); const t = $("#msgtx"); if (t) t.focus(); });
 /* 18/11: o aviso de erro de um formulário some quando a pessoa volta a mexer nos campos */
 document.addEventListener("input", e=>{ const f = e.target.closest && e.target.closest("#layer, #main"); const r = f && f.querySelector(".ferr:not([hidden])"); if (r){ r.hidden = true; r.textContent = ""; } });
 /* SENHA (10 nov 2026): o comprimento vale mais que símbolos. Mínimo de 10 caracteres, com letras e números ou símbolos;
@@ -7070,9 +7110,12 @@ const A = {
     if (error){ ocupado(b, false); return formErro(erroAuth(error)); }
     await SB.from("tat_mensagens").insert({pedido_id:data.id, de:"cliente", autor:ME.user.id, texto:m === "tabela" ? `Olá! Quero: ${v.item} (${v.preco}).${tat ? ` Local: ${loc.toLowerCase()}.` : ""}${v.descricao ? "\n" + v.descricao : ""}` : `Olá! Quero um orçamento.\n${v.descricao}${tat ? `\nLocal: ${loc.toLowerCase()}.` : quando0 ? `\nPara: ${quando0}.` : ""}`});
     ocupado(b, false); closeSheet(); PED.lista = null; delete PED.msgs[data.id]; toast("Pedido enviado. A conversa está aberta."); go("conversa-" + data.id); },
-  msgenvia: async b => { const t = $("#msgtx"), tx = (t.value || "").trim(), id = b.dataset.id, x = (PED.lista || []).find(y=>y.id === id); if (!tx || !x) return;
-    ocupado(b, true, ""); const {error} = await SB.from("tat_mensagens").insert({pedido_id:id, de:pedSouPagina(x) ? "pagina" : "cliente", autor:ME.user.id, texto:tx}); ocupado(b, false);
-    if (error) return toast(erroAuth(error)); await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString(), status:pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto")}).eq("id", id);
+  msgenvia: async b => { const t = $("#msgtx"), tx = (t.value || "").trim(), id = b.dataset.id, x = (PED.lista || []).find(y=>y.id === id), fs = FOTO.nova[id] || []; if ((!tx && !fs.length) || !x) return;
+    ocupado(b, true, ""); const B = SB.storage.from("conversa"), paths = [];
+    for (const f of fs){ const p = `${id}/${ME.user.id}/${crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + paths.length}.${imgExt(f.blob.type)}`;
+      const up = await B.upload(p, f.blob, {contentType:f.blob.type, upsert:false}); if (up.error){ if (paths.length) B.remove(paths); ocupado(b, false); return toast("Não deu para enviar a foto. " + erroAuth(up.error)); } paths.push(p); FOTO.url[p] = f.url; }
+    const {error} = await SB.from("tat_mensagens").insert({pedido_id:id, de:pedSouPagina(x) ? "pagina" : "cliente", autor:ME.user.id, texto:tx, fotos:paths}); ocupado(b, false);
+    if (error){ if (paths.length) B.remove(paths); return toast(erroAuth(error)); } delete FOTO.nova[id]; await SB.from("tat_pedidos").update({atualizado_em:new Date().toISOString(), status:pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto")}).eq("id", id);
     x.status = pedSouPagina(x) ? "respondido" : (x.status === "fechado" ? x.status : "aberto"); delete PED.msgs[id]; t.value = ""; render(); },
   paginacria: async b => { const tipo = ($('input[name="pgtipo"]:checked') || {}).value, nome = $("#pgnome").value.trim();
     if (nome.length < 2) return formErro("Dê um nome à página.");
@@ -7140,8 +7183,15 @@ const A = {
   convreabre: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; ocupado(b, true, "Reabrindo…"); const {data, error} = await SB.rpc("conversa_encerra", {p_pedido:x.id, p_encerra:false}); ocupado(b, false); if (error) return toast(msgErr(error));
     PED.lista = null; delete PED.msgs[x.id]; toast("Conversa reaberta."); render(); },
   msgapaga: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar?"; return; }
-    b.disabled = true; const {error} = await SB.rpc("msg_apaga", {p_id:b.dataset.m}); if (error){ b.disabled = false; return toast(msgErr(error)); }
-    const m = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m){ m.apagada_em = new Date().toISOString(); m.texto = "Mensagem apagada"; } render(); },
+    b.disabled = true; { const m0 = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m0 && (m0.fotos || []).length) await SB.storage.from("conversa").remove(m0.fotos); } const {error} = await SB.rpc("msg_apaga", {p_id:b.dataset.m}); if (error){ b.disabled = false; return toast(msgErr(error)); }
+    const m = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m){ m.apagada_em = new Date().toISOString(); m.texto = "Mensagem apagada"; m.fotos = []; } render(); },
+  fotoescolhe: b => { const i = $("#msgfotos"); if (!i) return; if ((FOTO.nova[b.dataset.id] || []).length >= FOTOS_MSG) return toast(`Até ${FOTOS_MSG} fotos por mensagem.`); i.value = ""; i.click(); },
+  fototira: b => { const l = FOTO.nova[b.dataset.id] || []; const [f] = l.splice(+b.dataset.i, 1); if (f) URL.revokeObjectURL(f.url); fotoPrev(b.dataset.id); },
+  fotover: b => { const u = FOTO.url[b.dataset.foto]; if (!u) return; openSheet(shead("Foto") + `<img class="fotogrande" src="${esc(u)}" alt="Foto enviada na conversa">`, "Foto"); },
+  pesclista: () => sheetPescLista(),
+  pesc: async b => { const c = (PASS.lista || []).find(y=>y.id === b.dataset.i); if (!c) return; const esconde = b.getAttribute("aria-checked") === "true"; b.disabled = true;
+    const {error} = await SB.rpc("passaporte_esconde", {p_item:c.id, p_esconde:esconde}); b.disabled = false; if (error) return toast(msgErr(error));
+    c.escondido = esconde; b.setAttribute("aria-checked", !esconde); const pb = $("#passbody"); if (pb) pb.innerHTML = passaporteCorpo(PASS.lista); if (route() === "perfil") profShow(); },
   convmais: b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (x) sheetConvMais(x, pedSouPagina(x)); },
   convfaz: b => { const a = b.dataset.a; closeSheet(); setTimeout(()=>{ if (A[a]) A[a](b); }, 60); },
   orcver: () => { const c = [...document.querySelectorAll(".orccard:not(.velho)")].pop(); if (c){ c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add("pisca"); setTimeout(()=>c.classList.remove("pisca"), 1600); } },
@@ -7575,7 +7625,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 13:13";
+const VERSAO = "v1 registrada · 18/11 13:45";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
