@@ -2131,6 +2131,8 @@ button.setting{width:100%;border:0;text-align:left;font:inherit;color:inherit;cu
 .pdoff{opacity:.5}.pdck{width:20px;height:20px;accent-color:var(--accent);flex:none}
 .pvazio2{display:flex;align-items:center;gap:8px;margin:4px 0 8px;font-size:14px;color:var(--muted)}.pvazio2 .icon{flex:none;width:18px;height:18px}.pvazio2 a{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap}
 .alrep{margin-top:12px}.alrep .linkbtn{display:inline-flex;width:auto;justify-content:flex-start;color:var(--accent);padding:0;min-height:36px;margin-top:4px}
+.comfoto{overflow:hidden;padding:0}.comfoto .pfoto,.pfoto{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}.navme.comfoto{background:none}
+.fotolin{display:flex;gap:18px;margin:-4px 0 14px 60px}.fotolin .linkbtn{color:var(--accent);padding:0;min-height:40px}
 .pcols{display:flex;flex-direction:column}.pcol{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.pcol > .icon{flex:none;width:22px;height:22px;color:var(--muted)}.pcol.ok > .icon{color:var(--accent)}
 .pcol .t{flex:1;min-width:0;display:flex;flex-direction:column}.pcol .t small{color:var(--muted)}.pprog{flex:none;width:92px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;color:var(--muted)}.pprog .adbar{width:100%}.pcol.ok .pprog{color:var(--accent)}.pok{color:var(--accent)}
 .dlist{margin:0 0 6px;padding-left:20px}.dlist li{margin:3px 0}

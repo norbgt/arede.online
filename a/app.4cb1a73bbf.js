@@ -3595,7 +3595,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto)) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[pf && pf.cidade ? esc(pf.cidade) : ""], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -3871,8 +3871,27 @@ function sheetVis(){   /* 15/11: simples. Uma escolha (público ou privado), uma
   const op = (v, t, d) => `<button class="setting l1 visop" type="button" data-act="pubmuda" data-v="${v}" aria-pressed="${S.publico === (v === "1")}"><span class="visrad" aria-hidden="true"></span><span class="t"><b>${t}</b><small>${d}</small></span></button>`;
   openSheet(shead("Quem vê seu perfil") + `<div class="list">${op("1", "Público", "Quem visita vê pastas, interesses e outras redes")}${op("0", "Privado", "Quem visita vê só publicações e selos")}</div>
     <p class="lnote" style="margin-top:12px">O cadeado ao lado de cada aba mostra o que aparece. Algoritmo, curtidas e agenda são sempre só seus.</p>${perfilNums(ME.user && ME.user.id)}`, "Quem vê seu perfil"); pfNumsPreenche(); }
+/* foto de perfil: recorte quadrado no centro, 200 px, WebP (ou JPG no navegador que não gera WebP) */
+document.addEventListener("change", async e=>{ if (!e.target || e.target.id !== "pfotoin") return; const f = e.target.files && e.target.files[0]; if (!f || !SB || !ME.user) return;
+  if (!/^image\//.test(f.type)) return toast("Escolha uma imagem.");
+  const bt = $('[data-act="fotoperfil"]'); if (bt) ocupado(bt, true, "Enviando…");
+  try{ const img = await createImageBitmap(f), lado = Math.min(img.width, img.height), cv = document.createElement("canvas"); cv.width = cv.height = 200;
+    cv.getContext("2d").drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 200, 200);
+    let blob = await new Promise(r=>cv.toBlob(r, "image/webp", .82)), ext = "webp";
+    if (!blob || blob.type !== "image/webp"){ blob = await new Promise(r=>cv.toBlob(r, "image/jpeg", .85)); ext = "jpg"; }
+    const path = ME.user.id + "/foto-" + Date.now().toString(36) + "." + ext;
+    const up = await SB.storage.from("midia").upload(path, blob, {contentType:blob.type, upsert:false}); if (up.error) throw up.error;
+    const {data, error} = await SB.rpc("perfil_foto_define", {p_path:path}); if (error){ SB.storage.from("midia").remove([path]).catch(()=>{}); throw error; }
+    if (data && FOTO_RE.test(data) && data !== path) SB.storage.from("midia").remove([data]).catch(()=>{});
+    if (ME.perfil) ME.perfil.foto = path; navConta(); render(); toast("Foto salva.");
+  }catch(err){ if (bt) ocupado(bt, false); toast(msgErr(err) || "Não deu para salvar a foto. Tente de novo."); } });
+function sheetDenFoto(uid){ const o = ORG["u-" + uid] || {nome:"Perfil"}, op = (k, t) => `<button class="setting l1" type="button" role="radio" data-act="denfotomot" data-k="${k}" aria-checked="false"><span class="t"><b>${t}</b></span></button>`;
+  openSheet(shead("Denunciar foto") + `<p class="lnote osub">Foto de perfil de ${esc(limpo(o.nome))}. A moderação analisa; nos casos graves, a foto sai do ar na hora.</p>
+    <div class="list" role="radiogroup" aria-label="Motivo">${op("imagem","Imagem imprópria")}${op("menor","Envolve criança ou adolescente")}${op("dados","Foto de outra pessoa sem autorização")}${op("ataque","Ataque ou discriminação")}${op("outro","Outro motivo")}</div>
+    <p class="ferr" role="alert" hidden></p><button class="btn primary block" type="button" data-act="denfotoenvia" data-u="${uid}" disabled>Enviar denúncia</button>`, "Denunciar foto"); }
 function sheetPessoa(uid){ const o = ORG["u-" + uid] || {nome:"Perfil"};   /* só o que não está no cabeçalho */
-  openSheet(shead(limpo(o.nome)) + perfilNums(uid) + `<p class="lnote">Quem segue e quem é seguido nunca aparece; só os números.</p>`, "Perfil"); pfNumsPreenche(); }
+  const df = (PESS_VIT[uid] || {}).foto && !(ME.user && ME.user.id === uid) ? `<div class="list"><button class="setting l1" type="button" data-act="denfoto" data-u="${uid}"><span class="t"><b>Denunciar foto</b><small>Imagem imprópria, de outra pessoa ou de criança</small></span>${ic("flag","sm")}</button></div>` : "";
+  openSheet(shead(limpo(o.nome)) + perfilNums(uid) + `<p class="lnote">Quem segue e quem é seguido nunca aparece; só os números.</p>` + df, "Perfil"); pfNumsPreenche(); }
 const phSep = h => String(h).split(/(<[^>]+>)/).map(t=>t.startsWith("<") ? t : t.replace(/\s+·\s+/g, '<span class="phsep" aria-hidden="true">·</span>')).join("");   /* 17/11: separador com o mesmo respiro em toda linha de cabeçalho */
 function pessoaHead(x){ const temChips = x.chips && x.chips.trim();
   /* 15/11, página e comunidade: avatar e tipo ficam sobre a capa; aqui, o nome alinhado aos botões e uma informação por linha. O detalhe vai para Sobre e Reputação. */
@@ -3887,7 +3906,11 @@ function pessoaHead(x){ const temChips = x.chips && x.chips.trim();
 const LUGAR = {perfil:["pessoa","Perfil"], pagina:["doc","Página"], comunidade:["people","Comunidade"], fonte:["check","Fonte"], organizacao:["globe","Organização"]};
 const lugarTag = k => `<span class="ktipo lugar ${k}">${ic(LUGAR[k][0],"sm")}${LUGAR[k][1]}</span>`;
 const capaSobre = av => av;
-const pessoaAv = (nome, cor) => `<span class="phav redondo" style="background:${cor || "#555"};color:#fff" aria-hidden="true">${esc(siglaDe(nome || "?"))}</span>`;
+/* 18/11 (Amanda): foto de perfil. Fica no bucket público "midia", na pasta da própria pessoa, em 200 px. Sem foto, as iniciais coloridas. */
+const FOTO_RE = /^[0-9a-f-]{36}\/foto-[a-z0-9]{4,20}\.(webp|jpg)$/;
+const fotoUrl = path => path && FOTO_RE.test(path) && SB ? (SB.storage.from("midia").getPublicUrl(path).data || {}).publicUrl || "" : "";
+const fotoImg = path => { const u = fotoUrl(path); return u ? `<img class="pfoto" src="${esc(u)}" alt="" loading="lazy" decoding="async">` : ""; };
+const pessoaAv = (nome, cor, foto) => `<span class="phav redondo${foto && fotoUrl(foto) ? " comfoto" : ""}" style="background:${cor || "#555"};color:#fff" aria-hidden="true">${fotoImg(foto) || esc(siglaDe(nome || "?"))}</span>`;
 const capaSo = (seed, av) => `<div class="orghero comsobre">${capaHTML(null, seed)}<div class="capasobre"><div class="container capasobrein">${av}</div></div></div>`;   /* 17/11: perfis com o mesmo topo das páginas e comunidades */
 /* 14/11: no seu próprio perfil e na prévia, a etiqueta diz se o perfil é público ou privado (só você vê isso). Na prévia ela abre o que aparece e o que nunca aparece. */
 const perfilTag = bt => { const t = "Perfil " + (S.publico ? "público" : "privado"), i = ic(S.publico ? "cadaberto" : "lock","sm");
@@ -3895,7 +3918,7 @@ const perfilTag = bt => { const t = "Perfil " + (S.publico ? "público" : "priva
 const pgChips = uid => paginasDoPerfil(uid).map(p=>{ const o = ORG["pg-" + p.id] || {}; return `<a class="chip" href="#pg-${p.id}">${avatar(o)}${esc(o.nome)}</a>`; }).join("");
 function screenPessoa(o, id){ const uid = id.slice(2), f = S.follow.has(id), eu = ME.user && ME.user.id === uid;
   const acoes = (eu ? "" : `<button class="iconbtn${f ? " on" : ""}" type="button" data-act="follow" data-org="${id}" aria-pressed="${f}" aria-label="${f ? "Seguindo " + esc(o.nome) + ". Tocar para deixar de seguir" : "Seguir " + esc(o.nome)}" title="${f ? "Seguindo" : "Seguir"}">${ic(f ? "seguindo" : "seguir")}</button>`) + `<button class="iconbtn" type="button" data-act="share" data-perfil="${id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`;
-  return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
+  return capaTopo(null, hashN(uid), "", capaSobre(pessoaAv(o.nome, o.cor, (PESS_VIT[uid] || {}).foto)), `<button class="ktipo lugar perfil lugarbt" type="button" data-act="pessoainfo" data-u="${uid}" aria-haspopup="dialog" aria-label="Perfil: seguidores e mais">${ic("pessoa","sm")}Perfil</button>`, acoes)
     + `<div class="container">${(()=>{ const vt = PESS_VIT[uid] || (pessVitCarrega(uid), {}), pfv = {nome:o.nome, colaborador:vt.colaborador, selos:vt.selos};
         const chips = (vt.interesses || []).map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (vt.comunidades || []).map(n=>`<span class="chip static">${ic("people","sm")}${esc(n)}</span>`).join("") + pgChips(uid);
         return pessoaHead({capa:true, nome:o.nome, verificado:o.verificado, selo:seloResumo(pfv, uid), linhas:[o.cidade ? esc(o.cidade) : ""], bio:o.sobre, chips}); })()}
@@ -3940,7 +3963,7 @@ function pessPastasHTML(uid){ const l = PESS_PASTAS[uid]; if (!l){ pessPastasCar
 function screenPublic(){
   const orgs = ORGS.filter(o=>S.follow.has(o.id));
   const pf0 = (ME.user && ME.perfil) || {};
-  return capaTopo(null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
+  return capaTopo(null, hashN(pf0.id || "voce"), "", capaSobre(pessoaAv(pf0.nome || "Você", pf0.id ? comCor(pf0.id) : null, pf0.foto)), perfilTag(true), `<button class="iconbtn" type="button" aria-disabled="true" data-act="segprevia" aria-label="Seguir (é assim que outras pessoas veem)" title="Seguir">${ic("seguir")}</button><button class="iconbtn" type="button" data-act="share" data-perfil="${pf0.id ? "u-" + pf0.id : ""}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>`)
   + `<div class="container">
     ${(()=>{ const pf = (ME.user && ME.perfil) || {nome:"Você"}, vis = `<button class="phvis" type="button" data-act="visdet" aria-haspopup="dialog" aria-label="Perfil ${S.publico ? "público" : "privado"}: ver o que aparece" title="Perfil ${S.publico ? "público" : "privado"}">${ic(S.publico ? "cadaberto" : "lock","sm")}</button>`;
       const chips = (S.publico ? S.interesses.map(t=>`<span class="chip static">${esc(t)}</span>`).join("") + (S.orgsVisiveis ? orgs.map(o=>`<span class="chip static">${ic("people","sm")}${esc(o.nome)}</span>`).join("") : "") : "") + (ME.user ? pgChips(ME.user.id) : "");
@@ -4034,7 +4057,7 @@ const comCor = id => CORES_CONTA[parseInt(String(id || "0").replace(/-/g,"").sli
 async function comsCarrega(key){ const [col, id] = key.split(":"), st = COMS.get(key) || {aberto:false};
   if (!SB || ME.offline){ COMS.set(key, Object.assign(st, {lista:[], meus:new Set(), fora:true})); return; }
   let lista = [], meus = new Set(), erro = false;
-  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,autor,perfis(nome,verificado,colaborador,selos)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
+  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,autor,perfis(nome,verificado,colaborador,selos,foto)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
     if (r.error) erro = true; else lista = r.data || [];
     if (ME.user && lista.length){ const u = await SB.from("comentario_uteis").select("comentario_id").in("comentario_id", lista.map(c=>c.id)); if (!u.error) meus = new Set((u.data || []).map(x=>x.comentario_id)); } }catch(e){ erro = true; }
   COMS.set(key, Object.assign(st, {lista, meus, erro, fora:false})); }
@@ -4050,7 +4073,7 @@ function sheetSelosDe(uid){ const x = SELOS_PESSOA[uid]; if (!x) return;
 const comDest = c => !!((c.perfis || {}).colaborador) || c.uteis >= COM_DEST;
 function comHTML(c, st){ const pf = c.perfis || {}, meu = ME.user && c.autor===ME.user.id, adm = ME.perfil && ME.perfil.papel==="admin", dest = comDest(c), url = /^https:\/\//.test(c.fonte_url || "") ? c.fonte_url : "", on = st.meus.has(c.id);
   return `<article class="com${dest ? " dest" : ""}" data-com="${c.id}">
-    ${ehContaRede(c.autor) ? `<span class="av cav rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="av cav" style="background:${comCor(c.autor)}" aria-hidden="true">${esc(siglaDe(pf.nome))}</span>`}
+    ${ehContaRede(c.autor) ? `<span class="av cav rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="av cav${fotoUrl(pf.foto) ? " comfoto" : ""}" style="background:${comCor(c.autor)}" aria-hidden="true">${fotoImg(pf.foto) || esc(siglaDe(pf.nome))}</span>`}
     <div class="cb"><div class="comh"><span class="cn">${esc(pf.nome || "Conta da rede")}</span>${verifBtn(pf.verificado)}${seloResumo(pf, c.autor)}<small>${quando(c.criado_em)}${c.marca && MARCAS[c.marca] ? " · " + MARCAS[c.marca].toLowerCase() : ""}</small>${dest && !pf.colaborador && pf.papel!=="admin" ? `<span class="ctag d">Em destaque</span>` : ""}</div>
       <p class="ctx">${esc(c.texto)}</p>
       ${url ? `<a class="cfonte" href="${esc(url)}" target="_blank" rel="noopener nofollow ugc">Fonte: ${esc(hostOf(url).replace(/^www\./,""))} ${ic("ext","sm")}</a>` : ""}
@@ -4905,8 +4928,9 @@ function mockSB(o = {}){
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
+    perfil_foto_define:({p_path})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; const ant = pf.foto || null; pf.foto = p_path || null; salva(); return ant; },
     perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
-      return {selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
+      return {foto:pf.foto || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
     perfil_pastas:({p_user})=>{ const cd = k => (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === k) || {}).valor, v = cd("vitrine"), sec = cd("secoes"), ps = cd("pastas") || [];   /* 15/11: o mesmo filtro do servidor */
       if (!perfil(p_user) || !v || v.publico !== true || !Array.isArray(sec)) return [];
       const ab = Object.fromEntries(sec.filter(x=>x && x.aberta === true && Array.isArray(x.pastas)).map(x=>[x.id, x.pastas])), secr = ps.filter(f=>Array.isArray(f) && f[3] === true).map(f=>f[0]);
@@ -5117,7 +5141,7 @@ const topContaHTML = () => semConta()
   ? `<a class="iconbtn" href="#conta" data-act="acessar" aria-label="Entrar ou criar conta" title="Entrar ou criar conta">${ic("pessoa")}</a>`
   : (n => `<a class="iconbtn" href="#notificacoes" aria-label="Notificações${n ? ", " + n + (n === 1 ? " esperando você" : " esperando você") : ""}" title="Notificações">${ic("sino")}${n ? `<span class="ncount">${n > 9 ? "9+" : n}</span>` : ""}</a>`)(ME.user ? (NOTIF.n = sinoConta()) : 0);   /* 18/11: as mensagens entram no sino */
 function navConta(){ const tc = $("#topconta"); if (tc) tc.innerHTML = topContaHTML(); const b = $('.navbtn[data-nav="perfil"]'); if (!b) return; const on = !!ME.user, nome = (on && ME.perfil && ME.perfil.nome) || "", m = b.querySelector(".navme"), l = b.querySelector(".lbl");
-  b.classList.toggle("logada", on); if (m){ m.hidden = !on; m.textContent = on ? siglaDe(nome || (ME.user.email || "?").split("@")[0]) : ""; }
+  b.classList.toggle("logada", on); if (m){ m.hidden = !on; const fi = on && ME.perfil && fotoImg(ME.perfil.foto); if (fi){ m.innerHTML = fi; m.classList.add("comfoto"); } else { m.classList.remove("comfoto"); m.textContent = on ? siglaDe(nome || (ME.user.email || "?").split("@")[0]) : ""; } }
   if (l){ const n = nome.trim(), p = n.split(/\s+/)[0] || "";   /* o nome inteiro quando cabe; senão o primeiro nome; nome curto demais vira "Perfil" */
     l.textContent = !on ? "Entrar" : n && n.length <= 13 ? n : p.length >= 2 ? p.slice(0, 12) : "Perfil"; }
   b.setAttribute("aria-label", on ? "Seu perfil" + (nome ? ", " + nome : "") + ". Conta conectada" : "Entrar ou criar conta"); }
@@ -6122,7 +6146,8 @@ function screenConta(){
       <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
       <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`;
     return topo + `<div class="container cform">${tabs}
-      <div class="cme">${avatar({cor:comCor(ME.user.id), sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
+      <div class="cme">${fotoUrl(pf.foto) ? `<span class="av pav comfoto" aria-hidden="true">${fotoImg(pf.foto)}</span>` : avatar({cor:comCor(ME.user.id), sigla:siglaDe(pf.nome)}, "av pav")}<span><b>${esc(pf.nome)}${verifIco(pf.verificado)}</b><small>${esc(ME.user.email)} · ${pf.papel==="admin" ? "administradora" : "membro"}</small><small>${pf.verificado ? VERIF[pf.verificado][0] : `Ainda não verificada · <button class="linkbtn inl" type="button" data-act="verificacpf">Verificar com CPF</button>`}</small></span></div>
+      <div class="fotolin"><input id="pfotoin" type="file" accept="image/*" hidden>${pf.foto_em_analise ? `<p class="inota">${ic("info","sm")}<span>Sua foto está em análise pela moderação.</span></p>` : `<button class="linkbtn" type="button" data-act="fotoperfil">${pf.foto ? "Trocar foto" : "Pôr foto"}</button>${pf.foto ? `<button class="linkbtn" type="button" data-act="fototirap">Tirar foto</button>` : ""}`}</div>
       <div class="field"><label for="pnome">Nome que aparece nas publicações</label><input id="pnome" type="text" maxlength="80" value="${esc(pf.nome)}"></div>
       <div class="field"><label for="pcid">Cidade</label><input id="pcid" type="text" maxlength="80" value="${esc(pf.cidade || "")}" placeholder="Ex.: São Paulo, SP"></div>
       <label class="chk"><input id="pcidmostra" type="checkbox"${pf.mostra_cidade ? " checked" : ""}> Mostrar minha cidade no perfil</label>
@@ -7570,6 +7595,17 @@ const A = {
     if (route()==="perfil"){ S.profTab = "salvos"; S.profFolder = null; S.profFiltro = "tudo"; profShow(); } },
   secapaga: b => { const x = S.secoes.find(y=>y.id===b.dataset.s); if (!x) return; S.secoes = S.secoes.filter(y=>y!==x); persist("secoes"); closeSheet();
     toast(`Seção “${x.nome}” desfeita. As pastas ficaram fora das seções.`); if (route()==="perfil") profShow(); },
+  fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
+  fototirap: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para tirar"; return; } ocupado(b, true, "…");
+    const {data, error} = await SB.rpc("perfil_foto_define", {p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
+    if (data && FOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
+    if (ME.perfil) ME.perfil.foto = null; navConta(); render(); toast("Foto tirada."); },
+  denfoto: b => sheetDenFoto(b.dataset.u),
+  denfotomot: b => { $$('#layer [data-act="denfotomot"]').forEach(x=>x.setAttribute("aria-checked", x===b)); const e = $('#layer [data-act="denfotoenvia"]'); e.disabled = false; e.dataset.m = b.dataset.k; },
+  denfotoenvia: async b => { const uid = b.dataset.u, o = ORG["u-" + uid] || {nome:"Perfil"}, err = $("#layer .ferr"); ocupado(b, true, "Enviando…");
+    const {data, error} = await SB.rpc("denuncia_envia", {p_alvo:"foto:" + uid, p_titulo:"Foto de perfil de " + (limpo(o.nome) || "conta"), p_url:SITE + "#org-u-" + uid, p_motivo:b.dataset.m, p_detalhe:"", p_contato:""});
+    ocupado(b, false); if (error){ if (err){ err.textContent = erroAuth(error); err.hidden = false; } return; }
+    closeSheet(); delete PESS_VIT[uid]; render(); toast("Denúncia enviada" + (data ? " · protocolo " + data : "") + "."); },
   pastaedita: b => sheetPastaEdita(b.dataset.f),
   pastasalva: b => { const f = FOLDERS.find(x=>x[0]===b.dataset.f), nome = (($("#pastanome") || {}).value || "").trim(), m = $("#pastamsg"); if (!f) return;
     if (nome.length < 2){ if (m) m.textContent = "Dê um nome à pasta."; return; }
@@ -7790,7 +7826,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 17:05";
+const VERSAO = "v1 registrada · 18/11 17:27";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
