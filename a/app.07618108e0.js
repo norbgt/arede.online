@@ -1999,7 +1999,7 @@ const LOGO = `<button class="logo" type="button" data-act="sobre" aria-haspopup=
 const header = (inner) => `<header class="top" id="top"><div class="topin container">${inner}</div></header>`;
 /* 15/11: pessoa e página têm avatar redondo em todo lugar (cabeçalho, crédito do cartão, rodapé); comunidade e organização, quadrado de cantos arredondados */
 const avRedondo = o => !!o && (String(o.id || "").startsWith("pg-") || !!o.pessoa);
-const avatar = (o, cls="av") => o.daRedeConta ? `<span class="${cls} rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="${cls}${avRedondo(o) ? " redondo" : ""}" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span>`;
+const avatar = (o, cls="av") => o.foto && fotoUrl(o.foto) ? `<span class="${cls}${avRedondo(o) ? " redondo" : ""} comfoto" aria-hidden="true">${fotoImg(o.foto)}</span>` : o.daRedeConta ? `<span class="${cls} rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="${cls}${avRedondo(o) ? " redondo" : ""}" style="background:${o.cor}" aria-hidden="true">${o.sigla}</span>`;
 const pgSelo = pid => `<button class="vfy vbtn3" type="button" data-act="verifinfo" data-v="pagina" data-p="${pid}" aria-label="Página com responsável verificada: o que significa">${ic("vfy")}</button>`;
 function statusLine(){
   const n = nFiltros(), o = ORDS.find(x=>x[0]===S.ord)[1];
@@ -2433,12 +2433,12 @@ const DECL_PAGINA = "Declaro que sou a pessoa responsável por esta página e po
 function orgDaPagina(p){ const id = "pg-" + p.id; if (exPagId(p.id)) p = exLimpa(p);
   ORG[id] = Object.assign(ORG[id] || {}, {id, nome:limpo(p.nome) || "Página", sigla:siglaDe(limpo(p.nome)), cidade:limpo(p.cidade) || "", tema:limpo(p.tema) || "", membros:0, real:true, pagina:true,
     paginaTipo:p.tipo, natureza:p.tipo === "empresa" ? "página de empresa" : "página de conteúdo", cor:CORES_CONTA[(p.cor || 0) % CORES_CONTA.length], sobre:limpo(p.descricao) || "",
-    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", cnpj:!!p.cnpj_conferido, mei:!!p.cnpj_conferido && !!p.mei, nf:!!p.cnpj_conferido && !!p.emite_nf, ficticia:exPagId(p.id)});
+    site:/^https:\/\//.test(p.site || "") ? p.site : "", contato:limpo(p.contato) || "", dono:p.dono, status:p.status, motivo:limpo(p.motivo) || "", foto:PGFOTO_RE.test(p.foto || "") ? p.foto : "", cnpj:!!p.cnpj_conferido, mei:!!p.cnpj_conferido && !!p.mei, nf:!!p.cnpj_conferido && !!p.emite_nf, ficticia:exPagId(p.id)});
   return id; }
 async function paginasCarrega(){ return umaVez("paginas", paginasCarrega0); }
 async function paginasCarrega0(){ if (!SB) return;
-  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario").order("criada_em", {ascending:false}).limit(300);
-    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
+  try{ const {data} = await SB.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario,foto").order("criada_em", {ascending:false}).limit(300);
+    let ex = []; if (SBX){ try{ const r = await SBX.from("paginas").select("id,tipo,nome,descricao,cidade,tema,site,contato,cor,status,motivo,dono,criada_em,cnpj_conferido,mei,emite_nf,no_perfil,capa,apagar_em,usuario,foto"); ex = exLimpa((r.data || []).filter(p=>p.status === "aprovada" && exPagId(p.id) && p.dono !== TESTE_EU)); }catch(e){} }   /* a página de teste da administração não vira exemplo */
     PAGS.lista = (data || []).concat(ex); PAGS.lista.forEach(orgDaPagina); PAGS.carregou = true; await tatCarrega();
     const r = route(); if (r === "organizacoes" || r === "paginas-todas" || /^(pg-|conversa|checkin-|gerir-)/.test(r) || r === "perfil") render(); }catch(e){} }
 const paginasDoPerfil = uid => PAGS.lista.filter(p=>p.dono === uid && p.status === "aprovada" && p.no_perfil);
@@ -3112,6 +3112,7 @@ function sheetPaginaEdita(pid){ const p = PAGS.lista.find(x=>x.id === pid); if (
   const temas = TEMAS_LISTA.map(t=>`<option${t === p.tema ? " selected" : ""}>${esc(t)}</option>`).join("");
   openSheet(shead("Editar página") + `<div class="pilltabs" role="tablist" aria-label="Partes da página">${[["perfil","Perfil"],["negocio","Negócio"],["servicos","Serviços"]].map(([k, n], i)=>`<button class="ptab" type="button" role="tab" data-edsec="${k}" aria-selected="${!i}">${n}</button>`).join("")}</div>
     <div data-sec="perfil"><p class="lnote osub">O nome não muda. Para trocar, fale com a curadoria em contato@arede.online.</p>
+    <input id="pgfotoin" type="file" accept="image/*" data-id="${pid}" hidden><div class="setting l1 pgfotolin" style="margin-bottom:8px">${p.foto && fotoUrl(p.foto) ? `<span class="av comfoto" aria-hidden="true">${fotoImg(p.foto)}</span>` : avatar(o || {cor:"#555", sigla:"?"})}<span class="t"><b>Foto da página</b><small>Logo ou imagem quadrada</small></span><span class="pgfotobts"><button class="linkbtn" type="button" data-act="pgfoto">${p.foto ? "Trocar" : "Pôr foto"}</button>${p.foto ? `<button class="linkbtn" type="button" data-act="pgfototira" data-id="${pid}">Tirar</button>` : ""}</span></div>
     <button class="setting l1" type="button" data-act="capaedita" data-alvo="pg:${pid}" style="width:100%;margin-bottom:12px">${ic("lapis")}<span class="t"><b>Capa</b><small>Trocar a imagem do alto da página</small></span>${ic("back","sm flip")}</button>
     <div class="field"><label for="pgdesc">Sobre a página</label><textarea id="pgdesc" maxlength="600" rows="3">${v(p.descricao)}</textarea></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label for="pgcid">Cidade</label><input id="pgcid" maxlength="80" value="${v(p.cidade)}"></div><div class="field" style="flex:1"><label for="pgtema">Tema</label><select id="pgtema"><option value="">Escolha</option>${temas}</select></div></div>
@@ -3901,6 +3902,20 @@ document.addEventListener("change", async e=>{ if (!e.target || e.target.id !== 
     if (data && FOTO_RE.test(data) && data !== path) SB.storage.from("midia").remove([data]).catch(()=>{});
     if (ME.perfil) ME.perfil.foto = path; navConta(); render(); toast("Foto salva.");
   }catch(err){ if (bt) ocupado(bt, false); toast(msgErr(err) || "Não deu para salvar a foto. Tente de novo."); } });
+/* 18/11: foto da página: o mesmo recorte da foto de perfil (quadrado, 200 px) */
+document.addEventListener("change", async e=>{ if (!e.target || e.target.id !== "pgfotoin") return; const f = e.target.files && e.target.files[0], pid = e.target.dataset.id; if (!f || !SB || !ME.user || !pid) return;
+  if (!/^image\//.test(f.type)) return toast("Escolha uma imagem.");
+  const bt = $('[data-act="pgfoto"]'); if (bt) ocupado(bt, true, "Enviando…");
+  try{ const img = await createImageBitmap(f), lado = Math.min(img.width, img.height), cv = document.createElement("canvas"); cv.width = cv.height = 200;
+    cv.getContext("2d").drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 200, 200);
+    let blob = await new Promise(r=>cv.toBlob(r, "image/webp", .82)), ext = "webp";
+    if (!blob || blob.type !== "image/webp"){ blob = await new Promise(r=>cv.toBlob(r, "image/jpeg", .85)); ext = "jpg"; }
+    const path = ME.user.id + "/pgfoto-" + Date.now().toString(36) + "." + ext;
+    const up = await SB.storage.from("midia").upload(path, blob, {contentType:blob.type, upsert:false}); if (up.error) throw up.error;
+    const {data, error} = await SB.rpc("pagina_foto_define", {p_pagina:pid, p_path:path}); if (error){ SB.storage.from("midia").remove([path]).catch(()=>{}); throw error; }
+    if (data && PGFOTO_RE.test(data) && data !== path) SB.storage.from("midia").remove([data]).catch(()=>{});
+    const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = path; orgDaPagina(p); } sheetPaginaEdita(pid); render(); toast("Foto da página salva.");
+  }catch(err){ if (bt) ocupado(bt, false); toast(msgErr(err) || "Não deu para salvar a foto. Tente de novo."); } });
 function sheetDenFoto(uid){ const o = ORG["u-" + uid] || {nome:"Perfil"}, op = (k, t) => `<button class="setting l1" type="button" role="radio" data-act="denfotomot" data-k="${k}" aria-checked="false"><span class="t"><b>${t}</b></span></button>`;
   openSheet(shead("Denunciar foto") + `<p class="lnote osub">Foto de perfil de ${esc(limpo(o.nome))}. A moderação analisa; nos casos graves, a foto sai do ar na hora.</p>
     <div class="list" role="radiogroup" aria-label="Motivo">${op("imagem","Imagem imprópria")}${op("menor","Envolve criança ou adolescente")}${op("dados","Foto de outra pessoa sem autorização")}${op("ataque","Ataque ou discriminação")}${op("outro","Outro motivo")}</div>
@@ -3924,7 +3939,8 @@ const lugarTag = k => `<span class="ktipo lugar ${k}">${ic(LUGAR[k][0],"sm")}${L
 const capaSobre = av => av;
 /* 18/11 (Amanda): foto de perfil. Fica no bucket público "midia", na pasta da própria pessoa, em 200 px. Sem foto, as iniciais coloridas. */
 const FOTO_RE = /^[0-9a-f-]{36}\/foto-[a-z0-9]{4,20}\.(webp|jpg)$/;
-const fotoUrl = path => path && FOTO_RE.test(path) && SB ? (SB.storage.from("midia").getPublicUrl(path).data || {}).publicUrl || "" : "";
+const PGFOTO_RE = /^[0-9a-f-]{36}\/pgfoto-[a-z0-9]{4,20}\.(webp|jpg)$/;   /* 18/11: foto (logo) da página */
+const fotoUrl = path => path && (FOTO_RE.test(path) || PGFOTO_RE.test(path)) && SB ? (SB.storage.from("midia").getPublicUrl(path).data || {}).publicUrl || "" : "";
 const fotoImg = path => { const u = fotoUrl(path); return u ? `<img class="pfoto" src="${esc(u)}" alt="" loading="lazy" decoding="async">` : ""; };
 const pessoaAv = (nome, cor, foto) => `<span class="phav redondo${foto && fotoUrl(foto) ? " comfoto" : ""}" style="background:${cor || "#555"};color:#fff" aria-hidden="true">${fotoImg(foto) || esc(siglaDe(nome || "?"))}</span>`;
 const capaSo = (seed, av) => `<div class="orghero comsobre">${capaHTML(null, seed)}<div class="capasobre"><div class="container capasobrein">${av}</div></div></div>`;   /* 17/11: perfis com o mesmo topo das páginas e comunidades */
@@ -4949,6 +4965,7 @@ function mockSB(o = {}){
     pagina_reativa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p || !p.apagar_em) return {erro:"Não deu para reativar."}; p.apagar_em = null; salva(); return {ok:true}; },
     pagina_emite_nf:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; if (a.p_on && !p.cnpj_conferido) throw {message:"valor: o selo Nota fiscal precisa do CNPJ conferido"}; p.emite_nf = !!a.p_on; salva(); return null; },
     mei_venda_remove:({p_id})=>{ const l = tab("mei_vendas"), i = l.findIndex(v=>v.id === p_id && (tab("paginas").find(p=>p.id === v.pagina_id) || {}).dono === eu()); if (i < 0) throw {message:"valor: venda não encontrada"}; l.splice(i, 1); salva(); return null; },
+    pagina_foto_define:({p_pagina, p_path})=>{ const p = tab("paginas").find(x=>x.id === p_pagina && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; const ant = p.foto || null; p.foto = p_path || null; salva(); return ant; },
     pagina_capa:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) throw {message:"valor: página não encontrada"}; p.capa = a.p_capa; salva(); return null; },
     pagina_usuario_define:({p_pagina, p_usuario})=>{ const pg = tab("paginas").find(x=>x.id === p_pagina && x.dono === eu()); if (!pg) throw {message:"valor: página não encontrada"}; const u = String(p_usuario || "").replace(/^@+/, "").toLowerCase().trim(); if (!u){ pg.usuario = null; salva(); return null; }
       if (!/^[a-z0-9_.]{3,30}$/.test(u)) throw {message:"valor: use de 3 a 30 letras minúsculas, números, ponto ou _"}; if (/arede/.test(u)) throw {message:"valor: esse nome é reservado. Escolha outro"};
@@ -7647,6 +7664,11 @@ const A = {
     if (route()==="perfil"){ S.profTab = "salvos"; S.profFolder = null; S.profFiltro = "tudo"; profShow(); } },
   secapaga: b => { const x = S.secoes.find(y=>y.id===b.dataset.s); if (!x) return; S.secoes = S.secoes.filter(y=>y!==x); persist("secoes"); closeSheet();
     toast(`Seção “${x.nome}” desfeita. As pastas ficaram fora das seções.`); if (route()==="perfil") profShow(); },
+  pgfoto: () => { const i = $("#pgfotoin"); if (i){ i.value = ""; i.click(); } },
+  pgfototira: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo"; return; } ocupado(b, true, "…"); const pid = b.dataset.id;
+    const {data, error} = await SB.rpc("pagina_foto_define", {p_pagina:pid, p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
+    if (data && PGFOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
+    const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = null; ORG["pg-" + pid].foto = ""; } sheetPaginaEdita(pid); render(); toast("Foto tirada."); },
   fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
   fototirap: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para tirar"; return; } ocupado(b, true, "…");
     const {data, error} = await SB.rpc("perfil_foto_define", {p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
@@ -7878,7 +7900,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 17:56";
+const VERSAO = "v1 registrada · 18/11 18:18";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
