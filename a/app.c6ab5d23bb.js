@@ -3498,7 +3498,7 @@ function passColecoes(l){ const cont = (f) => { const m = {}; l.forEach(c=>{ con
   return out; }
 function passaporteCorpo(){ const l = PASS.lista; if (!l) return `<p class="empty">Carregando…</p>`;
   const dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}).replace(".", "");
-  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : "bookmark")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando)}</small></a>`).join("")}<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span></div>`
+  const stamps = l.length ? `<div class="pstamps">${l.slice(0, 60).map((c, i)=>`<a class="pstamp ${PASS_COR[c.modelo] || "pz-out"}" href="#pg-${c.pagina_id}" style="--r:${[-8, 6, -3, 9, -6][i % 5]}deg">${ic(c.modelo === "tatuagem" ? "lapis" : c.modelo === "beleza" ? "heart" : c.modelo === "artesanato" ? "bookmark" : "check")}<b>${esc(limpo(c.nome))}</b><small>${esc(passLugar(c.cidade).cidade || "")}${passLugar(c.cidade).cidade ? " · " : ""}${dia(c.quando)}</small></a>`).join("")}<span class="pstamp vazio" aria-hidden="true">${ic("plus")}<small>próximo</small></span></div>`
     : `<div class="pvazio">${ic("qrselo")}<p><b>Seu passaporte começa no primeiro atendimento.</b> Cada sessão com check-in confirmado vira um carimbo aqui.</p><a class="btn" href="#organizacoes">Ver páginas</a></div>`;
   const cols = passColecoes(l);
   return `<p class="pconta"><b>${l.length}</b> ${l.length === 1 ? "carimbo" : "carimbos"} · ${cols.filter(c=>c.ok).length} de ${cols.length} coleções</p>${stamps}
@@ -4519,7 +4519,7 @@ function mockSB(o = {}){
       if (p.mei && !tab("mei_vendas").some(v=>v.sessao_id === y.id)){ venda = novoId(); tab("mei_vendas").push({id:venda, pagina_id:p.id, valor:y.valor_pago, descricao:(tab("tat_pedidos").find(x=>x.id === y.pedido_id) || {}).item || "Atendimento", tomador:y.cliente_nome || null, data:agora().slice(0, 10), origem:"sessao", sessao_id:y.id}); }
       salva(); return {venda}; },
     meu_passaporte:()=>tab("tat_sessoes").filter(x=>x.cliente === eu() && x.status === "verificada").map(x=>{ const p = tab("paginas").find(y=>y.id === x.pagina_id) || {}, f = tab("pagina_tatuagem").find(y=>y.pagina_id === x.pagina_id) || {}, pe = tab("tat_pedidos").find(y=>y.id === x.pedido_id) || {};
-      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "tatuagem", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }),
+      return {id:x.id, quando:x.checkin_em || x.quando, pagina_id:x.pagina_id, nome:p.nome || "Página", cidade:p.cidade || "", modelo:f.modelo || "negocio", mei:!!p.mei, estilo:pe.estilo || null, nova:false, referencia:false}; }),
     pagina_apaga_resumo:a=>{ const p = tab("paginas").find(x=>x.id === a.p_id && x.dono === eu()); if (!p) return {erro:"Só quem criou a página pode apagá-la."};
       const agora = Date.now(); return {publicacoes:tab("publicacoes").filter(x=>x.pagina_id === p.id).length, pedidos:tab("tat_pedidos").filter(x=>x.pagina_id === p.id).length,
         marcadas:tab("tat_sessoes").filter(x=>x.pagina_id === p.id && Date.parse(x.quando) > agora && !x.checkout_em && ["proposta","marcada"].includes(x.status)).length,
@@ -7144,7 +7144,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 07:47";
+const VERSAO = "v1 registrada · 18/11 07:53";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
