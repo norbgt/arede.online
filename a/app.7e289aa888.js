@@ -4494,7 +4494,7 @@ function render(){ setTimeout(()=>$$("[data-segnum]").forEach(el=>segNumeros(el.
   }
   const logoNovo = main.querySelector(".logo");   /* a marca é a mesma em toda tela: mantém o elemento antigo, e o movimento segue sem pulo */
   if (logoVelho && logoNovo && logoVelho !== logoNovo && logoVelho.getAttribute("aria-label")===logoNovo.getAttribute("aria-label")) logoNovo.replaceWith(logoVelho);
-  document.title = pr==="painel" ? "Painel de controle · a rede.online" : "a rede.online";
+  document.title = pr==="painel" ? "Painel de controle · arede.online" : "arede.online";   /* 19/11 (Amanda): nome da aba = arede.online */
   window.scrollTo(0, same ? window.scrollY : restore);
   placeLogoDots();
   if (PENDING){ const el = document.getElementById(PENDING); PENDING = null; if (el) requestAnimationFrame(()=>scrollToEl(el)); }
@@ -6504,7 +6504,7 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 /* o seu histórico na rede: o número (0 a 100) e o que ajuda a subir. Só você vê. */
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
-const convMsg = url => "Estou na arede.online, uma rede social que existe para mais conexões humanas: notícias de muitas fontes, com verificação, e o algoritmo é seu. Vem comigo:\n\n" + url;
+const convMsg = url => "Sai do Instagram e do Facebook e vem para a arede.online comigo: um mundo de conexões humanas, com conteúdo responsável e notícias verificadas. Aqui, o algoritmo é seu.\n\n" + url;
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
@@ -7987,7 +7987,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:28";
+const VERSAO = "v1 registrada · 19/11 07:37";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
