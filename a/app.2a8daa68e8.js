@@ -6504,7 +6504,8 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 /* o seu histórico na rede: o número (0 a 100) e o que ajuda a subir. Só você vê. */
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
-const convMsg = url => "Sai do Instagram e do Facebook e vem para a arede.online comigo: um mundo de conexões humanas, com conteúdo responsável e notícias verificadas. Aqui, o algoritmo é seu.\n\n" + url;
+/* 19/11 (Amanda): o link vem primeiro porque o WhatsApp monta a prévia do primeiro link da mensagem */
+const convMsg = url => url + "\n\nSai do Instagram e do Facebook e vem para a arede.online comigo: um mundo de conexões, com conteúdo responsável e notícias verificadas. Aqui, o algoritmo é seu.";
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
@@ -7987,7 +7988,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:37";
+const VERSAO = "v1 registrada · 19/11 07:44";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
