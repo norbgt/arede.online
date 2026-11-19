@@ -776,6 +776,8 @@ article.card .finfo > span:first-child:has(> b) + span::before{display:none}
 /* conteúdo real: fonte original, checagem e participação externa */
 .extag{display:inline-flex;align-items:center;flex:none;height:18px;padding:0 7px;border:1px dashed currentColor;border-radius:99px;background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;white-space:nowrap;vertical-align:middle}
 .thead .extag,.toptipo + .extag{margin-left:2px}
+.ksub[hidden]{display:none}
+.kquebra{flex-wrap:wrap;row-gap:4px}
 .pctop .extag{margin:0 auto 0 -2px;align-self:center}
 h1 .extag{margin-left:8px;vertical-align:5px}
 .tbadges{position:absolute;top:6px;left:6px;z-index:2;display:flex;align-items:center;gap:4px;pointer-events:none}
