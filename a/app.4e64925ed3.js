@@ -2683,7 +2683,7 @@ function screenConversa(id){ if (!PED.lista){ pedCarrega().then(()=>{ if (route(
     if (lidos.length && SB){ NOTIF.nao = NOTIF.nao.filter(n=>!lidos.includes(n.id)); (NOTIF.lista || []).forEach(n=>{ if (lidos.includes(n.id)) n.lida_em = new Date().toISOString(); }); NOTIF.n = sinoConta(); setTimeout(navConta, 0); SB.rpc("notif_marca_lidas", {p_ids:lidos}).then(()=>{}, ()=>{}); } }
   if (!ms) SB.from("tat_mensagens").select("*").eq("pedido_id", id).order("criado_em").then(({data})=>{ PED.msgs[id] = data || []; if (route() === "conversa-" + id) render(); });
   const meu = m => (m.de === "pagina") === eu;
-  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:19px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
+  return header(`<div class="toprow"><button class="iconbtn" type="button" data-act="back" aria-label="Voltar">${ic("back")}</button><h1 class="pagehead" style="font-size:20px">${eu ? esc(limpo(x.cliente_nome || "Cliente")) : `<a href="#pg-${p.id}" style="color:inherit;text-decoration:none">${esc(limpo(p.nome || ""))}</a>`}</h1></div>`)
     + `<div class="container conversa">${(()=>{ const ct = S.convTab === "atendimento" ? "atendimento" : "conversa"; return `<div class="pilltabs" role="tablist" aria-label="Conversa e atendimento">${[["conversa","Conversa"],["atendimento","Atendimento"]].map(([k, n])=>`<button class="ptab" type="button" role="tab" data-act="convtab" data-tab="${k}" aria-selected="${ct === k}">${n}</button>`).join("")}</div>`; })()}${eu ? (l => `<button class="convetq" type="button" data-act="etqabre" data-id="${id}" aria-label="${l.length ? "Etiquetas: " + esc(l.join(", ")) + ". Editar" : "Adicionar etiqueta"}">${ic("etiqueta","sm")}${l.length ? etqChips(l) : `<span class="etqvazio">Adicionar etiqueta</span>`}</button>`)(etqDe(id)) : ""}${S.convTab === "atendimento" ? `<div class="pedcard"><span class="ktipo">${ic("cifrao","sm")}${x.tipo === "tabela" ? "Pedido pela tabela" : "Pedido personalizado"}</span>
         <b>${esc(pedResumo(x))}${(+x.sessoes_prev || 1) > 1 ? ` · ${+x.sessoes_prev} sessões` : ""}</b>${(x.refs || []).length ? `<div class="orcrefs">${x.refs.map((u, i)=>`<span class="orcref"><img src="${esc(u)}" alt="Referência ${i+1}"></span>`).join("")}</div>` : ""}
         <small>${esc([x.local, x.tamanho ? {P:"Pequeno", M:"Médio", G:"Grande"}[x.tamanho] : "", x.cor ? (x.cor === "cor" ? "Colorido" : "Preto e cinza") : ""].filter(Boolean).join(" · "))}</small>${pedProgresso(x, eu)}</div>
@@ -4097,7 +4097,7 @@ function interact(it){
     case "chamado": if (it.ext && !it.meta) return extBox(it, "Participar na fonte original", "", [["O que", it.un], it.quando && ["Prazo", it.quando], it.como && ["Como", it.como]]);
     { const on = S.help[uid]; const t = it.tem + (on?1:0);
       return `<div class="pinsec"><div class="bar" role="img" aria-label="${t} de ${it.meta}"><i style="width:${Math.min(100,Math.round(t/it.meta*100))}%;background:${ORG[it.org].cor}"></i></div>
-        <p style="font-size:13.5px;margin:6px 0 10px;font-variant-numeric:tabular-nums"><b>${t}</b> de ${it.meta}</p>
+        <p style="font-size:14px;margin:6px 0 10px;font-variant-numeric:tabular-nums"><b>${t}</b> de ${it.meta}</p>
         <button class="btn block" type="button" data-act="help" data-uid="${uid}" aria-pressed="${!!on}">${ic("hand","sm")} ${on?"Você está dentro":"Quero ajudar"}</button></div>`; }
     case "documento": return it.ext ? ""
       : `<div class="pinsec"><div class="native">${ic("doc","sm")}<span>Documento de exemplo · ${it.pags} pág. Não há arquivo para abrir.</span><span class="fic">exemplo</span></div></div>`;
@@ -4138,7 +4138,7 @@ const comCor = id => CORES_CONTA[parseInt(String(id || "0").replace(/-/g,"").sli
 async function comsCarrega(key){ const [col, id] = key.split(":"), st = COMS.get(key) || {aberto:false};
   if (!SB || ME.offline){ COMS.set(key, Object.assign(st, {lista:[], meus:new Set(), fora:true})); return; }
   let lista = [], meus = new Set(), erro = false;
-  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,autor,perfis(nome,verificado,colaborador,selos,foto)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
+  try{ const r = await SB.from("comentarios").select("id,texto,marca,fonte_url,uteis,criado_em,editado_em,autor,perfis(nome,verificado,colaborador,selos,foto)").eq(col, id).eq("status","publicado").order("criado_em",{ascending:false}).limit(200);
     if (r.error) erro = true; else lista = r.data || [];
     if (ME.user && lista.length){ const u = await SB.from("comentario_uteis").select("comentario_id").in("comentario_id", lista.map(c=>c.id)); if (!u.error) meus = new Set((u.data || []).map(x=>x.comentario_id)); } }catch(e){ erro = true; }
   COMS.set(key, Object.assign(st, {lista, meus, erro, fora:false})); }
@@ -4156,11 +4156,11 @@ const comDest = c => !!((c.perfis || {}).colaborador) || c.uteis >= COM_DEST;
 function comHTML(c, st){ const pf = c.perfis || {}, meu = ME.user && c.autor===ME.user.id, adm = ME.perfil && ME.perfil.papel==="admin", dest = comDest(c), url = /^https:\/\//.test(c.fonte_url || "") ? c.fonte_url : "", on = st.meus.has(c.id);
   return `<article class="com${dest ? " dest" : ""}" data-com="${c.id}">
     ${ehContaRede(c.autor) ? `<span class="av cav rede" aria-hidden="true"><span class="amark">a<i></i></span></span>` : `<span class="av cav${fotoUrl(pf.foto) ? " comfoto" : ""}" style="background:${comCor(c.autor)}" aria-hidden="true">${fotoImg(pf.foto) || esc(siglaDe(pf.nome))}</span>`}
-    <div class="cb"><div class="comh"><span class="cn">${esc(pf.nome || "Conta da rede")}</span>${verifBtn(pf.verificado)}${seloResumo(pf, c.autor)}<small>${quando(c.criado_em)}${c.marca && MARCAS[c.marca] ? " · " + MARCAS[c.marca].toLowerCase() : ""}</small>${dest && !pf.colaborador && pf.papel!=="admin" ? `<span class="ctag d">Em destaque</span>` : ""}</div>
+    <div class="cb"><div class="comh"><span class="cn">${esc(pf.nome || "Conta da rede")}</span>${verifBtn(pf.verificado)}${seloResumo(pf, c.autor)}<small>${quando(c.criado_em)}${c.editado_em ? " · editado" : ""}${c.marca && MARCAS[c.marca] ? " · " + MARCAS[c.marca].toLowerCase() : ""}</small>${dest && !pf.colaborador && pf.papel!=="admin" ? `<span class="ctag d">Em destaque</span>` : ""}</div>
       <p class="ctx">${esc(c.texto)}</p>
       ${url ? `<a class="cfonte" href="${esc(url)}" target="_blank" rel="noopener nofollow ugc">Fonte: ${esc(hostOf(url).replace(/^www\./,""))} ${ic("ext","sm")}</a>` : ""}
       <div class="cacts"><button class="linkbtn cutil" type="button" data-act="comutil" data-id="${c.id}" aria-pressed="${on}"${meu ? " disabled" : ""} aria-label="Marcar como útil${c.uteis ? ". " + c.uteis + " pessoas marcaram" : ""}">${ic("heart","sm")} Útil${c.uteis ? " · " + c.uteis : ""}</button>
-        ${meu || adm ? `<button class="linkbtn muted" type="button" data-act="comapaga" data-id="${c.id}">${meu ? "Apagar" : "Remover (moderação)"}</button>` : ME.user ? `<button class="linkbtn muted" type="button" data-act="comdenuncia" data-id="${c.id}">${ic("flag","sm")} Denunciar</button>` : ""}</div></div></article>`; }
+        ${meu ? `<button class="linkbtn muted" type="button" data-act="comedita" data-id="${c.id}">Editar</button>` : ""}${meu || adm ? `<button class="linkbtn muted" type="button" data-act="comapaga" data-id="${c.id}">${meu ? "Apagar" : "Remover (moderação)"}</button>` : ME.user ? `<button class="linkbtn muted" type="button" data-act="comdenuncia" data-id="${c.id}">${ic("flag","sm")} Denunciar</button>` : ""}</div></div></article>`; }
 function comForm(){ if (!ME.user) return `<div class="cnovo fora"><span>Só quem tem conta comenta. Ler é livre.</span><a class="linkbtn" href="#conta" data-act="criarconta">Criar conta</a><a class="linkbtn" href="#conta" data-act="acessar">Entrar</a></div>`;
   return `<div class="cnovo"><textarea class="ctxt" rows="1" maxlength="1000" placeholder="Comente algo construtivo" aria-label="Seu comentário"></textarea>
     <div class="chips cmarcas" role="group" aria-label="Tipo de contribuição, opcional">${Object.entries(MARCAS).map(([k,t])=>`<button class="chip" type="button" data-act="commarca" data-m="${k}" aria-pressed="false">${t}</button>`).join("")}</div>
@@ -4178,12 +4178,12 @@ function comsDesenha(key){ $$(`[data-coms="${key}"]`).forEach(el=>{ const t = el
     const h = comsHTML(key); el.hidden = !h; el.innerHTML = h;
     const t2 = el.querySelector(".ctxt"); if (t2 && r.t) t2.value = r.t; if (r.m){ const b = el.querySelector(`.cmarcas [data-m="${r.m}"]`); if (b) b.setAttribute("aria-pressed", "true"); const f2 = el.querySelector(".cfon"); if (f2){ f2.hidden = false; f2.value = r.f; } } }); }
 async function comsPreenche(el){ el.dataset.ok = "1"; const key = el.dataset.coms; el.innerHTML = comsHTML(key); if (!COMS.has(key) || !COMS.get(key).lista) await comsCarrega(key); if (el.isConnected) comsDesenha(key); }
-document.addEventListener("focusin", e=>{ const t = e.target; if (t && t.classList && t.classList.contains("ctxt")) t.closest(".cnovo").classList.add("ativo"); });
+document.addEventListener("focusin", e=>{ const t = e.target; if (t && t.classList && t.classList.contains("ctxt")){ const n = t.closest(".cnovo"); if (n) n.classList.add("ativo"); } });
 document.addEventListener("input", e=>{ const t = e.target; if (t && t.classList && t.classList.contains("ctxt")){ t.style.height = "auto"; t.style.height = Math.min(220, t.scrollHeight + 2) + "px"; } });
 const comKey = b => { const s = b.closest("[data-coms]"); return s ? s.dataset.coms : ""; };
 let extraRaf = 0;
 new MutationObserver(()=>{ if (extraRaf) return; extraRaf = requestAnimationFrame(()=>{ extraRaf = 0;
-  $$("[data-pent]:not([data-ok])").forEach(pentPreenche); historicoPreenche(); $$("[data-coms]:not([data-ok])").forEach(comsPreenche); }); }).observe(document.body, {childList:true, subtree:true});
+  $$("[data-pent]:not([data-ok])").forEach(pentPreenche); historicoPreenche(); lixeiraPreenche(); $$("[data-coms]:not([data-ok])").forEach(comsPreenche); }); }).observe(document.body, {childList:true, subtree:true});
 function detailHTML(it, uid, mode, inline){
   const o = ORG[it.org], on = S.saved.has(uid), f = S.follow.has(o.id);
   const isVid = it.tipo==="video", isImg = it.tipo==="imagem" || isVid, orig = ORIGEM[it.id], links = linksOf(it);
@@ -5045,6 +5045,12 @@ function mockSB(o = {}){
     meu_convite:()=>({codigo:"teste12", amigos:2, proximo:5, niveis:[1,5,20]}),
     convite_de:({p_codigo})=>p_codigo === "teste12" ? "Amanda (teste)" : null,
     convite_registra:()=>"ok",
+    /* 19/11: lixeira de publicações e comentário editado, no modo de teste */
+    publicacao_apaga:({p_id})=>{ const l = tab("publicacoes"), i = l.findIndex(x=>x.id === p_id); if (i < 0) throw {message:"conteudo: não encontrado"}; const [x] = l.splice(i, 1);
+      tab("lixeira").unshift({id:x.id, titulo:x.titulo, apagada_em:agora(), linha:x, comentarios:tab("comentarios").filter(c=>c.publicacao_id === p_id)}); db.t.comentarios = tab("comentarios").filter(c=>c.publicacao_id !== p_id); salva(); return new Date(Date.now() + 15*864e5).toISOString(); },
+    lixeira_minha:()=>tab("lixeira").map(x=>({id:x.id, titulo:x.titulo, apagada_em:x.apagada_em, expira_em:new Date(new Date(x.apagada_em).getTime() + 15*864e5).toISOString(), imagem:(x.linha || {}).imagem_url || null, comentarios:(x.comentarios || []).length, pela_moderacao:false})),
+    lixeira_restaura:({p_id})=>{ const l = tab("lixeira"), i = l.findIndex(x=>x.id === p_id); if (i < 0) throw {message:"conteudo: não está mais na lixeira"}; const [x] = l.splice(i, 1); tab("publicacoes").unshift(x.linha); (x.comentarios || []).forEach(c=>tab("comentarios").push(c)); salva(); return true; },
+    comentario_edita:({p_id, p_texto})=>{ const c = tab("comentarios").find(x=>x.id === p_id); if (!c) throw {message:"permissao: só quem comentou edita"}; const t = String(p_texto || "").trim(); if (t.length < 2 || t.length > 1000) throw {message:"valor: o comentário tem de 2 a 1000 letras"}; c.texto = t; c.editado_em = agora(); salva(); return c.editado_em; },
     perfil_capa:({p_capa})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; pf.capa = p_capa || null; salva(); return null; },
     perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
       return {foto:pf.foto || null, capa:pf.capa || null, usuario:pf.usuario || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
@@ -6264,7 +6270,7 @@ function screenConta(){
     if (ab === "verificacao") return topo + `<div class="container cform">${tabs}${acessoCard()}<div id="histbox"></div></div>`;
     if (ab === "algoritmo") return topo + `<div class="container cform">${tabs}<div class="algotab">${algoPanel()}</div></div>`;
     if (ab === "anuncios") return topo + `<div class="container cform">${tabs}<div id="adpedidos">${adPedidosHTML()}</div></div>`;
-    if (ab === "dados") return topo + `<div class="container cform">${tabs}${contaSeguranca()}
+    if (ab === "dados") return topo + `<div class="container cform">${tabs}${contaSeguranca()}<div id="lixbox"></div>
       <div class="note">${ic("lock")}<span>Seu e-mail, CPF e data de nascimento não aparecem para ninguém. O que você publica fica no servidor da rede e qualquer pessoa vê no site; você pode apagar quando quiser.</span></div>
       <button class="btn ghost block" type="button" data-act="sair">Sair da conta</button></div>`;
     return topo + `<div class="container cform">${tabs}
@@ -6502,7 +6508,7 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
       <button class="setting l1" type="button" data-act="sairtodos"><span class="t"><b>Sair de todos os aparelhos</b><small>${ult ? "Último acesso: " + ult : "Encerra a conta em todo lugar"}</small></span>${chev}</button></div></section>
     <section class="acard" aria-labelledby="hdados"><h2 id="hdados">Seus dados</h2><div class="list">
       <button class="setting l1" type="button" data-act="baixadados"><span class="t"><b>Baixar meus dados</b><small>Tudo o que a rede guarda sobre você</small></span>${chev}</button>
-      ${nivel()==="admin" ? "" : `<button class="setting l1 perigo" type="button" data-act="apagaconta"><span class="t"><b>Apagar minha conta</b><small>Apaga tudo. Não tem volta.</small></span>${chev}</button>`}</div></section>`; }
+      ${nivel()==="admin" ? "" : `<button class="setting l1 perigo" type="button" data-act="apagaconta"><span class="t"><b>Apagar minha conta</b><small>Você tem 15 dias para voltar atrás</small></span>${chev}</button>`}</div></section>`; }
 /* o seu histórico na rede: o número (0 a 100) e o que ajuda a subir. Só você vê. */
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
@@ -6515,7 +6521,19 @@ async function sheetConvite(){ if (!SB || !ME.user) return go("conta");
   openSheet(shead("Convide um amigo") + `<div id="convsh"><p class="empty">Carregando…</p></div>`, "Convide um amigo");
   let cv = null; try{ const r = await SB.rpc("meu_convite"); if (!r.error) cv = r.data; }catch(e){}
   const b = $("#convsh"); if (b) b.innerHTML = cv && cv.codigo ? convCorpo(cv) : `<p class="empty">Não foi possível carregar o seu link agora. Tente de novo em instantes.</p>`; }
+/* 19/11 (Amanda): apagar e tirar pedem dois toques em todo lugar, com o mesmo texto. O botão volta sozinho em 5 segundos. */
+function doisToques(b, verbo){ if (b.dataset.ok === "1") return true; const v = verbo || "apagar", antes = b.innerHTML; b.dataset.ok = "1"; b.classList.add("armado");
+  if (b.classList.contains("iconbtn")) toast(`Toque de novo para ${v}.`); else b.textContent = `Toque de novo para ${v}`;
+  setTimeout(()=>{ if (b.isConnected && b.dataset.ok === "1"){ b.dataset.ok = ""; b.classList.remove("armado"); b.innerHTML = antes; } }, 5000); return false; }
 const convMsg = url => url + "\n\nSai do Instagram e do Facebook e vem para a arede.online comigo: um mundo de conexões, com conteúdo responsável e notícias verificadas. Aqui, o algoritmo é seu.";
+/* 19/11 (Amanda): lixeira de publicações. Fica em Sua conta › Dados; cada uma volta com a imagem e os comentários. */
+async function lixeiraPreenche(){ const box = $("#lixbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
+  let l = []; try{ const r = await SB.rpc("lixeira_minha"); if (!r.error && Array.isArray(r.data)) l = r.data; }catch(e){}
+  if (!box.isConnected) return; const dia = d => new Date(d).toLocaleDateString("pt-BR", {day:"numeric", month:"short"}), dias = CFG.lixeira_dias || 15;
+  box.innerHTML = `<section class="acard" aria-labelledby="hlix"><h2 id="hlix">Apagadas</h2>
+    ${l.length ? `<div class="list">${l.map(x=>`<div class="setting"><span class="t"><b>${esc(limpo(x.titulo || "Publicação sem título"))}</b><small>Apagada em ${dia(x.apagada_em)} · sai de vez em ${dia(x.expira_em)}</small></span>${x.pela_moderacao ? `<small class="lnote">Pela moderação</small>` : `<button class="btn sm" type="button" data-act="lixrestaura" data-id="${x.id}">Restaurar</button>`}</div>`).join("")}</div>`
+      : `<p class="lnote osub">Nenhuma publicação apagada nos últimos ${dias} dias.</p>`}
+    <p class="lnote">Publicação apagada fica aqui ${dias} dias, com a imagem e os comentários. Depois sai de vez.</p></section>`; }
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
@@ -6730,12 +6748,12 @@ function filterBody(){
   const d = S.fdraft, chip = (grp, v, label, on) => `<button class="chip" type="button" data-act="fchip" data-g="${grp}" data-v="${v}" aria-pressed="${on}">${on?ic("check","sm"):""}${label}</button>`;
   const n = source(d).length, total = nFiltros(d);
   return shead("Filtrar") + `
-    <p style="color:var(--muted);font-size:13.5px">Os filtros valem só para esta navegação. Para mudar o que o algoritmo prioriza, use o ajuste ao lado do botão Algoritmo.</p>
+    <p style="color:var(--muted);font-size:14px">Os filtros valem só para esta navegação. Para mudar o que o algoritmo prioriza, use o ajuste ao lado do botão Algoritmo.</p>
     <div class="field"><label>Temas</label><div class="chips">${TEMAS.map(t=>chip("temas", t, t, d.temas.includes(t))).join("")}</div></div>
     <div class="field"><label>Cidades</label><div class="chips">${CIDADES.map(c=>chip("cidades", c, c, d.cidades.includes(c))).join("")}</div></div>
     <div class="field"><label>Organizações</label><div class="chips">${chip("minhas","0","Todas",!d.minhas)}${chip("minhas","1","Só as que participo",d.minhas)}</div></div>
     <div class="field"><label>Confiabilidade</label><div class="chips">${chip("conf","0","Qualquer",!d.conf)}${chip("conf","75","Confiável ou mais",d.conf===75)}${chip("conf","90","Alta confiança",d.conf===90)}</div>
-      <p style="font-size:12.5px;color:var(--muted)">Perguntas, pedidos e opiniões não têm nota e continuam aparecendo.</p></div>
+      <p style="font-size:13px;color:var(--muted)">Perguntas, pedidos e opiniões não têm nota e continuam aparecendo.</p></div>
     <div class="row"><button class="btn ghost" type="button" data-act="fclear" ${total?"":"disabled"}>Limpar</button><button class="btn primary" type="button" data-act="fapply"${n ? "" : " disabled"}>${n ? `Ver ${n} ${n===1?"conteúdo":"conteúdos"}` : "Nenhum conteúdo com esses filtros"}</button></div>`;
 }
 function sheetFilter(){ S.fdraft = JSON.parse(JSON.stringify(S.filt)); openSheet(filterBody(), "Filtrar"); }
@@ -6747,12 +6765,12 @@ function sheetSort(){
 function applyFeedChange(){ const st = $("#status"); if (st) st.innerHTML = statusLine(); window.scrollTo(0,0); resetFeed(); }
 function sheetFormal(uid){
   const it = findItem(uid); if(!it) return;
-  openSheet(shead("Votação") + `<p style="font-family:var(--font-display);font-weight:600;font-size:19px">${it.titulo}</p>
+  openSheet(shead("Votação") + `<p style="font-family:var(--font-display);font-weight:600;font-size:20px">${it.titulo}</p>
     <div class="note">${ic("lock")}<span>Seu voto é secreto. Você recebe um comprovante que confirma que votou, mas não mostra a sua escolha.</span></div>
     <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px"><legend class="sr">Opções</legend>
       ${it.opcoes.map((o,i)=>`<label class="opt" for="fv${i}" style="cursor:pointer;align-items:center;justify-content:flex-start;gap:10px"><input type="radio" name="fv" id="fv${i}" value="${i}" style="width:20px;height:20px;accent-color:var(--accent)"><span>${o}</span></label>`).join("")}</fieldset>
     <button class="btn primary block" type="button" data-act="confirmvote" data-uid="${uid}">Confirmar voto</button>
-    <p style="font-size:12.5px;color:var(--muted)">Depois de confirmado, o voto não pode ser alterado.</p>`, "Votação");
+    <p style="font-size:13px;color:var(--muted)">Depois de confirmado, o voto não pode ser alterado.</p>`, "Votação");
 }
 const CTYPES = [["texto","Publicação","Texto ou imagem para o mural"],["evento","Evento","Data, local e confirmação de presença"],["enquete","Consulta","Sentir a opinião do grupo"],["votacao","Proposta de votação","Vai a voto com apoio de 20% dos membros"],["chamado","Chamado","Mutirão, voluntários, abaixo-assinado"],["documento","Documento","Ata, pauta, carta, proposta"]];
 /* REVISÃO DE UX (14 nov 2026): o Criar é o ponto único de criação. Além do que se publica, leva aos espaços: comunidade e página. */
@@ -6861,8 +6879,16 @@ const A = {
     const r = on ? await SB.from("comentario_uteis").delete().eq("comentario_id", id).eq("user_id", ME.user.id) : await SB.from("comentario_uteis").insert({comentario_id:id, user_id:ME.user.id});
     if (r.error && !/duplicate|unique/i.test(r.error.message || "")){ b.disabled = false; return toast(/proprio/i.test(r.error.message) ? "Não dá para marcar o próprio comentário." : erroAuth(r.error)); }
     if (on){ st.meus.delete(id); c.uteis = Math.max(0, c.uteis - 1); } else { st.meus.add(id); c.uteis++; } comsDesenha(k); },
-  comapaga: async b => { if (!b.dataset.conf){ b.dataset.conf = "1"; b.textContent = "Apagar mesmo?"; setTimeout(()=>{ if (b.isConnected){ delete b.dataset.conf; b.textContent = "Apagar"; } }, 4000); return; }
+  comapaga: async b => { if (!doisToques(b)) return;
     const k = comKey(b), {error} = await SB.from("comentarios").delete().eq("id", b.dataset.id); if (error) return toast(erroAuth(error)); await comsCarrega(k); comsDesenha(k); toast("Comentário apagado."); },
+  /* 19/11 (Amanda): comentário editado na própria linha; quem lê vê "editado" */
+  comedita: b => { const a = b.closest(".com"), p = a && a.querySelector(".ctx"); if (!p || a.querySelector(".cedit")) return;
+    p.hidden = true; p.insertAdjacentHTML("afterend", `<div class="cedit"><textarea class="ctxt" maxlength="1000" aria-label="Editar comentário">${esc(p.textContent)}</textarea><div class="row" style="gap:8px;margin-top:6px"><button class="btn sm primary" type="button" data-act="comeditasalva" data-id="${b.dataset.id}">Salvar</button><button class="btn sm ghost" type="button" data-act="comeditacancela">Cancelar</button></div></div>`);
+    const t = a.querySelector(".cedit textarea"); t.focus(); t.setSelectionRange(t.value.length, t.value.length); },
+  comeditacancela: b => { const a = b.closest(".com"); if (!a) return; a.querySelector(".cedit").remove(); a.querySelector(".ctx").hidden = false; },
+  comeditasalva: async b => { const a = b.closest(".com"), t = a.querySelector(".cedit textarea"), k = comKey(b); ocupado(b, true, "Salvando…");
+    const {error} = await SB.rpc("comentario_edita", {p_id:b.dataset.id, p_texto:t.value}); if (error){ ocupado(b, false); return toast(erroAuth(error)); }
+    await comsCarrega(k); comsDesenha(k); toast("Comentário editado."); },
   comdenuncia: async b => { const {error} = await SB.from("comentario_denuncias").insert({comentario_id:b.dataset.id, user_id:ME.user.id}); b.disabled = true;
     toast(error && /duplicate|unique/i.test(error.message || "") ? "Você já denunciou este comentário." : error ? erroAuth(error) : "Denúncia enviada. O comentário continua no ar enquanto é revisado."); },
   /* curadoria: Para entender */
@@ -7088,10 +7114,11 @@ const A = {
     ocupado(b, false); closeSheet(); await publicacoesCarrega();
     if (ed){ const it = POOL.find(x=>x.uuid===ed); if (it && route().startsWith("pin-")) render(); toast("Publicação editada."); return; }
     if (S.tab!=="tudo" && S.tab!=="publicacoes"){ S.tab = "tudo"; persist("tab"); } go("inicio"); toast("Publicado na rede. Já aparece para quem acessa o site."); },
-  apagarreal: async b => { if (b.dataset.ok!=="1"){ b.dataset.ok = "1"; if (b.classList.contains("iconbtn")){ b.classList.add("armado"); toast("Toque de novo na lixeira para apagar de vez."); setTimeout(()=>{ b.dataset.ok=""; b.classList.remove("armado"); }, 6000); } else b.textContent = "Toque de novo para apagar de vez"; return; }
-    const it = findItem(b.dataset.uid); if (!it) return; ocupado(b, true, "Apagando…");
-    const {error} = await SB.from("publicacoes").delete().eq("id", it.uuid); if (error){ ocupado(b, false); return toast(erroAuth(error)); }
-    await publicacoesCarrega(); go("inicio"); toast("Publicação apagada."); },
+  /* 19/11 (Amanda): a publicação apagada vai para a lixeira por 15 dias (Sua conta › Dados › Apagadas), com a imagem e os comentários */
+  apagarreal: async b => { if (!doisToques(b)) return;
+    const it = findItem(b.dataset.uid); if (!it) return; ocupado(b, true, "Apagando…"); const meu = ME.user && it.autorId === ME.user.id;
+    const {error} = await SB.rpc("publicacao_apaga", {p_id:it.uuid}); if (error){ ocupado(b, false); return toast(erroAuth(error)); }
+    await publicacoesCarrega(); go("inicio"); toast(meu ? `Publicação apagada. Fica ${CFG.lixeira_dias || 15} dias em Sua conta › Dados › Apagadas.` : "Publicação tirada do ar pela moderação."); },
 
   ctype: b => { S.mobRef = null; sheetCreateForm(b.dataset.k); },
   ctypereal: b => sheetCriarReal(b.dataset.k),
@@ -7120,7 +7147,7 @@ const A = {
     if (tit.length < 2) return formErro("Dê um nome."); if (!ini) return formErro("Escolha quando começa."); if (fim && fim < ini) return formErro("O fim vem depois do começo.");
     ocupado(b, true, "Salvando…"); const {error} = await SB.rpc("evento_salva", {p_pagina:pid, p_id:b.dataset.e || null, p_tipo:($('#layer input[name="evtipo"]:checked') || {}).value || "exposicao", p_titulo:tit, p_descricao:$("#evdesc").value || null, p_inicio:ini, p_fim:fim || null, p_local:$("#evloc").value || null}); ocupado(b, false);
     if (error) return formErro(msgErr(error)); closeSheet(); MUS.agenda = null; museuMeuCarrega(pid); },
-  evapaga: async b => { const pid = b.dataset.p; await SB.rpc("evento_apaga", {p_id:b.dataset.e}); closeSheet(); MUS.agenda = null; museuMeuCarrega(pid); },
+  evapaga: async b => { if (!doisToques(b)) return; const pid = b.dataset.p; await SB.rpc("evento_apaga", {p_id:b.dataset.e}); closeSheet(); MUS.agenda = null; museuMeuCarrega(pid); },
   visitaok: async b => { if (!b.dataset.p || !b.dataset.c) return formErro("Este QR não é válido. Peça o QR atualizado na entrada."); ocupado(b, true, "Confirmando…");
     const {data, error} = await SB.rpc("museu_checkin", {p_pagina:b.dataset.p, p_codigo:b.dataset.c, p_evento:null}); ocupado(b, false); if (error) return formErro(msgErr(error));
     PASS.lista = null; const box = $("#visitabox"); if (box) box.innerHTML = `<div class="pedcard"><span class="ktipo">${ic("check","sm")}Visita</span><b>${data && data.novo ? "Carimbo no seu passaporte." : "Você já tem o carimbo de hoje."}</b><small>${esc(limpo((data && data.nome) || ""))}</small></div><a class="btn primary block" href="#passaporte" style="margin-top:12px">Ver meu passaporte</a>`; },
@@ -7365,7 +7392,7 @@ const A = {
     ocupado(b, true, "Enviando…"); const {error} = await SB.rpc("pagina_dominio_pede", {p_pagina:pid, p_dominio:d}); ocupado(b, false);
     if (error){ if (err){ err.textContent = msgErr(error); err.hidden = false; } return; }
     await pgDominioCarrega(pid); closeSheet(); sheetPgDominio(pid); toast("Pedido enviado."); },
-  pgdomcancela: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para confirmar"; return; }
+  pgdomcancela: async b => { if (!doisToques(b, "cancelar")) return;
     const {error} = await SB.rpc("pagina_dominio_cancela", {p_id:b.dataset.id}); if (error) return toast(msgErr(error)); await pgDominioCarrega(b.dataset.p); closeSheet(); toast("Pedido de domínio cancelado."); },
   paginaedita: b => sheetPaginaEdita(b.dataset.id),
   selocomo: b => sheetSeloComo(b.dataset.k),
@@ -7381,7 +7408,7 @@ const A = {
     await sesSistema(x.id, `Horário proposto: ${dataHora(quando0)}.`); ocupado(b, false); closeSheet(); toast("Proposta enviada na conversa."); sesRecarrega(); },
   sesconfirma: async b => { const y = sesAchar(b.dataset.s); if (!y) return; const {error} = await SB.from("tat_sessoes").update({status:"marcada"}).eq("id", y.id); if (error) return toast(erroAuth(error));
     await sesSistema(y.pedido_id, `Horário confirmado: ${dataHora(y.quando)}.`); toast("Confirmado. Está no seu passaporte."); sesRecarrega(); },
-  sescancela: async b => { const y = sesAchar(b.dataset.s); if (!y) return; if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar?"; return; }
+  sescancela: async b => { const y = sesAchar(b.dataset.s); if (!y) return; if (!doisToques(b, "cancelar")) return;
     const {error} = await SB.from("tat_sessoes").update({status:"cancelada"}).eq("id", y.id); if (error) return toast(erroAuth(error));
     await sesSistema(y.pedido_id, `Horário de ${dataHora(y.quando)} cancelado.`); sesRecarrega(); },
   sesqr: b => { const y = sesAchar(b.dataset.s); if (y) sheetSesQR(y); },
@@ -7507,7 +7534,7 @@ const A = {
     if (!n) return formErro("Escreva o nome da etiqueta."); if (n === de){ return sheetEtqLista(x); }
     if (n.toLowerCase() !== de.toLowerCase() && etqTodas().some(t=>t.nome.toLowerCase() === n.toLowerCase())) return formErro("Você já tem uma etiqueta com esse nome.");
     ocupado(b, true, "Salvando…"); const e = await etqEdita(de, n); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta renomeada."); sheetEtqLista(x); render(); },
-  etqapaga: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar: apagar de todas"; return; }
+  etqapaga: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; if (!doisToques(b)) return;
     ocupado(b, true, "Apagando…"); const e = await etqEdita(b.dataset.n, null); ocupado(b, false); if (e) return formErro(e); toast("Etiqueta apagada."); etqTodas().length ? sheetEtqLista(x) : sheetEtq(x); render(); },
   sesdesiste: b => { const y = sesAchar(b.dataset.s); if (y) sheetSesDesiste(y); },
   sesdesisteok: async b => { const y = sesAchar(b.dataset.s); if (!y) return; ocupado(b, true, "Cancelando…");
@@ -7519,7 +7546,7 @@ const A = {
     x.status = "fechado"; x.atualizado_em = new Date().toISOString(); delete PED.msgs[x.id]; toast("Conversa encerrada."); render(); },
   convreabre: async b => { const x = (PED.lista || []).find(y=>y.id === b.dataset.id); if (!x) return; ocupado(b, true, "Reabrindo…"); const {data, error} = await SB.rpc("conversa_encerra", {p_pedido:x.id, p_encerra:false}); ocupado(b, false); if (error) return toast(msgErr(error));
     PED.lista = null; delete PED.msgs[x.id]; toast("Conversa reaberta."); render(); },
-  msgapaga: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Confirmar?"; return; }
+  msgapaga: async b => { if (!doisToques(b)) return;
     b.disabled = true; { const m0 = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m0 && (m0.fotos || []).length) await SB.storage.from("conversa").remove(m0.fotos); } const {error} = await SB.rpc("msg_apaga", {p_id:b.dataset.m}); if (error){ b.disabled = false; return toast(msgErr(error)); }
     const m = (PED.msgs[b.dataset.id] || []).find(y=>y.id === b.dataset.m); if (m){ m.apagada_em = new Date().toISOString(); m.texto = "Mensagem apagada"; m.fotos = []; } render(); },
   fotoescolhe: b => { const i = $("#msgfotos"); if (!i) return; if ((FOTO.nova[b.dataset.id] || []).length >= FOTOS_MSG) return toast(`Até ${FOTOS_MSG} fotos por mensagem.`); i.value = ""; i.click(); },
@@ -7557,7 +7584,7 @@ const A = {
   fincopia: b => { const d = FIN[b.dataset.p] || {}, v = (d.vendas || []).find(y=>y.id === b.dataset.id); if (!v) return;
     const t = `Serviço: ${v.descricao}\nValor: ${finBRL(v.valor)}\nData: ${finData(v.data)}` + (v.tomador ? `\nComprador: ${v.tomador}` : "");
     try{ navigator.clipboard.writeText(t).then(()=>toast("Dados copiados."), ()=>toast("Não foi possível copiar.")); }catch(e){ toast("Não foi possível copiar."); } },
-  finremove: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Tirar mesmo?"; return; } const pid = b.dataset.p;
+  finremove: async b => { if (!doisToques(b, "tirar")) return; const pid = b.dataset.p;
     const {error} = await SB.rpc("mei_venda_remove", {p_id:b.dataset.id}); if (error) return toast(erroAuth(error)); delete FIN[pid]; toast("Venda tirada."); render(); },
   pgpasta: b => { const pid = route().slice(3); S.pgPasta = b.dataset.s ? {p:pid, s:b.dataset.s, f:b.dataset.f} : null; pgRepinta(pid); window.scrollTo(0, 0); },
   pgsecnova: () => { const pid = route().slice(3), l = PAGS.secoes[pid] || []; if (l.length >= MAX_SEC) return toast(`A página tem até ${MAX_SEC} seções.`); sheetPgSecao(pid, null); },
@@ -7584,7 +7611,7 @@ const A = {
     if (!x.pastas.some(f=>f.itens && f.itens.length)) return toast("Coloque algo numa pasta antes de publicar a seção.");
     if (await pgSecGrava(pid, x, {publicada:true})) toast(`“${x.nome}” está no ar.`); },
   pgsecrascunho: async b => { const pid = route().slice(3), x = (PAGS.secoes[pid] || []).find(y=>y.id===b.dataset.s); if (x && await pgSecGrava(pid, x, {publicada:false})){ closeSheet(); toast(`“${x.nome}” voltou para rascunho.`); } },
-  pgsecapaga: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Apagar mesmo?"; return; } const pid = route().slice(3), l = PAGS.secoes[pid] || [], x = l.find(y=>y.id===b.dataset.s); if (!x) return;
+  pgsecapaga: async b => { if (!doisToques(b)) return; const pid = route().slice(3), l = PAGS.secoes[pid] || [], x = l.find(y=>y.id===b.dataset.s); if (!x) return;
     const {error} = await SB.from("pagina_secoes").delete().eq("id", x.id); if (error) return toast("Não foi possível agora.");
     PAGS.secoes[pid] = l.filter(y=>y!==x); S.pgPasta = null; closeSheet(); toast("Seção apagada. As publicações continuam na página."); pgRepinta(pid); },
   pgpastanova: b => { const pid = route().slice(3), x = (PAGS.secoes[pid] || []).find(y=>y.id===b.dataset.s); if (!x) return; if (x.pastas.length >= MAX_PSEC) return toast(`Cada seção tem até ${MAX_PSEC} pastas.`);
@@ -7609,13 +7636,13 @@ const A = {
   pgpastaren: async () => { const pid = route().slice(3), x = (PAGS.secoes[pid] || []).find(y=>y.id===S.pgPasta.s), f = x && x.pastas.find(y=>y.id===S.pgPasta.f), nome = (($("#pgpastaren") || {}).value || "").trim(); if (!f) return;
     if (nome.length < 2){ const m = $("#pgpastamsg"); if (m) m.textContent = "Dê um nome à pasta."; return; }
     if (await pgSecGrava(pid, x, {pastas:x.pastas.map(y=>y===f ? Object.assign({}, y, {nome}) : y)})){ closeSheet(); toast("Pasta renomeada."); } },
-  pgpastatira: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Tirar mesmo?"; return; } const pid = route().slice(3), x = (PAGS.secoes[pid] || []).find(y=>y.id===S.pgPasta.s); if (!x) return;
+  pgpastatira: async b => { if (!doisToques(b, "tirar")) return; const pid = route().slice(3), x = (PAGS.secoes[pid] || []).find(y=>y.id===S.pgPasta.s); if (!x) return;
     const fid = S.pgPasta.f; S.pgPasta = null; if (await pgSecGrava(pid, x, {pastas:x.pastas.filter(y=>y.id!==fid)})){ closeSheet(); toast("Pasta tirada."); } },
   vitsalva: async b => { const pid = b.dataset.p, nome = $("#vinome").value.trim(), link = $("#vilink").value.trim();
     if (nome.length < 2) return formErro("Diga o nome do serviço ou produto."); if (link && !/^(https:\/\/|mailto:|tel:)/.test(link)) return formErro("O link precisa começar com https://, mailto: ou tel:.");
     ocupado(b, true, "Salvando…"); const {error} = await SB.from("pagina_itens").insert({pagina_id:pid, nome, descricao:$("#videsc").value.trim() || null, preco:$("#vipreco").value.trim() || null, link:link || null, foto:S.viFoto ? await midiaSobe(S.viFoto, "loja") : null, ordem:(PAGS.itens[pid] || []).length});
     ocupado(b, false); if (error) return formErro(erroAuth(error)); closeSheet(); delete PAGS.itens[pid]; S.pgTab = "vitrine"; MERC.itens = null; toast("Adicionado à loja."); render(); },
-  vitira: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Tirar mesmo?"; return; } const pid = b.dataset.p;
+  vitira: async b => { if (!doisToques(b, "tirar")) return; const pid = b.dataset.p;
     const {error} = await SB.from("pagina_itens").delete().eq("id", b.dataset.id); if (error) return toast("Não foi possível agora."); delete PAGS.itens[pid]; toast("Tirado da vitrine."); render(); },
   notifpref: async b => { const k = b.dataset.k, on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on);
     const {error} = await SB.from("notif_prefs").upsert({user_id:ME.user.id, tipo:k, quer:on}); if (error){ b.setAttribute("aria-checked", !on); return toast("Não foi possível salvar agora."); }
@@ -7711,7 +7738,7 @@ const A = {
   cmnposta: () => openSheet(shead("Publicar na comunidade") + `<div class="field"><label for="cmntxt">O que você quer dizer?</label><textarea id="cmntxt" rows="5" maxlength="2000"></textarea></div><button class="btn primary block" type="button" data-act="cmnpostaok">Publicar</button>`, "Publicar na comunidade"),
   cmnpostaok: () => { const c = cmnDe(route().slice(4)), txt = $("#cmntxt").value.trim(); if (!c) return; if (!txt){ toast("Escreva alguma coisa."); return; }
     c.posts.unshift({id:Date.now().toString(36), txt, quando:new Date().toISOString(), autor:cmnEu()}); cmnSalva(); closeSheet(); cmnPinta(c); },
-  cmnapaga: b => { const c = cmnDe(route().slice(4)); if (!c) return; if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Apagar mesmo?"; return; } c.posts = c.posts.filter(p=>p.id!==b.dataset.pid); cmnSalva(); cmnPinta(c); },
+  cmnapaga: b => { const c = cmnDe(route().slice(4)); if (!c) return; if (!doisToques(b)) return; c.posts = c.posts.filter(p=>p.id!==b.dataset.pid); cmnSalva(); cmnPinta(c); },
   cmntopico: () => openSheet(shead("Abrir discussão") + `<div class="field"><label for="cmntit">Assunto</label><input id="cmntit" maxlength="100" autocomplete="off"></div><div class="field"><label for="cmntxt">Mensagem</label><textarea id="cmntxt" rows="5" maxlength="2000"></textarea></div><button class="btn primary block" type="button" data-act="cmntopicook">Abrir discussão</button>`, "Abrir discussão"),
   cmntopicook: () => { const c = cmnDe(route().slice(4)), titulo = $("#cmntit").value.trim(), txt = $("#cmntxt").value.trim(); if (!c) return; if (titulo.length < 3 || !txt){ toast("Preencha o assunto e a mensagem."); return; }
     c.topicos.unshift({id:Date.now().toString(36), titulo, txt, quando:new Date().toISOString(), autor:cmnEu(), respostas:[]}); cmnSalva(); closeSheet(); cmnPinta(c); },
@@ -7757,16 +7784,18 @@ const A = {
   secapaga: b => { const x = S.secoes.find(y=>y.id===b.dataset.s); if (!x) return; S.secoes = S.secoes.filter(y=>y!==x); persist("secoes"); closeSheet();
     toast(`Seção “${x.nome}” desfeita. As pastas ficaram fora das seções.`); if (route()==="perfil") profShow(); },
   pgfoto: () => { const i = $("#pgfotoin"); if (i){ i.value = ""; i.click(); } },
-  pgfototira: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo"; return; } ocupado(b, true, "…"); const pid = b.dataset.id;
+  pgfototira: async b => { if (!doisToques(b, "tirar")) return; ocupado(b, true, "…"); const pid = b.dataset.id;
     const {data, error} = await SB.rpc("pagina_foto_define", {p_pagina:pid, p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
     if (data && PGFOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
     const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = null; ORG["pg-" + pid].foto = ""; } sheetPaginaEdita(pid); render(); toast("Foto tirada."); },
   /* 19/11 (Amanda): o convite vai com uma mensagem curta sobre a rede; a imagem vem da prévia do link (marca/convite.jpg) */
   convidar: () => sheetConvite(),
+  lixrestaura: async b => { ocupado(b, true, "Restaurando…"); const {error} = await SB.rpc("lixeira_restaura", {p_id:b.dataset.id}); if (error){ ocupado(b, false); return toast(erroAuth(error)); }
+    toast("Publicação restaurada."); await publicacoesCarrega(); const box = $("#lixbox"); if (box){ delete box.dataset.ok; lixeiraPreenche(); } },
   convcopia: async b => { const i = $("#convurl"); if (!i) return; try{ await navigator.clipboard.writeText(convMsg(i.value)); toast("Mensagem e link copiados."); }catch(e){ i.select(); toast("Selecione e copie o link."); } },
   convenvia: async () => { const i = $("#convurl"); if (!i || !navigator.share) return; try{ await navigator.share({title:"arede.online", text:convMsg(i.value)}); }catch(e){} },
   fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
-  fototirap: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para tirar"; return; } ocupado(b, true, "…");
+  fototirap: async b => { if (!doisToques(b, "tirar")) return; ocupado(b, true, "…");
     const {data, error} = await SB.rpc("perfil_foto_define", {p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
     if (data && FOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
     if (ME.perfil) ME.perfil.foto = null; navConta(); render(); toast("Foto tirada."); },
@@ -7781,7 +7810,7 @@ const A = {
     if (nome.length < 2){ if (m) m.textContent = "Dê um nome à pasta."; return; }
     if (FOLDERS.some(x=>x !== f && x[1].toLowerCase()===nome.toLowerCase())){ if (m) m.textContent = "Já existe uma pasta com esse nome."; return; }
     f[1] = nome; f[3] = ($('#layer [data-act="pastasec"]') || {getAttribute:()=>""}).getAttribute("aria-checked")==="true"; pastasGuarda(); closeSheet(); toast("Pasta salva."); if (route()==="perfil") profShow(); },
-  pastaapaga: b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para apagar a pasta"; return; }
+  pastaapaga: b => { if (!doisToques(b)) return;
     const k = b.dataset.f, i = FOLDERS.findIndex(x=>x[0]===k); if (i < 0) return; const nome = FOLDERS[i][1];
     Object.keys(S.savedIn).forEach(u=>{ if (S.savedIn[u]===k) S.savedIn[u] = "salvos"; }); persist("savedIn");
     S.secoes.forEach(x=>{ x.pastas = x.pastas.filter(y=>y!==k); }); persist("secoes");
@@ -7996,7 +8025,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:57";
+const VERSAO = "v1 registrada · 19/11 08:35";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
