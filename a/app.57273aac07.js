@@ -1699,6 +1699,13 @@ const USO_ATRIB = [["navegacao","Facilidade de navegar"],["conteudo","Relevânci
 const USO = {on:false, fila:[], n:0, max:600, t0:Date.now(), ativo:0, tela:null, telaT:0, rol:0, cliques:[], mortos:0, csatVisto:false, csat:null, s:"", v:"", c:""};
 const usoId = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, ()=>(Math.random()*16|0).toString(16)));
 const usoRota = r => { r = String(r || route()).split("/")[0]; return r.startsWith("pin-") ? "pin" : r.startsWith("org-") ? "org" : r.slice(0, 30); };
+/* 19/11 (Amanda): convide um amigo. Quem chega por arede.online/?amigo=CODIGO e cria conta fica ligado a quem convidou (registro só no servidor). */
+function amigoCaptura(){ try{ const q = new URLSearchParams(location.search), c = (q.get("amigo") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+  if (c){ store.set("amigo", c); q.delete("amigo"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); if (!ME.user) S.contaTab = "criar"; } }catch(e){} }
+async function amigoNome(){ const c = store.get("amigo", ""); if (!c || !SB || S.amigoNome !== undefined) return; S.amigoNome = null;
+  try{ const r = await SB.rpc("convite_de", {p_codigo:c}); S.amigoNome = !r.error && r.data ? limpo(r.data) : ""; }catch(e){ S.amigoNome = ""; } if (route() === "conta" && $("#amigonota")) render(); }
+async function amigoRegistra(){ if (!SB || !ME.user) return; const c = store.get("amigo", ""), meta = (ME.user.user_metadata || {}).convite;
+  if (!c && !meta) return; try{ const r = await SB.rpc("convite_registra", {p_codigo:c || null}); if (!r.error && r.data !== "sem_conta") store.set("amigo", ""); }catch(e){} }
 function usoInicia(){
   try{ const q = new URLSearchParams(location.search), c = (q.get("c") || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
     if (c){ store.set("convite", c); q.delete("c"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } }catch(e){}
@@ -4135,9 +4142,10 @@ async function comsCarrega(key){ const [col, id] = key.split(":"), st = COMS.get
   COMS.set(key, Object.assign(st, {lista, meus, erro, fora:false})); }
 /* 18/11 (Amanda): selos públicos. Ao lado do nome, o selo principal escrito e o número dos outros; tocar abre a lista.
    Ordem: Colaboradora, Comentários úteis, Cita fontes, Tempo de casa. Selo ganho não some (o servidor guarda em perfis.selos). */
-const SELO_INFO = {colaboradora:["Colaboradora","Destaque dado pela rede a quem contribui de forma construtiva.","star"], uteis:["Comentários úteis","Outras pessoas marcaram comentários como úteis.","check"], fontes:["Cita fontes","Comenta e publica com fonte.","doc"], casa:["Tempo de casa","Tem conta na rede há mais de 90 dias.","clock"]};
+const SELO_INFO = {amigos20:["Trouxe amigos · 20","Convidou 20 amigos que entraram na rede.","seguir"], amigos5:["Trouxe amigos · 5","Convidou 5 amigos que entraram na rede.","seguir"], amigos1:["Trouxe amigos","Convidou um amigo que entrou na rede.","seguir"], colaboradora:["Colaboradora","Destaque dado pela rede a quem contribui de forma construtiva.","star"], uteis:["Comentários úteis","Outras pessoas marcaram comentários como úteis.","check"], fontes:["Cita fontes","Comenta e publica com fonte.","doc"], casa:["Tempo de casa","Tem conta na rede há mais de 90 dias.","clock"]};
 const SELOS_PESSOA = {};
-const selosConta = pf => (pf && pf.colaborador ? ["colaboradora"] : []).concat(Object.keys(SELO_INFO).filter(k=>k !== "colaboradora" && pf && Array.isArray(pf.selos) && pf.selos.includes(k)));
+const selosConta = pf => { const l = (pf && pf.colaborador ? ["colaboradora"] : []).concat(Object.keys(SELO_INFO).filter(k=>k !== "colaboradora" && !/^amigos/.test(k) && pf && Array.isArray(pf.selos) && pf.selos.includes(k)));
+  const am = ["amigos20","amigos5","amigos1"].find(k=>pf && Array.isArray(pf.selos) && pf.selos.includes(k)); return am ? l.concat(am) : l; };   /* 19/11: o selo de convites aparece uma vez, no nível mais alto */
 function seloResumo(pf, uid){ const l = selosConta(pf); if (!l.length || !uid) return ""; SELOS_PESSOA[uid] = {nome:limpo(pf.nome) || "Conta da rede", l};
   return `<button class="cselo" type="button" data-act="selosde" data-u="${esc(uid)}" aria-label="Selos de ${esc(limpo(pf.nome) || "Conta da rede")}: ${l.map(k=>SELO_INFO[k][0]).join(", ")}"><span class="colab">${SELO_INFO[l[0]][0]}</span>${l.length > 1 ? `<small>+${l.length - 1}</small>` : ""}</button>`; }
 function sheetSelosDe(uid){ const x = SELOS_PESSOA[uid]; if (!x) return;
@@ -4928,7 +4936,7 @@ function mockSB(o = {}){
     return b; }
   const RPC = {
     meu_acesso:()=>db.logada ? {papel:db.nivel === "admin" ? "admin" : "membro", nivel:db.nivel} : null,
-    config_publica:()=>({}), seguranca_nota:()=>({grade:"A+", score:115, testes_ok:12, testes_total:12, verificado_em:new Date().toISOString()}), minha_reputacao:()=>({nota:db.nivel === "cadastrado" ? 90 : 100, dias:6, pessoas:4, com_fonte:2, removidos:0, verificado:db.nivel !== "cadastrado", selos:[{k:"uteis", nome:"Comentários úteis", de:"4 pessoas marcaram como úteis"}], falta:{uteis:0, fontes:3, dias:84}, minimo:{uteis:3, fontes:5, dias:90}}),
+    config_publica:()=>({}), seguranca_nota:()=>({grade:"A+", score:115, testes_ok:12, testes_total:12, verificado_em:new Date().toISOString()}), minha_reputacao:()=>({nota:db.nivel === "cadastrado" ? 90 : 100, dias:6, pessoas:4, com_fonte:2, removidos:0, verificado:db.nivel !== "cadastrado", amigos:2, selos:[{k:"uteis", nome:"Comentários úteis", de:"4 pessoas marcaram como úteis"}, {k:"amigos", nome:"Trouxe amigos", de:"2 amigos entraram pelo seu convite"}], falta:{uteis:0, fontes:3, dias:84, amigos:3}, minimo:{uteis:3, fontes:5, dias:90, amigos:5}}),
     notif_nao_lidas:()=>tab("notificacoes").filter(n=>n.user_id === eu() && !n.lida_em).length,
     notif_marca_lidas:({p_ids})=>{ let n = 0; tab("notificacoes").forEach(x=>{ if (x.user_id === eu() && !x.lida_em && (!p_ids || p_ids.map(String).includes(String(x.id)))){ x.lida_em = agora(); n++; } }); salva(); return n; },
     perfil_seguidores:({p_id})=>({seguidores:tab("seguidores").filter(s=>s.seguido === p_id).length, seguindo:tab("seguidores").filter(s=>s.seguidor === p_id).length, eu_sigo:tab("seguidores").some(s=>s.seguidor === eu() && s.seguido === p_id)}),
@@ -5032,6 +5040,9 @@ function mockSB(o = {}){
       if (tab("perfis").some(x=>x.usuario === u && x.id !== eu())) throw {message:"valor: esse nome já está em uso"}; pf.usuario = u; salva(); return u; },
     perfil_por_usuario:({p_usuario})=>(tab("perfis").find(x=>x.usuario === String(p_usuario || "").toLowerCase()) || {}).id || null,
     perfil_foto_define:({p_path})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; const ant = pf.foto || null; pf.foto = p_path || null; salva(); return ant; },
+    meu_convite:()=>({codigo:"teste12", amigos:2, proximo:5, niveis:[1,5,20]}),
+    convite_de:({p_codigo})=>p_codigo === "teste12" ? "Amanda (teste)" : null,
+    convite_registra:()=>"ok",
     perfil_capa:({p_capa})=>{ const pf = perfil(eu()); if (!pf) throw {message:"valor: entre na sua conta"}; pf.capa = p_capa || null; salva(); return null; },
     perfil_vitrine:({p_user})=>{ const pf = perfil(p_user); if (!pf) return null; const v = (tab("conta_dados").find(r=>r.user_id === p_user && r.chave === "vitrine") || {}).valor, pub = !!(v && v.publico === true);   /* 18/11: o mesmo filtro do servidor */
       return {foto:pf.foto || null, capa:pf.capa || null, usuario:pf.usuario || null, selos:pf.selos || [], colaborador:!!pf.colaborador, publico:pub, interesses:pub ? (v.interesses || []).slice(0, 5) : [], comunidades:pub ? (v.comunidades || []).slice(0, 12) : [], redes:pub ? (v.redes || []).filter(x=>/^https:\/\//.test(x.url || "")) : []}; },
@@ -5124,7 +5135,7 @@ async function contaInicia(){
     if (erroUrl) toast("O link do e-mail expirou ou já foi usado. Entre com e-mail e senha ou peça outro link.");
     else if (ME.user) toast("E-mail confirmado. Sua conta está ativa.");
   }
-  textosCarrega(); segCarrega(); cfgCarrega(); regrasCarrega(); adPrecosCarrega(); adNoArCarrega(); setInterval(()=>{ if (document.visibilityState==="visible") adNoArCarrega(); }, 15 * 60000); usoInicia(); await perfilCarrega(); ME.pronto = true; adVolta(); apoioVolta(); if (route()==="anunciar") adPedidosCarrega(); const _mk = marcasCarrega(); await paginasCarrega(); await publicacoesCarrega(); await _mk; await NT0; contaAtualiza(); logoInicio(); redesSync().then(redesAtualizaTodas); orgsAprovadasCarrega(); acessoMudou(true);
+  textosCarrega(); segCarrega(); cfgCarrega(); regrasCarrega(); adPrecosCarrega(); adNoArCarrega(); setInterval(()=>{ if (document.visibilityState==="visible") adNoArCarrega(); }, 15 * 60000); amigoCaptura(); usoInicia(); await perfilCarrega(); ME.pronto = true; adVolta(); apoioVolta(); if (route()==="anunciar") adPedidosCarrega(); const _mk = marcasCarrega(); await paginasCarrega(); await publicacoesCarrega(); await _mk; await NT0; contaAtualiza(); logoInicio(); redesSync().then(redesAtualizaTodas); orgsAprovadasCarrega(); acessoMudou(true);
   setInterval(()=>{ if (document.visibilityState==="visible") noticiasCarrega(); }, 15 * 60000);
 }
 /* a escolha guardada na conta vale em qualquer aparelho; se a conta ainda não tem, guarda a deste aparelho (quando a pessoa já escolheu) */
@@ -5155,7 +5166,7 @@ async function perfilCarrega0(){ if (!SB || !ME.user){ ME.perfil = null; return;
   vistaDaConta(); seguindoCarrega(); notifVigia(); paginasCarrega();
   /* papel e nível vêm do servidor, por uma função que só responde sobre a própria conta (o papel saiu da leitura pública) */
   try{ const a = await SB.rpc("meu_acesso"); if (!a.error && a.data){ ME.acesso = a.data; if (ME.perfil) ME.perfil.papel = a.data.papel || "membro"; } }catch(e){}
-  contaDadosCarrega(); contaSituacao(); }
+  contaDadosCarrega(); contaSituacao(); amigoRegistra(); }
 /* 16/11: conta pedida para apagar, dentro dos 15 dias: ao entrar, a pessoa escolhe reativar ou sair */
 async function contaSituacao(){ return umaVez("contaSituacao", contaSituacao0); }
 async function contaSituacao0(){ if (!SB || !ME.user) return; let d = null; try{ const r = await SB.rpc("conta_situacao"); d = r.data; }catch(e){ return; }
@@ -6271,6 +6282,7 @@ function screenConta(){
     <p class="cintro">Com conta você vê mais publicações, comenta, publica e guarda o que curtiu. É grátis.</p>
     <div class="tabs" role="tablist" aria-label="Conta"><button class="tab" type="button" role="tab" data-act="contatab" data-t="entrar" aria-selected="${t==="entrar"}">Entrar</button><button class="tab" type="button" role="tab" data-act="contatab" data-t="criar" aria-selected="${t==="criar"}">Criar conta</button></div>
     ${t==="criar" ? `
+    ${store.get("amigo", "") ? (amigoNome(), `<p class="lnote" id="amigonota">${ic("seguir","sm")} ${S.amigoNome ? `Convite de <b>${esc(S.amigoNome)}</b>` : "Você chegou por um convite"}</p>`) : ""}
     ${passosConta(1)}
     <div class="row2"><div class="field"><label for="cnome">Nome</label><input id="cnome" type="text" autocomplete="given-name" maxlength="60" required minlength="2"></div>
       <div class="field"><label for="csobre">Sobrenome</label><input id="csobre" type="text" autocomplete="family-name" maxlength="80" required minlength="2"></div></div>
@@ -6493,22 +6505,27 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
-  let h = null; try{ const r = await SB.rpc("minha_reputacao"); if (!r.error) h = r.data; }catch(e){} if (!h || !box.isConnected) return;
+  let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
   const faixa = h.nota >= REP_MUITO ? "Ótima" : h.nota >= REP_POUCO ? "Boa" : h.nota >= CMN_MIN ? "Em atenção" : "Baixa", efeito = h.nota >= REP_MUITO ? "Suas publicações sobem bastante no feed." : h.nota >= REP_POUCO ? "Suas publicações sobem um pouco no feed." + (h.verificado ? "" : " Verificada, a conta vai a 100.") : h.nota >= CMN_MIN ? "Suas publicações seguem a ordem normal do feed." : "Suas publicações descem um pouco no feed.";
-  const SI = {colaboradora:"star", uteis:"check", fontes:"doc", casa:"clock"};
+  const SI = {colaboradora:"star", uteis:"check", fontes:"doc", casa:"clock", amigos:"seguir"}; h.amigos = +h.amigos || 0; mn.amigos = +mn.amigos || 1;
   const tem = k => selos.find(x=>x.k === k), pct = (a, b) => Math.max(0, Math.min(100, Math.round(a / (b || 1) * 100)));
   const linhas = [
     {k:"uteis", nome:"Comentários úteis", de:tem("uteis") ? tem("uteis").de : `${mn.uteis} pessoas marcando comentários seus como úteis`, sim:!!tem("uteis"), p:pct(mn.uteis - f.uteis, mn.uteis), st:tem("uteis") ? "Conquistado" : `${mn.uteis - f.uteis} de ${mn.uteis}`},
     {k:"fontes", nome:"Cita fontes", de:tem("fontes") ? tem("fontes").de : `${mn.fontes} comentários ou publicações com fonte`, sim:!!tem("fontes"), p:pct(mn.fontes - f.fontes, mn.fontes), st:tem("fontes") ? "Conquistado" : `${mn.fontes - f.fontes} de ${mn.fontes}`},
     {k:"casa", nome:"Tempo de casa", de:tem("casa") ? tem("casa").de : `${mn.dias} dias de conta`, sim:!!tem("casa"), p:pct(mn.dias - f.dias, mn.dias), st:tem("casa") ? "Conquistado" : `faltam ${f.dias} dias`},
+    {k:"amigos", nome:"Trouxe amigos", de:tem("amigos") ? tem("amigos").de + (mn.amigos > h.amigos ? ` · próximo nível com ${mn.amigos}` : "") : "1 amigo que entre pelo seu convite", sim:!!tem("amigos"), p:pct(h.amigos, mn.amigos), st:tem("amigos") ? "Conquistado" : `${h.amigos} de ${mn.amigos}`},
     {k:"colaboradora", nome:"Colaboradora", de:"Dado pela rede a quem contribui de forma construtiva", sim:!!tem("colaboradora"), st:tem("colaboradora") ? "Conquistado" : "pela rede"}];
   box.innerHTML = `<section class="acard" aria-labelledby="hhist"><h2 id="hhist">Sua reputação</h2>
     <div class="hist"><span class="hnum" aria-label="${h.nota} de 100"><b>${h.nota}</b><small>de 100</small></span><span class="htx"><b>${faixa}</b><small>${efeito}</small></span></div>
     <div class="hbar" aria-hidden="true"><i style="width:${h.nota}%"></i></div>
     ${h.removidos ? `<p class="inota">${ic("info","sm")}<span>${h.removidos} ${h.removidos === 1 ? "comentário removido" : "comentários removidos"} pela moderação nos últimos 90 dias. Cada um tira pontos.</span></p>` : `<p class="inota">${ic("check","sm")}<span>A nota só desce quando a moderação remove um comentário seu.</span></p>`}
-    <h3 class="hsel">Selos · ${selos.length} de 4</h3><ul class="rsls">${linhas.map(x=>`<li class="${x.sim ? "sim" : "nao"}"><span class="rsic">${ic(SI[x.k],"sm")}</span><span><b>${x.nome}</b><small>${esc(x.de)}</small>${x.p !== undefined && !x.sim ? `<span class="rsbar"><i style="width:${x.p}%"></i></span>` : ""}</span><span class="rsst">${x.st}</span></li>`).join("")}</ul>
-    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome e no seu perfil.</span></p></section>`; }
+    <h3 class="hsel">Selos · ${selos.length} de 5</h3><ul class="rsls">${linhas.map(x=>`<li class="${x.sim ? "sim" : "nao"}"><span class="rsic">${ic(SI[x.k],"sm")}</span><span><b>${x.nome}</b><small>${esc(x.de)}</small>${x.p !== undefined && !x.sim ? `<span class="rsbar"><i style="width:${x.p}%"></i></span>` : ""}</span><span class="rsst">${x.st}</span></li>`).join("")}</ul>
+    <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome e no seu perfil.</span></p></section>
+    ${cv && cv.codigo ? `<section class="acard" aria-labelledby="hconv"><h2 id="hconv">Convide um amigo</h2>
+      <p class="lnote osub">Quando alguém cria conta pelo seu link e confirma o e-mail, conta para o selo Trouxe amigos. ${cv.amigos ? `${cv.amigos === 1 ? "1 amigo já entrou" : cv.amigos + " amigos já entraram"}.` : "Ninguém entrou pelo seu link ainda."}</p>
+      <div class="convlink"><input id="convurl" type="text" readonly value="${esc(SITE.replace(/#.*$/, "").replace(/\/$/, "") + "/?amigo=" + cv.codigo)}" aria-label="Seu link de convite"><button class="btn" type="button" data-act="convcopia">Copiar</button>${navigator.share ? `<button class="btn primary" type="button" data-act="convenvia">Enviar</button>` : ""}</div>
+      <p class="lnote">Quem você convida vê o seu nome no cadastro. Você vê só quantos entraram, sem nomes.</p></section>` : ""}`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
@@ -7004,7 +7021,7 @@ const A = {
     /* a resposta é a mesma, exista ou não uma conta com esse e-mail: assim ninguém descobre quem está na rede testando endereços.
        Campo-armadilha preenchido ou formulário enviado em menos de 2 segundos é robô: recebe a mesma tela, sem ir ao servidor. */
     const robo = !!($("#csite") && $("#csite").value) || Date.now() - (S.contaAbriu || 0) < 2000;
-    const {error} = robo ? {error:null} : await SB.auth.signUp({email:mail, password:sen, options:{captchaToken:await capToken(), data:{nome:pnome, sobrenome:sobre, nascimento:nasc, cidade:cid, aceite:ACEITE_VERSAO}, emailRedirectTo:SITE + "#perfil"}});
+    const {error} = robo ? {error:null} : await SB.auth.signUp({email:mail, password:sen, options:{captchaToken:await capToken(), data:{nome:pnome, sobrenome:sobre, nascimento:nasc, cidade:cid, aceite:ACEITE_VERSAO, convite:store.get("amigo", "") || undefined}, emailRedirectTo:SITE + "#perfil"}});
     ocupado(b, false);
     if (error && !/already registered|already been registered/i.test(error.message || "")) return formErro(erroAuth(error));
     S.contaTab = "entrar"; ME.pend = `${passosConta(2)}<b class="ntit">Confirme seu e-mail</b>Se <b>${esc(mail)}</b> ainda não tinha conta, enviamos um link de confirmação: toque nele e depois entre aqui. Se já tinha, é só entrar ou recuperar a senha.<span class="nact"><button class="linkbtn" type="button" data-act="reenviar" data-m="${esc(mail)}">Reenviar e-mail</button></span>`;
@@ -7735,6 +7752,8 @@ const A = {
     const {data, error} = await SB.rpc("pagina_foto_define", {p_pagina:pid, p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
     if (data && PGFOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
     const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = null; ORG["pg-" + pid].foto = ""; } sheetPaginaEdita(pid); render(); toast("Foto tirada."); },
+  convcopia: async b => { const i = $("#convurl"); if (!i) return; try{ await navigator.clipboard.writeText(i.value); toast("Link copiado."); }catch(e){ i.select(); toast("Selecione e copie o link."); } },
+  convenvia: async () => { const i = $("#convurl"); if (!i || !navigator.share) return; try{ await navigator.share({title:"arede.online", text:"Vem para a arede.online comigo.", url:i.value}); }catch(e){} },
   fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
   fototirap: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para tirar"; return; } ocupado(b, true, "…");
     const {data, error} = await SB.rpc("perfil_foto_define", {p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
@@ -7966,7 +7985,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 18/11 19:38";
+const VERSAO = "v1 registrada · 19/11 07:21";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
