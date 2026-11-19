@@ -6,3 +6,5 @@
 !/.well-known/security.txt
 !/a/*
 !/_headers
+# 19/11 (Amanda): imagem da prévia do link (convite e qualquer link da rede no WhatsApp, Telegram etc.)
+!/marca/*

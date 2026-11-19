@@ -6504,6 +6504,7 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 /* o seu histórico na rede: o número (0 a 100) e o que ajuda a subir. Só você vê. */
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
+const convMsg = url => "Estou na arede.online, uma rede social que existe para mais conexões humanas: notícias de muitas fontes, com verificação, e o algoritmo é seu. Vem comigo:\n\n" + url;
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
   ["pessoas","com_fonte","dias","removidos"].forEach(k=>{ h[k] = +h[k] || 0; }); const selos = h.selos || [], f = h.falta || {}, mn = h.minimo || {};
@@ -7752,8 +7753,9 @@ const A = {
     const {data, error} = await SB.rpc("pagina_foto_define", {p_pagina:pid, p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
     if (data && PGFOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
     const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = null; ORG["pg-" + pid].foto = ""; } sheetPaginaEdita(pid); render(); toast("Foto tirada."); },
-  convcopia: async b => { const i = $("#convurl"); if (!i) return; try{ await navigator.clipboard.writeText(i.value); toast("Link copiado."); }catch(e){ i.select(); toast("Selecione e copie o link."); } },
-  convenvia: async () => { const i = $("#convurl"); if (!i || !navigator.share) return; try{ await navigator.share({title:"arede.online", text:"Vem para a arede.online comigo.", url:i.value}); }catch(e){} },
+  /* 19/11 (Amanda): o convite vai com uma mensagem curta sobre a rede; a imagem vem da prévia do link (marca/convite.jpg) */
+  convcopia: async b => { const i = $("#convurl"); if (!i) return; try{ await navigator.clipboard.writeText(convMsg(i.value)); toast("Mensagem e link copiados."); }catch(e){ i.select(); toast("Selecione e copie o link."); } },
+  convenvia: async () => { const i = $("#convurl"); if (!i || !navigator.share) return; try{ await navigator.share({title:"arede.online", text:convMsg(i.value)}); }catch(e){} },
   fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
   fototirap: async b => { if (!b.dataset.ok){ b.dataset.ok = "1"; b.textContent = "Toque de novo para tirar"; return; } ocupado(b, true, "…");
     const {data, error} = await SB.rpc("perfil_foto_define", {p_path:null}); ocupado(b, false); if (error) return toast(msgErr(error));
@@ -7985,7 +7987,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:21";
+const VERSAO = "v1 registrada · 19/11 07:28";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
