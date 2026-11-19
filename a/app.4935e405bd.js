@@ -3662,7 +3662,7 @@ function screenProfile(){
   const acoesEu = (pf ? `<button class="iconbtn" type="button" data-act="share" data-perfil="u-${pf.id}" aria-label="Compartilhar o perfil" title="Compartilhar">${ic("share")}</button>` : "") + `<a class="iconbtn" href="#config" aria-label="Configurações" title="Configurações">${ic("gear")}</a>`
     + `<a class="topacao" href="#conta" data-act="acessar" aria-label="${ME.user ? "Sua conta na rede.online" : "Acessar a rede.online: entrar ou criar conta"}"><span class="amark" aria-hidden="true">a<i></i></span><span>${ME.user ? "Sua conta" : "Entrar"}</span></a>`;
   return header(`<div class="toprow"><h1 class="pagehead">Perfil</h1><div class="spacer"></div>${acoesEu}</div>`)
-  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto), pf && pf.capa) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[[pf && pf.usuario ? "@" + esc(pf.usuario) : "", pf && pf.cidade ? esc(pf.cidade) : ""].filter(Boolean).join(" · ")], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : ""})}
+  + capaSo(hashN(pf ? pf.id : "voce"), pessoaAv(pf ? pf.nome : "Você", pf ? comCor(pf.id) : null, pf && pf.foto), pf && pf.capa) + `<div class="container">${pessoaHead({capa:true, nome:pf ? pf.nome : "Você", verificado:pf ? pf.verificado : null, selo:pf && ME.user ? seloResumo(pf, ME.user.id) : "", linhas:[[pf && pf.usuario ? "@" + esc(pf.usuario) : "", pf && pf.cidade ? esc(pf.cidade) : ""].filter(Boolean).join(" · ")], bio:pf ? pf.bio : "", chips:ME.user ? pgChips(ME.user.id) : "", extra:ME.user ? `<button class="btn sm convbtn" type="button" data-act="convidar">${ic("seguir","sm")} Convidar amigos</button>` : ""})}
     <div class="tabs" role="tablist" aria-label="Seu conteúdo">${tabsPerfil()}</div>
     <div class="status" id="pstatus"${profStatus() ? "" : " hidden"}>${profStatus()}</div>
     <div id="pbody">${profBody()}</div></div>`;
@@ -6507,6 +6507,14 @@ function contaSeguranca(){ const u = ME.user, ult = u.last_sign_in_at ? new Date
 /* 18/11 (Amanda): reputação nova. Conta com e-mail começa com 90, verificada fica com 100; só comentário removido tira pontos.
    O que antes somava (úteis, fontes, tempo de casa, colaboradora) vira selo. */
 /* 19/11 (Amanda): o link vem primeiro porque o WhatsApp monta a prévia do primeiro link da mensagem */
+/* 19/11 (Amanda): o convite aparece em dois lugares com o mesmo conteúdo: botão "Convidar amigos" no seu perfil (abre uma folha) e Sua conta › Reputação */
+const convCorpo = cv => `<p class="lnote osub">Quando alguém cria conta pelo seu link e confirma o e-mail, conta para o selo Trouxe amigos. ${cv.amigos ? `${cv.amigos === 1 ? "1 amigo já entrou" : cv.amigos + " amigos já entraram"}.` : "Ninguém entrou pelo seu link ainda."}</p>
+      <div class="convlink"><input id="convurl" type="text" readonly value="${esc(SITE.replace(/#.*$/, "").replace(/\/$/, "") + "/convite/" + cv.codigo)}" aria-label="Seu link de convite"><button class="btn" type="button" data-act="convcopia">Copiar</button>${navigator.share ? `<button class="btn primary" type="button" data-act="convenvia">Enviar</button>` : ""}</div>
+      <p class="lnote">Quem você convida vê o seu nome no cadastro. Você vê só quantos entraram, sem nomes.</p>`;
+async function sheetConvite(){ if (!SB || !ME.user) return go("conta");
+  openSheet(shead("Convide um amigo") + `<div id="convsh"><p class="empty">Carregando…</p></div>`, "Convide um amigo");
+  let cv = null; try{ const r = await SB.rpc("meu_convite"); if (!r.error) cv = r.data; }catch(e){}
+  const b = $("#convsh"); if (b) b.innerHTML = cv && cv.codigo ? convCorpo(cv) : `<p class="empty">Não foi possível carregar o seu link agora. Tente de novo em instantes.</p>`; }
 const convMsg = url => url + "\n\nSai do Instagram e do Facebook e vem para a arede.online comigo: um mundo de conexões, com conteúdo responsável e notícias verificadas. Aqui, o algoritmo é seu.";
 async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.dataset.ok || !SB || !ME.user) return; box.dataset.ok = "1";
   let h = null, cv = null; try{ const [r, c] = await Promise.all([SB.rpc("minha_reputacao"), SB.rpc("meu_convite")]); if (!r.error) h = r.data; if (!c.error) cv = c.data; }catch(e){} if (!h || !box.isConnected) return;
@@ -6526,10 +6534,7 @@ async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.d
     ${h.removidos ? `<p class="inota">${ic("info","sm")}<span>${h.removidos} ${h.removidos === 1 ? "comentário removido" : "comentários removidos"} pela moderação nos últimos 90 dias. Cada um tira pontos.</span></p>` : `<p class="inota">${ic("check","sm")}<span>A nota só desce quando a moderação remove um comentário seu.</span></p>`}
     <h3 class="hsel">Selos · ${selos.length} de 5</h3><ul class="rsls">${linhas.map(x=>`<li class="${x.sim ? "sim" : "nao"}"><span class="rsic">${ic(SI[x.k],"sm")}</span><span><b>${x.nome}</b><small>${esc(x.de)}</small>${x.p !== undefined && !x.sim ? `<span class="rsbar"><i style="width:${x.p}%"></i></span>` : ""}</span><span class="rsst">${x.st}</span></li>`).join("")}</ul>
     <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome e no seu perfil.</span></p></section>
-    ${cv && cv.codigo ? `<section class="acard" aria-labelledby="hconv"><h2 id="hconv">Convide um amigo</h2>
-      <p class="lnote osub">Quando alguém cria conta pelo seu link e confirma o e-mail, conta para o selo Trouxe amigos. ${cv.amigos ? `${cv.amigos === 1 ? "1 amigo já entrou" : cv.amigos + " amigos já entraram"}.` : "Ninguém entrou pelo seu link ainda."}</p>
-      <div class="convlink"><input id="convurl" type="text" readonly value="${esc(SITE.replace(/#.*$/, "").replace(/\/$/, "") + "/convite/" + cv.codigo)}" aria-label="Seu link de convite"><button class="btn" type="button" data-act="convcopia">Copiar</button>${navigator.share ? `<button class="btn primary" type="button" data-act="convenvia">Enviar</button>` : ""}</div>
-      <p class="lnote">Quem você convida vê o seu nome no cadastro. Você vê só quantos entraram, sem nomes.</p></section>` : ""}`; }
+    ${cv && cv.codigo ? `<section class="acard" aria-labelledby="hconv"><h2 id="hconv">Convide um amigo</h2>${convCorpo(cv)}</section>` : ""}`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
   return header(`<div class="toprow"><h1 class="pagehead">Nova senha</h1></div>`) + `<div class="container cform">
@@ -7757,6 +7762,7 @@ const A = {
     if (data && PGFOTO_RE.test(data)) SB.storage.from("midia").remove([data]).catch(()=>{});
     const p = PAGS.lista.find(x=>x.id === pid); if (p){ p.foto = null; ORG["pg-" + pid].foto = ""; } sheetPaginaEdita(pid); render(); toast("Foto tirada."); },
   /* 19/11 (Amanda): o convite vai com uma mensagem curta sobre a rede; a imagem vem da prévia do link (marca/convite.jpg) */
+  convidar: () => sheetConvite(),
   convcopia: async b => { const i = $("#convurl"); if (!i) return; try{ await navigator.clipboard.writeText(convMsg(i.value)); toast("Mensagem e link copiados."); }catch(e){ i.select(); toast("Selecione e copie o link."); } },
   convenvia: async () => { const i = $("#convurl"); if (!i || !navigator.share) return; try{ await navigator.share({title:"arede.online", text:convMsg(i.value)}); }catch(e){} },
   fotoperfil: () => { const i = $("#pfotoin"); if (i){ i.value = ""; i.click(); } },
@@ -7990,7 +7996,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:54";
+const VERSAO = "v1 registrada · 19/11 07:57";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
