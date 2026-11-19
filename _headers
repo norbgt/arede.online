@@ -17,5 +17,7 @@
   Cache-Control: public, max-age=0, must-revalidate
 /@*
   Cache-Control: public, max-age=0, must-revalidate
+/convite/*
+  Cache-Control: public, max-age=0, must-revalidate
 /marca/*
   Cache-Control: public, max-age=86400

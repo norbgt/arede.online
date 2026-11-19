@@ -1700,8 +1700,10 @@ const USO = {on:false, fila:[], n:0, max:600, t0:Date.now(), ativo:0, tela:null,
 const usoId = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, ()=>(Math.random()*16|0).toString(16)));
 const usoRota = r => { r = String(r || route()).split("/")[0]; return r.startsWith("pin-") ? "pin" : r.startsWith("org-") ? "org" : r.slice(0, 30); };
 /* 19/11 (Amanda): convide um amigo. Quem chega por arede.online/?amigo=CODIGO e cria conta fica ligado a quem convidou (registro só no servidor). */
-function amigoCaptura(){ try{ const q = new URLSearchParams(location.search), c = (q.get("amigo") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
-  if (c){ store.set("amigo", c); q.delete("amigo"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); if (!ME.user) S.contaTab = "criar"; } }catch(e){} }
+/* 19/11 (Amanda): o link do convite é arede.online/convite/<código> (o WhatsApp guardava a prévia antiga dos links ?amigo=). Os links ?amigo= continuam valendo. */
+function amigoCaptura(){ try{ const q = new URLSearchParams(location.search), m = /^\/convite\/([a-z0-9]{3,12})\/?$/i.exec(location.pathname),
+    c = ((m && m[1]) || q.get("amigo") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+  if (c){ store.set("amigo", c); q.delete("amigo"); history.replaceState(null, "", (m ? "/" : location.pathname) + (q.toString() ? "?" + q : "") + location.hash); if (!ME.user) S.contaTab = "criar"; } }catch(e){} }
 async function amigoNome(){ const c = store.get("amigo", ""); if (!c || !SB || S.amigoNome !== undefined) return; S.amigoNome = null;
   try{ const r = await SB.rpc("convite_de", {p_codigo:c}); S.amigoNome = !r.error && r.data ? limpo(r.data) : ""; }catch(e){ S.amigoNome = ""; } if (route() === "conta" && $("#amigonota")) render(); }
 async function amigoRegistra(){ if (!SB || !ME.user) return; const c = store.get("amigo", ""), meta = (ME.user.user_metadata || {}).convite;
@@ -6526,7 +6528,7 @@ async function historicoPreenche(){ const box = $("#histbox"); if (!box || box.d
     <p class="inota">${ic("lock","sm")}<span>Só você vê a sua nota. Seus selos aparecem para todo mundo, ao lado do seu nome e no seu perfil.</span></p></section>
     ${cv && cv.codigo ? `<section class="acard" aria-labelledby="hconv"><h2 id="hconv">Convide um amigo</h2>
       <p class="lnote osub">Quando alguém cria conta pelo seu link e confirma o e-mail, conta para o selo Trouxe amigos. ${cv.amigos ? `${cv.amigos === 1 ? "1 amigo já entrou" : cv.amigos + " amigos já entraram"}.` : "Ninguém entrou pelo seu link ainda."}</p>
-      <div class="convlink"><input id="convurl" type="text" readonly value="${esc(SITE.replace(/#.*$/, "").replace(/\/$/, "") + "/?amigo=" + cv.codigo)}" aria-label="Seu link de convite"><button class="btn" type="button" data-act="convcopia">Copiar</button>${navigator.share ? `<button class="btn primary" type="button" data-act="convenvia">Enviar</button>` : ""}</div>
+      <div class="convlink"><input id="convurl" type="text" readonly value="${esc(SITE.replace(/#.*$/, "").replace(/\/$/, "") + "/convite/" + cv.codigo)}" aria-label="Seu link de convite"><button class="btn" type="button" data-act="convcopia">Copiar</button>${navigator.share ? `<button class="btn primary" type="button" data-act="convenvia">Enviar</button>` : ""}</div>
       <p class="lnote">Quem você convida vê o seu nome no cadastro. Você vê só quantos entraram, sem nomes.</p></section>` : ""}`; }
 const sheetErro = t => { const e = $("#layer .ferr"); if (e){ e.textContent = t; e.hidden = !t; } };
 function screenNovaSenha(){
@@ -7988,7 +7990,7 @@ if (PREVIA){ addEventListener("message", e => { if (!PREVIA_ORIGEM.test(e.origin
     if (d.abrir === "marca") setTimeout(()=>A.sobre(), 80);
     else if (d.alvo) setTimeout(()=>{ const el = document.getElementById(d.alvo); el && el.scrollIntoView({block:"start"}); }, 120); });
   parent.postMessage({tipo:"arede-previa-pronta"}, "*"); }
-const VERSAO = "v1 registrada · 19/11 07:48";
+const VERSAO = "v1 registrada · 19/11 07:54";
 console.info("arede.online · versão " + VERSAO);
 render();
 })();
