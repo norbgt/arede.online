@@ -277,7 +277,8 @@ export const VIZINHOS: Record<string, string[]> = {};
 for (const [a, b] of VIZINHOS_PARES) { (VIZINHOS[a] = VIZINHOS[a] || []).push(b); (VIZINHOS[b] = VIZINHOS[b] || []).push(a); }
 
 // ruído: título que é nome de arquivo ("Edital.pdf", "Untitled Design (2).png") não é notícia
-export const RUIDO = /(\.(pdf|png|jpe?g|gif|webp|docx?|xlsx?|pptx?|zip|rar)\s*$)|^untitled\b/i;
+// 20/11 (Amanda): "VÍDEOS: <telejornal> de <data>" é a página do programa inteiro, sem texto: não entra
+export const RUIDO = /(\.(pdf|png|jpe?g|gif|webp|docx?|xlsx?|pptx?|zip|rar)\s*$)|^untitled\b|^\s*v[ií]deos\s*:/i;
 
 const sem = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 \-']+/g, " ").replace(/\s+/g, " ");
 const conta = (re: RegExp, t: string) => { re.lastIndex = 0; const m = t.match(re); return m ? new Set(m).size : 0; };
