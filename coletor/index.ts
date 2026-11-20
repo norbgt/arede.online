@@ -3,6 +3,7 @@
 // evita repetidas, agrupa a mesma notícia em fontes diferentes (cobertura cruzada) e manda para o feed ou para a fila.
 // Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · ?modo=pessoais (fontes pessoais, só quem incluiu vê) · a mesma notícia entre fontes é juntada no banco (privado.agrupa_mesmas)
 //   · ?modo=reclassificar&pagina=N (refaz tema, subtema e tema secundário das notícias dos últimos 30 dias com a lista do Painel).
+//   · ?modo=museus (resumo dos museus pelo próprio site, 40 por vez).
 //   · ?modo=taxonomia (preenche a lista do Painel com a de temas.ts, só se estiver vazia; &forcar=1 restaura a lista de partida).
 // Temas (20 nov 2026): a lista vem do Painel (função taxonomia(), Regras › Temas); temas.ts é a reserva se o banco não responder.
 //   Esporte, entretenimento, sorte e signos e casa e consumo deixaram de ser recusados: viram temas leves, que só aparecem para quem escolhe.
@@ -467,6 +468,34 @@ Deno.serve(async (req) => {
       lidas += (ns || []).length; mais = (ns || []).length === 1000; if (ns && ns.length) depois = ns[ns.length - 1].id;
     }
     return new Response(JSON.stringify({ modo, lidas, mudou, mais, depois }), { headers: { "content-type": "application/json" } });
+  }
+  if (modo === "museus") {
+    // 20/11 (Amanda): resumo do museu escrito por ele mesmo: a descrição que o site do museu publica (meta description).
+    // De noite, 40 por vez; relê a cada 60 dias; respeita o robots.txt; texto sempre completo (frases inteiras até 300 caracteres).
+    const antes = new Date(Date.now() - 60 * 864e5).toISOString();
+    const { data: ms } = await SB.from("museus").select("id,site,nome").not("site", "is", null).or(`resumo_em.is.null,resumo_em.lt.${antes}`).order("relevancia", { ascending: false }).limit(40);
+    let achou = 0;
+    const um = async (m: any) => {
+      let resumo: string | null = null;
+      try {
+        const u = new URL(m.site); if (!/^https?:$/.test(u.protocol)) throw 0;
+        const rb = await robots(u.origin + "/");
+        if (!rb.bloqueia) {
+          const r = await get(u.href, 8000, 400_000, "</head>");
+          if (r.ok) {
+            const cab = r.txt.slice(0, 200_000), metas = [...cab.matchAll(/<meta\b[^>]*>/gi)].map((x) => x[0]);
+            const de = (nm: RegExp) => { for (const t of metas) { if (nm.test(t)) { const c = t.match(/content=(["'])([\s\S]*?)\1/i); if (c) return limpa(c[2]); } } return ""; };
+            let d = de(/(name|property)=["']description["']/i) || de(/(name|property)=["']og:description["']/i);
+            if (d.length > 300) { let t = ""; for (const f of frases(d)) { if ((t + f).trim().length > 300) break; t += f; } d = t.trim(); }
+            if (d.length >= 40 && d.length <= 300 && !/cookie|javascript|wordpress|just another|lorem ipsum/i.test(d) && norm(d) !== norm(m.nome || "")) { resumo = d; achou++; }
+          }
+        }
+      } catch { /* site inválido ou fora do ar: tenta de novo daqui a 60 dias */ }
+      await SB.from("museus").update({ resumo, resumo_em: new Date().toISOString() }).eq("id", m.id);
+    };
+    const l = ms || [];
+    for (let k = 0; k < l.length; k += 10) await Promise.all(l.slice(k, k + 10).map(um));
+    return new Response(JSON.stringify({ modo, lidos: l.length, achou }), { headers: { "content-type": "application/json" } });
   }
   await taxonomia();
   const { data: todas } = await SB.from("fontes").select("*").eq("ativa", true).order("id");
