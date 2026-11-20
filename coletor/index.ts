@@ -2,7 +2,11 @@
 // Lê os feeds (RSS/Atom) das fontes com selo, guarda só título, chamada do veículo, um trecho de até 800 caracteres, data, imagem de capa e link,
 // evita repetidas, agrupa a mesma notícia em fontes diferentes (cobertura cruzada) e manda para o feed ou para a fila.
 // Modos: ?modo=descobrir (acha o feed de cada fonte) · ?modo=coletar (padrão) · ?modo=pessoais (fontes pessoais, só quem incluiu vê) · a mesma notícia entre fontes é juntada no banco (privado.agrupa_mesmas)
-//   · ?modo=reclassificar&pagina=N (refaz o tema das notícias dos últimos 30 dias com os temas de temas.ts).
+//   · ?modo=reclassificar&pagina=N (refaz tema, subtema e tema secundário das notícias dos últimos 30 dias com a lista do Painel).
+//   · ?modo=taxonomia (preenche a lista do Painel com a de temas.ts, só se estiver vazia; &forcar=1 restaura a lista de partida).
+// Temas (20 nov 2026): a lista vem do Painel (função taxonomia(), Regras › Temas); temas.ts é a reserva se o banco não responder.
+//   Esporte, entretenimento, sorte e signos e casa e consumo deixaram de ser recusados: viram temas leves, que só aparecem para quem escolhe.
+//   Título que é nome de arquivo ("Edital.pdf") é recusado.
 // Lotes: ?lote=0..9 (as fontes se dividem em 10).
 // Canais do YouTube: feed_tipo "youtube", lidos pelo RSS público do canal (só vídeos longos, sem Shorts nem lives).
 // Idiomas: português, inglês e espanhol vão direto para o feed (selo 80+); cada notícia guarda o idioma, e quem lê escolhe as origens.
@@ -13,7 +17,7 @@
 //   (og:description), lido na página da matéria; no máximo POR_PAGINA páginas por fonte em cada coleta, inclusive para completar as que já entraram.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { XMLParser } from "npm:fast-xml-parser@4.4.1";
-import { temaDe } from "./temas.ts";
+import { classifica, aplicaTaxonomia, taxonomiaAtual } from "./temas.ts";
 
 const SB = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const UA = "Mozilla/5.0 (compatible; arede-coletor/1.0; +https://arede.online/)";
@@ -335,7 +339,13 @@ const mesmaPorNomes = (x: any, y: any) => { if (x.en.size < 3 || y.en.size < 3 |
 const mesmaNoticia = (x: any, y: any) => (x.pw.size >= 4 && y.pw.size >= 4 && parecido(x.pw, y.pw) >= 0.6) || mesmaPorNomes(x, y);
 // os temas (14) e o classificador ficam em temas.ts, o mesmo arquivo que o site usa para os filtros
 // fora do escopo da rede (esporte, entretenimento, sorteios): guardada como recusada, para não voltar na próxima coleta
-const FORA = /\b(futebol|campeonato|brasileirao|libertadores|copa do brasil|goleada|gols?|tenis|masters de|formula 1|ufc|nba|nfl|bbb|big brother|novela|reality|celebridade\w*|famosos|horoscopo|signo|loteria|mega.sena|lotofacil|quina|palmeiras|corinthians|flamengo|vasco|santos fc|gremio|cruzeiro|soccer|premier league|champions league|super bowl|playoffs?|touchdown|celebrity|celebrities|horoscope|lottery|powerball|futbol|liga mx|laliga|goles?|telenovela\w*|farandula|horoscopo|loteria|rugby|cricket|grand prix|atacante|zagueiro|goleiro|meio-campista|tecnico do|tecnico da selecao|bayern|real madrid|juventus|psg|nrl|afl|golden boot|copa do mundo de futebol|selecao brasileira de futebol|surf|surfing games|jockey|turfe)\b/;
+// lista de temas do Painel, lida no máximo a cada 10 minutos
+let TX_EM = 0;
+async function taxonomia() { if (Date.now() - TX_EM < 600000) return; TX_EM = Date.now();
+  try { const { data } = await SB.rpc("taxonomia"); if (data && aplicaTaxonomia(data)) return; } catch { /* fica a de temas.ts */ } }
+const temas = (titulo: string, chamada?: string | null) => { const c = classifica(titulo, chamada);
+  return { tema: c.tema, tema_sub: c.sub || null, tema2: c.tema2 || null, tema2_sub: c.sub2 || null, ruido: c.ruido }; };
+const semRuido = ({ ruido, ...x }: any) => x;
 // idioma: o declarado no feed quando é pt, en ou es; senão, palavras frequentes do próprio texto
 const MARCAS: Record<string, RegExp> = {
   pt: /\b(do|da|dos|das|nao|sao|com|uma|pelo|pela|tambem|mais|ao|aos|esta|governo)\b/g,
@@ -395,8 +405,9 @@ async function coleta(f: any) {
     // Antes, título curto de fonte em português caía em "outra" e ia para a fila, e francês era lido como espanhol.
     const decl = (lingua || "").slice(0, 2).toLowerCase(), fl = (f.lingua || "").slice(0, 2).toLowerCase();
     const lg = IDIOMAS.includes(decl) ? decl : /^[a-z]{2}$/.test(fl) && fl !== "ou" ? fl : idiomaDe(i.titulo + " " + (i.chamada || ""), "");
+    const cl = temas(i.titulo, i.chamada);
     const n = { previa_em: null as string | null, fonte_id: f.id, url: i.url, titulo: i.titulo.slice(0, 300), chamada: i.chamada, resumo: i.resumo || "", lingua: lg, imagem_url: i.imagem_url, publicada_em: i.publicada_em && !isNaN(+i.publicada_em) ? i.publicada_em.toISOString() : new Date().toISOString(),
-      impressao: imp, grupo, tema: temaDe(i.titulo, i.chamada), status: f.pessoalStatus ? "pessoal" : FORA.test(imp) ? "recusada" : f.nota >= NOTA_DIRETO && IDIOMAS.includes(lg) ? "publicada" : "fila" };
+      impressao: imp, grupo, ...semRuido(cl), status: f.pessoalStatus ? "pessoal" : cl.ruido ? "recusada" : f.nota >= NOTA_DIRETO && IDIOMAS.includes(lg) ? "publicada" : "fila" };
     novas.push(n);
   }
   // sem chamada ou sem imagem: completa pela página da matéria (novas primeiro, depois as que já entraram e ainda não foram consultadas).
@@ -413,8 +424,8 @@ async function coleta(f: any) {
     const pch = pv.ch && !GENERICA.test(pv.ch) && vezesCh.get(pv.ch) === 1 ? pv.ch : null;
     const ch = n.chamada || pch, img = n.imagem_url || (pv.img && vezes.get(pv.img) === 1 ? pv.img : null);
     if (ch !== (n.chamada || null) || img !== (n.imagem_url || null)) pags++;
-    if (novas.includes(n)) { if (ch && !n.chamada) n.tema = temaDe(n.titulo, ch); n.chamada = ch; n.imagem_url = img; n.previa_em = agoraPv; }
-    else await SB.from("noticias").update({ chamada: ch, imagem_url: img, previa_em: agoraPv, ...(ch && !n.chamada ? { tema: temaDe(n.titulo, ch) } : {}) }).eq("url", n.url);
+    if (novas.includes(n)) { if (ch && !n.chamada) Object.assign(n, semRuido(temas(n.titulo, ch))); n.chamada = ch; n.imagem_url = img; n.previa_em = agoraPv; }
+    else await SB.from("noticias").update({ chamada: ch, imagem_url: img, previa_em: agoraPv, ...(ch && !n.chamada ? semRuido(temas(n.titulo, ch)) : {}) }).eq("url", n.url);
   }));
   // chamada igual em várias matérias da mesma fonte é texto genérico: nesses casos o cartão fica só com o título
   const vistas = new Map<string, number>(), chs = [...new Set(novas.map((n: any) => n.chamada).filter(Boolean))];
@@ -432,16 +443,26 @@ Deno.serve(async (req) => {
   const { data: ok } = await SB.rpc("coletor_chave_confere", { k: chave });
   if (!ok) return new Response(JSON.stringify({ erro: "não autorizado" }), { status: 401 });
   const modo = q.get("modo") || "coletar", lote = Math.max(0, Math.min(LOTES - 1, +(q.get("lote") || 0)));
+  if (modo === "taxonomia") {
+    const { data, error } = await SB.rpc("taxonomia_semeia", { p: taxonomiaAtual(), p_forcar: q.get("forcar") === "1" });
+    return new Response(JSON.stringify({ modo, linhas: data, erro: error ? error.message : null }), { headers: { "content-type": "application/json" } });
+  }
   if (modo === "reclassificar") {
     // aplica os temas atuais às notícias dos últimos ?dias (padrão 30), uma página de 2000 por chamada (?pagina=0,1,2...)
     const dias = Math.max(1, Math.min(120, +(q.get("dias") || 30))), pag = Math.max(0, +(q.get("pagina") || 0));
-    const { data: ns, error } = await SB.from("noticias").select("id,titulo,chamada,tema").gte("publicada_em", new Date(Date.now() - dias * 864e5).toISOString())
+    await taxonomia();
+    const { data: ns, error } = await SB.from("noticias").select("id,titulo,chamada,tema,tema_sub,tema2,tema2_sub,status,revisada_por,lingua,fontes(nota)").gte("publicada_em", new Date(Date.now() - dias * 864e5).toISOString())
       .order("id").range(pag * 2000, pag * 2000 + 1999);
     if (error) return new Response(JSON.stringify({ erro: error.message }), { status: 500 });
-    const m = (ns || []).map((n: any) => ({ id: n.id, tema: temaDe(n.titulo, n.chamada), antes: n.tema })).filter((x: any) => x.tema !== x.antes).map(({ id, tema }: any) => ({ id, tema }));
+    // status: título-arquivo é recusado; o que o filtro antigo recusava por ser esporte, entretenimento ou sorteio volta, como tema leve
+    const m = (ns || []).map((n: any) => { const c = temas(n.titulo, n.chamada);
+      const st = c.ruido && n.status !== "recusada" ? "recusada" : !c.ruido && n.status === "recusada" && !n.revisada_por && ((n.fontes || {}).nota || 0) >= NOTA_DIRETO && IDIOMAS.includes(n.lingua) ? "publicada" : null;
+      return { id: n.id, tema: c.tema, sub: c.tema_sub || "", tema2: c.tema2 || "", sub2: c.tema2_sub || "", status: st, mudou: st || c.tema !== n.tema || (c.tema_sub || null) !== n.tema_sub || (c.tema2 || null) !== n.tema2 || (c.tema2_sub || null) !== n.tema2_sub }; })
+      .filter((x: any) => x.mudou).map(({ mudou, ...x }: any) => x);
     let mudou = 0; for (let k = 0; k < m.length; k += 500) { const { data } = await SB.rpc("aplica_temas", { m: m.slice(k, k + 500) }); mudou += data || 0; }
     return new Response(JSON.stringify({ modo, pagina: pag, lidas: (ns || []).length, mudou, mais: (ns || []).length === 2000 }), { headers: { "content-type": "application/json" } });
   }
+  await taxonomia();
   const { data: todas } = await SB.from("fontes").select("*").eq("ativa", true).order("id");
   const fontes = (todas || []).filter((f: any, i: number) => i % LOTES === lote);
   const agora = new Date().toISOString(), rel: any[] = [];
