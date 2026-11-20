@@ -448,19 +448,25 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ modo, linhas: data, erro: error ? error.message : null }), { headers: { "content-type": "application/json" } });
   }
   if (modo === "reclassificar") {
-    // aplica os temas atuais às notícias dos últimos ?dias (padrão 30), uma página de 2000 por chamada (?pagina=0,1,2...)
-    const dias = Math.max(1, Math.min(120, +(q.get("dias") || 30))), pag = Math.max(0, +(q.get("pagina") || 0));
+    // aplica os temas atuais às notícias dos últimos ?dias (padrão 30), de 1000 em 1000 pela ordem do id, por até 100 segundos.
+    // Devolve "depois" (o último id lido): para continuar, chame de novo com &depois=<id>.
+    const dias = Math.max(1, Math.min(120, +(q.get("dias") || 30))), desde = new Date(Date.now() - dias * 864e5).toISOString(), ini = Date.now();
     await taxonomia();
-    const { data: ns, error } = await SB.from("noticias").select("id,titulo,chamada,tema,tema_sub,tema2,tema2_sub,status,revisada_por,lingua,fontes(nota)").gte("publicada_em", new Date(Date.now() - dias * 864e5).toISOString())
-      .order("id").range(pag * 2000, pag * 2000 + 1999);
-    if (error) return new Response(JSON.stringify({ erro: error.message }), { status: 500 });
-    // status: título-arquivo é recusado; o que o filtro antigo recusava por ser esporte, entretenimento ou sorteio volta, como tema leve
-    const m = (ns || []).map((n: any) => { const c = temas(n.titulo, n.chamada);
-      const st = c.ruido && n.status !== "recusada" ? "recusada" : !c.ruido && n.status === "recusada" && !n.revisada_por && ((n.fontes || {}).nota || 0) >= NOTA_DIRETO && IDIOMAS.includes(n.lingua) ? "publicada" : null;
-      return { id: n.id, tema: c.tema, sub: c.tema_sub || "", tema2: c.tema2 || "", sub2: c.tema2_sub || "", status: st, mudou: st || c.tema !== n.tema || (c.tema_sub || null) !== n.tema_sub || (c.tema2 || null) !== n.tema2 || (c.tema2_sub || null) !== n.tema2_sub }; })
-      .filter((x: any) => x.mudou).map(({ mudou, ...x }: any) => x);
-    let mudou = 0; for (let k = 0; k < m.length; k += 500) { const { data } = await SB.rpc("aplica_temas", { m: m.slice(k, k + 500) }); mudou += data || 0; }
-    return new Response(JSON.stringify({ modo, pagina: pag, lidas: (ns || []).length, mudou, mais: (ns || []).length === 2000 }), { headers: { "content-type": "application/json" } });
+    const { data: fs } = await SB.from("fontes").select("id,nota"); const nota = new Map((fs || []).map((f: any) => [f.id, f.nota || 0]));
+    let depois = q.get("depois") || "00000000-0000-0000-0000-000000000000", lidas = 0, mudou = 0, mais = true;
+    while (mais && Date.now() - ini < 100000) {
+      const { data: ns, error } = await SB.from("noticias").select("id,titulo,chamada,tema,tema_sub,tema2,tema2_sub,status,revisada_por,lingua,fonte_id")
+        .gte("publicada_em", desde).gt("id", depois).order("id").limit(1000);
+      if (error) return new Response(JSON.stringify({ erro: error.message, depois, lidas, mudou }), { status: 500 });
+      // status: título-arquivo é recusado; o que o filtro antigo recusava por ser esporte, entretenimento ou sorteio volta, como tema leve
+      const m = (ns || []).map((n: any) => { const c = temas(n.titulo, n.chamada);
+        const st = c.ruido && n.status !== "recusada" ? "recusada" : !c.ruido && n.status === "recusada" && !n.revisada_por && (nota.get(n.fonte_id) || 0) >= NOTA_DIRETO && IDIOMAS.includes(n.lingua) ? "publicada" : null;
+        return { id: n.id, tema: c.tema, sub: c.tema_sub || "", tema2: c.tema2 || "", sub2: c.tema2_sub || "", status: st, mudou: st || c.tema !== n.tema || (c.tema_sub || null) !== n.tema_sub || (c.tema2 || null) !== n.tema2 || (c.tema2_sub || null) !== n.tema2_sub }; })
+        .filter((x: any) => x.mudou).map(({ mudou, ...x }: any) => x);
+      for (let k = 0; k < m.length; k += 250) { const { data } = await SB.rpc("aplica_temas", { m: m.slice(k, k + 250) }); mudou += data || 0; }
+      lidas += (ns || []).length; mais = (ns || []).length === 1000; if (ns && ns.length) depois = ns[ns.length - 1].id;
+    }
+    return new Response(JSON.stringify({ modo, lidas, mudou, mais, depois }), { headers: { "content-type": "application/json" } });
   }
   await taxonomia();
   const { data: todas } = await SB.from("fontes").select("*").eq("ativa", true).order("id");
