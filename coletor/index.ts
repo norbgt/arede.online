@@ -382,10 +382,13 @@ const ehYt = (x: any) => /youtube\.com\/watch/.test(x.url || "");
 async function coleta(f: any) {
   const r = await get(f.feed_url, 12000);
   if (!r.ok || !pareceFeed(r.txt)) return { erro: r.ok ? "O feed não está mais no formato esperado" : "Feed não respondeu (" + (r.status || r.err) + ")", novas: 0 };
+  // 21/11 (performance): feed igual ao da última leitura não é processado de novo (nenhuma consulta ao banco)
+  const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(r.txt)))).map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (f.feed_hash && f.feed_hash === hash) return { erro: null, novas: 0, igual: true };
   const { lingua, itens } = leFeed(r.txt, r.url);
   const limite = Date.now() - DIAS * 864e5;
   const frescos = itens.filter((i: any) => !i.publicada_em || isNaN(+i.publicada_em) || +i.publicada_em >= limite).map((i: any) => ({ ...i, url: limpaUrl(i.url) }));
-  if (!frescos.length) return { erro: null, novas: 0, itens: itens.length, frescos: 0 };
+  if (!frescos.length) return { erro: null, novas: 0, itens: itens.length, frescos: 0, hash };
   const { data: ja } = await SB.from("noticias").select("url,resumo,chamada,titulo,imagem_url,previa_em").in("url", frescos.map((i: any) => i.url));
   const temUrl = new Set((ja || []).map((x: any) => x.url));
   // resumo nulo = ainda não revisado com o divisor de frases atual; "" = revisado, o feed não tem mais texto
@@ -435,7 +438,7 @@ async function coleta(f: any) {
   for (const n of novas) if (n.chamada) vistas.set(n.chamada, (vistas.get(n.chamada) || 0) + 1);
   for (const n of novas) if (n.chamada && (GENERICA.test(n.chamada) || (vistas.get(n.chamada) || 0) >= 3)) n.chamada = null;
   if (novas.length) { const { error } = await SB.from("noticias").upsert(novas, { onConflict: "url", ignoreDuplicates: true }); if (error) return { erro: "Banco: " + error.message, novas: 0 }; }
-  return { erro: null, novas: novas.length, itens: itens.length, frescos: frescos.length, chamadas: pags };
+  return { erro: null, novas: novas.length, itens: itens.length, frescos: frescos.length, chamadas: pags, hash };
 }
 
 Deno.serve(async (req) => {
@@ -498,7 +501,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ modo, lidos: l.length, achou }), { headers: { "content-type": "application/json" } });
   }
   await taxonomia();
-  const { data: todas } = await SB.from("fontes").select("*").eq("ativa", true).order("id");
+  // 21/11 (performance): na coleta, só as colunas que ela usa (antes vinham todas as colunas de todas as fontes a cada rodada)
+  const { data: todas } = await SB.from("fontes").select(modo === "descobrir" ? "*" : "id,feed_url,feed_tipo,lingua,nota,feed_hash,ultima_coleta,ultimo_erro").eq("ativa", true).order("id");
   const fontes = (todas || []).filter((f: any, i: number) => i % LOTES === lote);
   const agora = new Date().toISOString(), rel: any[] = [];
   if (modo === "descobrir") {
@@ -521,9 +525,13 @@ Deno.serve(async (req) => {
   const pessoais = modo === "pessoais" ? (((await SB.rpc("coletor_pessoais", { p_lote: lote })).data) || []) : [];
   const comFeed = modo === "pessoais" ? pessoais : fontes.filter((f: any) => f.feed_url);
   for (let i = 0; i < comFeed.length; i += 5) await Promise.all(comFeed.slice(i, i + 5).map(async (f: any) => {
-    const r = await coleta(f);
-    await SB.from("fontes").update(r.erro ? { ultima_coleta: agora, ultimo_erro: r.erro } : { ultima_coleta: agora, ultimo_ok: agora, ultimo_erro: null, itens_ultima: r.novas }).eq("id", f.id);
-    rel.push({ id: f.id, ...r });
+    const r: any = await coleta(f);
+    // feed igual: só grava se havia erro ou se a última coleta registrada tem mais de 6 h (menos gravação no banco)
+    const velha = !f.ultima_coleta || Date.now() - Date.parse(f.ultima_coleta) > 6 * 36e5;
+    if (r.erro) await SB.from("fontes").update({ ultima_coleta: agora, ultimo_erro: r.erro }).eq("id", f.id);
+    else if (r.igual) { if (f.ultimo_erro || velha) await SB.from("fontes").update({ ultima_coleta: agora, ultimo_ok: agora, ultimo_erro: null }).eq("id", f.id); }
+    else await SB.from("fontes").update({ ultima_coleta: agora, ultimo_ok: agora, ultimo_erro: null, itens_ultima: r.novas, ...(r.hash ? { feed_hash: r.hash } : {}) }).eq("id", f.id);
+    rel.push({ id: f.id, ...r, hash: undefined });
   }));
   return new Response(JSON.stringify({ modo, lote, fontes: rel }), { headers: { "content-type": "application/json" } });
 });
