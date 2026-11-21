@@ -81,3 +81,13 @@ end $$;
 
 -- a cada 10 minutos
 select cron.schedule('aovivo-confere', '*/10 * * * *', 'select privado.aovivo_dispara()');
+
+-- 21/11 (Amanda): canais jornalísticos brasileiros com ao vivo aberto no YouTube, de linhas diferentes, juntos (não um só)
+insert into public.aovivo_canais (k, nome, canal_id, url, termos, ordem, ativo, ambito, lingua, nota) values
+('uol', 'UOL', 'UCVFbXI6Gu8U2f9Gjtxw4A-Q', 'https://www.youtube.com/@UOL/streams', 'https://www.uol.com.br/', 8, true, 'br', 'pt', 'Comercial, Brasil · Canal UOL · decisão da Amanda (21/11)'),
+('cnnbrasil', 'CNN Brasil', 'UCvdwhh_fDyWccR42-rReZLw', 'https://www.youtube.com/@CNNbrasil/streams', 'https://www.cnnbrasil.com.br/', 9, true, 'br', 'pt', 'Comercial, Brasil · decisão da Amanda (21/11)'),
+('sbtnews', 'SBT News', 'UC376n347Ob5Lwzq2WGzF1AA', 'https://www.youtube.com/@sbtnews/streams', 'https://sbtnews.sbt.com.br/', 10, true, 'br', 'pt', 'Comercial, Brasil · decisão da Amanda (21/11)'),
+('recordnews', 'Record News', 'UCuiLR4p6wQ3xLEm15pEn1Xw', 'https://www.youtube.com/@recordnews/streams', 'https://recordnews.r7.com/', 11, true, 'br', 'pt', 'Comercial, Brasil · decisão da Amanda (21/11)'),
+('band', 'Band Jornalismo', 'UCoa-D_VfMkFrCYodrOC9-mA', 'https://www.youtube.com/@bandjornalismo/streams', 'https://www.band.uol.com.br/', 12, true, 'br', 'pt', 'Comercial, Brasil · decisão da Amanda (21/11)'),
+('jovempan', 'Jovem Pan News', 'UCP391YRAjSOdM_bwievgaZA', 'https://www.youtube.com/@jovempannews/streams', 'https://jovempan.com.br/', 13, true, 'br', 'pt', 'Comercial, Brasil · decisão da Amanda (21/11)')
+on conflict (k) do nothing;
