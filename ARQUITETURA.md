@@ -100,3 +100,15 @@ Sinais de cada tipo nos cartões do Início e da Buscar (os mesmos das abas, em 
 
 No celular estreito (até 420px de bloco), o pé mostra só o dado principal de cada tipo, para a leitura manter no mínimo 5 linhas (testado em 320px, com algoritmo ligado e desligado).
 Código: `textParts`/`typeFoot` (Início e Buscar), `tabCard` (abas), `cardFor` escolhe o cartão pelo leiaute; `FTABS` traz o leiaute de cada aba no 4º campo.
+
+## Partes sob demanda (21 nov 2026)
+O código do site continua escrito num arquivo só (a fonte do artefato, da cópia do Mac e da prévia do painel). Na montagem do site (`separa.py`), um trecho marcado com
+`/* PARTE nome: início … */` e `/* PARTE nome: fim */` vira um arquivo à parte (`a/parte-nome.<hash>.js`), baixado só quando uma função dele é chamada.
+
+Regras para um trecho virar parte:
+- Só funções no trecho (sem `const`/`let` no topo). A montagem para com erro se houver outra coisa.
+- O trecho não pode mudar valores do código principal (`x = …` num nome de fora); pode mudar propriedades (`S.x = …`).
+- No lugar do trecho ficam funções-ponte com o mesmo nome. Se a parte já chegou, chamam direto. Se não: telas (`screen…`) mostram um esqueleto e refazem a tela quando a parte chega; as outras repetem a chamada depois.
+- Recurso novo e raro nasce dentro de uma parte, para não engordar o código principal.
+
+Com partes, o site vira módulo (`<script type="module">`): o código principal vai num arquivo comum (`chunk.<hash>.js`, baixado junto por `modulepreload`) e o `app.<hash>.js` só o chama. Primeira parte: `anunciante` (formulário de Anunciar).

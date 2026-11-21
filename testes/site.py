@@ -266,6 +266,12 @@ async def g_anuncio(b):
             confere(await folha(pg), f"{nome} · vitrine do anúncio abre")
             confere(await sem_rolagem_lateral(pg), f"{nome} · vitrine sem rolagem lateral")
         elif n: avisa(f"{nome} · vitrine", "só há o espaço 'Anuncie aqui' no feed agora")
+        # 21/11: o formulário de quem anuncia é uma parte sob demanda: só baixa ao abrir Anunciar
+        partes = []; pg.on("request", lambda r: partes.append(r.url) if "/parte-" in r.url else None)
+        await pg.goto(BASE + "/#anunciar"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        confere("Anuncie aqui" in await pg.evaluate("document.querySelector('main').innerText"), f"{nome} · Anunciar abre o formulário")
+        await pg.fill("#adnome", "Teste"); await pg.wait_for_timeout(300)
+        confere("Teste" in await pg.evaluate("document.querySelector('main').innerText"), f"{nome} · prévia do anúncio acompanha o texto")
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
