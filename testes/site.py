@@ -208,7 +208,9 @@ async def g_fontes(b):
     try:
         await entra(pg); await clica(pg, '[data-act="adjust"]', 600)
         await clica(pg, '#layer [data-act="ajtab"][data-v="fontes"]', 400)
+        confere(await pg.locator('#layer #origordem').count() == 1 and await pg.locator('#layer [data-act="sugfonte"]').count() == 1, f"{nome} · Fontes tem Perto de você e Sugerir uma fonte")
         await clica(pg, '#layer [data-act="origens"]', 700)
+        confere(await pg.locator('#layer #origordem').count() == 0 and await pg.locator('#layer [data-act="sugfonte"]').count() == 0, f"{nome} · Países e línguas só com idiomas e país")
         confere(await pg.locator("#layer .sheet select").count() >= 1, f"{nome} · Países e línguas abre com a escolha de país")
         confere(await pg.locator("#layer .sheet .aclist button").count() >= 2, f"{nome} · idiomas em etiquetas")
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
