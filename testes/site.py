@@ -386,7 +386,7 @@ async def g_marco(b):
         confere(await pg.locator(".cadcomp").count() == 0, "marco · depois de concluir, a conta funciona", await pg.evaluate("[location.hash, (document.querySelector('.ferr:not([hidden])')||{}).innerText, document.querySelector('#knasc') && document.querySelector('#knasc').value, document.querySelector('#kok') && document.querySelector('#kok').checked, document.body.innerText.slice(0,200)].join(' | ')"))
         await pg.evaluate("document.querySelector('[data-act=sair]') && document.querySelector('[data-act=sair]').click()"); await pg.wait_for_timeout(1500)
         await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
-        confere(await pg.locator(".segconta [role=tab]").count() == 2 and await pg.locator(".gbtn").count() == 1, "marco · login com Entrar/Criar conta e botão do Google (na versão de teste)")
+        confere(await pg.locator(".segconta [role=tab]").count() == 2 and await pg.locator(".gbtn").count() == 0, "marco · login com Entrar/Criar conta, sem o Google (próximo passo)")
         confere(not erros, "marco · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, "marco · roteiro completo", str(e)[:200])
