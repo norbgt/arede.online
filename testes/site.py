@@ -391,6 +391,16 @@ async def g_marco(b):
         await pg.evaluate("document.querySelector('[data-act=sair]') && document.querySelector('[data-act=sair]').click()"); await pg.wait_for_timeout(1500)
         await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
         confere(await pg.locator(".segconta [role=tab]").count() == 2 and await pg.locator(".gbtn").count() == 0, "marco · login com Entrar/Criar conta, sem o Google (próximo passo)")
+        # 22/11: ajustar a capa antes de salvar (arrastar e aproximar)
+        import base64
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAAAGklEQVR4nGNkYPjPgAqYUDlgCSZGBkZGJAkAKawBCJT8ZqAAAAAASUVORK5CYII=")
+        await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); db.logada = true; localStorage.setItem('arede-teste-db', JSON.stringify(db)); }")
+        await pg.goto(BASE + "/?teste=1&c=1#perfil"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        await clica(pg, '[data-act="capaedita"]', 800)
+        await pg.set_input_files("#capafile", files=[{"name": "capa.png", "mimeType": "image/png", "buffer": png}]); await pg.wait_for_timeout(1200)
+        confere(await pg.locator(".sheet .crop .cropguia").count() == 1, "marco · capa abre o ajuste com a faixa sempre visível")
+        await pg.locator(".sheet .cropzoom input").fill("2"); await clica(pg, "#cropok", 1500)
+        confere(await pg.locator(".sheet .crop").count() == 0, "marco · Usar capa salva e fecha o ajuste")
         confere(not erros, "marco · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, "marco · roteiro completo", str(e)[:200])
