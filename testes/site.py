@@ -21,7 +21,9 @@ Grupos:
   publicar      formulário de publicar abre (sem enviar)
   rodape        rodapé da marca: contato e versão
   busca         busca responde
-  institucional Manifesto, Termos, Privacidade
+  institucional Manifesto, Termos, Privacidade, Transparência (6 blocos e os números)
+  instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
+  csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
 
@@ -33,7 +35,7 @@ from playwright.async_api import async_playwright
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
 GRUPOS_TODOS = ["sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
-                "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "layout"]
+                "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
 for x in GRUPOS:
@@ -338,6 +340,65 @@ async def x_comunidades(pg):
 async def x_emalta(pg):
     confere(await pg.locator("main svg, main canvas, main .emvol, main .abars").count() >= 1, "emalta · gráfico aparece")
 
+# 21/11 (Amanda): Transparência, site instalável e CSAT semanal
+async def x_transparencia(pg):
+    n = await pg.locator(".env .erow").count()
+    confere(n == 6, "institucional · Transparência com 6 blocos", f"{n} blocos")
+    t = await pg.evaluate("document.querySelector('.env').innerText")
+    confere("331 fontes" in t and "conservadora" in t and "progressista" in t, "institucional · Transparência mostra os números", t[:120])
+
+async def g_instalavel(b):
+    ctx, pg, erros = await abre_contexto(b)
+    try:
+        await entra(pg)
+        r = await pg.evaluate("""async () => { const m = await fetch('/manifest.webmanifest').then(r => r.ok ? r.json() : null).catch(() => null);
+          if (!m) return {m:false}; const ic = await Promise.all(m.icons.map(i => fetch(i.src).then(r => r.ok).catch(() => false)));
+          const sw = await fetch('/sw.js').then(r => r.ok && r.text()).catch(() => '');
+          return {m:true, nome:m.name, standalone:m.display === 'standalone', icones:ic.length && ic.every(Boolean), mascara:m.icons.some(i => i.purpose === 'maskable'), sw:!!sw && sw.includes('push') && sw.includes('caches'),
+            link:!!document.querySelector('link[rel=manifest]'), apple:!!document.querySelector('link[rel=apple-touch-icon]')}; }""")
+        confere(r.get("m") and r.get("nome") == "arede.online" and r.get("standalone"), "instalavel · manifesto", str(r))
+        confere(r.get("icones") and r.get("mascara"), "instalavel · ícones (inclusive o de máscara)", str(r))
+        confere(r.get("sw") and r.get("link") and r.get("apple"), "instalavel · trabalhador e ligações na página", str(r))
+        await pg.goto(BASE + "/?teste=1#notificacoes"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        await pg.evaluate("location.hash='#inicio'"); await pg.wait_for_timeout(400); await pg.evaluate("location.hash='#notificacoes'"); await pg.wait_for_timeout(1200)
+        conv = await pg.evaluate("(document.querySelector('#nconvite') || {}).innerText || ''")
+        confere(conv.strip() == "", "instalavel · sem convite do resumo enquanto estiver desligado", conv[:80])
+        await clica(pg, '[data-act="notifprefs"]', 1200)
+        fora = await pg.locator("#layer .sheet", has_text="Fora do site").count()
+        confere(fora == 0, "instalavel · Notificações sem \"Fora do site\" enquanto estiver desligado")
+        confere(not erros, "instalavel · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "instalavel · roteiro completo", str(e)[:200])
+    await ctx.close()
+
+async def g_csat(b):
+    import datetime
+    if not OFFLINE: return avisa("csat", "só roda com --offline, para não mandar medição de uso de verdade")
+    ctx, pg, erros = await abre_contexto(b)
+    async def visita(p, nome):
+        await p.goto(BASE + "/?uso=1&v=" + nome.replace(" ", "") + "#inicio", wait_until="domcontentloaded", timeout=45000); await p.wait_for_timeout(1500)
+        for _ in range(3):
+            c = p.locator("#layer button", has_text="Continuar")
+            if await c.count(): await c.first.click(); await p.wait_for_timeout(300)
+        await fecha_folha(p)
+        await p.clock.run_for(70000); await p.wait_for_timeout(600)
+        return await p.locator("#layer .sheet", has_text="Como está sendo usar").count() > 0
+    try:
+        await pg.clock.install()
+        confere(await visita(pg, "1"), "csat · aparece depois de 1 minuto")
+        await fecha_folha(pg)
+        confere(not await visita(pg, "2"), "csat · não volta na mesma semana")
+        await pg.close(); pg = await ctx.new_page(); pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
+        await pg.clock.install(time=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=4))
+        confere(not await visita(pg, "3"), "csat · não volta 4 dias depois")
+        await pg.close(); pg = await ctx.new_page(); pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
+        await pg.clock.install(time=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=8))
+        confere(await visita(pg, "4"), "csat · volta depois de 7 dias")
+        confere(not erros, "csat · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "csat · roteiro completo", str(e)[:200])
+    await ctx.close()
+
 async def x_config(pg):
     confere(await pg.locator("main h2", has_text="Seu feed").count() == 1, "config · seção Seu feed")
 
@@ -405,6 +466,9 @@ async def main():
         if "busca" in G: await g_busca(b)
         if "institucional" in G:
             for r in ["#manifesto", "#termos", "#privacidade"]: await g_rota(b, "institucional", r)
+            await g_rota(b, "institucional", "#transparencia", x_transparencia, teste=True)
+        if "instalavel" in G: await g_instalavel(b)
+        if "csat" in G: await g_csat(b)
         if "layout" in G:
             for w, escuro in ((390, True), (1280, False)):
                 await g_sempre(b, w, escuro, "layout"); await g_card(b, w, escuro, "layout")
