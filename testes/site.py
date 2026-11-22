@@ -440,6 +440,9 @@ async def g_redes(b):
         await pg.fill("#redeuser", "exemplo"); await pg.wait_for_timeout(2500)
         confere(await pg.locator("#redeprev .rprev.xad").count() >= 1, "redes · prévia antes de conectar mostra as partidas")
         confere(await pg.locator("#redeprev .xtab text").count() >= 2, "redes · tabuleiro com as peças")
+        await clica(pg, '[data-act="close"]', 400); await clica(pg, '[data-act="redes"]', 800); await clica(pg, '[data-act="redeconectar"][data-r="medium"]', 600)
+        await pg.fill("#redeuser", "exemplo"); await pg.wait_for_timeout(2500)
+        confere(await pg.locator("#redeprev .rprev").count() >= 1, "redes · prévia de outra rede (exemplos sem internet)")
         confere(not erros, "redes · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, "redes · roteiro completo", str(e)[:200])
