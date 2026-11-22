@@ -23,6 +23,7 @@ Grupos:
   busca         busca responde
   institucional Manifesto, Termos, Privacidade, Como funciona (11 regras)
   instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
+  resumo        resumo da semana e do mês, faixa de quem volta e Em alta por período (com --offline, modo de teste)
   marco         regras de conduta, bloquear pessoa, completar cadastro (Google) e o login novo (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   layout        repete sempre + card no celular escuro e no computador
@@ -35,7 +36,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
-GRUPOS_TODOS = ["marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
+GRUPOS_TODOS = ["resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
                 "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
@@ -408,6 +409,27 @@ async def g_marco(b):
     finally:
         await ctx.close()
 
+# 22/11 (Amanda): resumo da semana e do mês, a faixa "Enquanto você esteve fora" e Hoje · Semana · Mês no Em alta (modo de teste)
+async def g_resumo(b):
+    ctx, pg, erros = await abre_contexto(b)
+    try:
+        await pg.goto(BASE + "/?teste=1#resumo"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        confere(await pg.locator(".resumo .reslista li").count() >= 4, "resumo · semana com assuntos, desmentidos e dados oficiais")
+        confere(await pg.locator(".resumo .ressec").count() == 4, "resumo · 4 seções (assuntos, desmentidos, dados oficiais, comunidades)")
+        await pg.goto(BASE + "/?teste=1#resumo-mes"); await pg.wait_for_timeout(1500)
+        confere(await pg.locator('.resseg [aria-selected="true"]').inner_text() == "Mês", "resumo · aba Mês")
+        await pg.evaluate("localStorage.setItem('arede-ultVisita', JSON.stringify(Date.now() - 5 * 864e5))")
+        await pg.goto(BASE + "/?teste=1&r=1#inicio"); await pg.wait_for_timeout(3000); await fecha_folha(pg)
+        confere(await pg.locator("#fora .reslista li").count() >= 1, "resumo · faixa Enquanto você esteve fora depois de 5 dias")
+        await clica(pg, '[data-act="forafecha"]', 400)
+        confere(await pg.locator("#fora").count() == 0, "resumo · a faixa fecha")
+        await sem_rolagem_lateral(pg) and confere(True, "resumo · sem rolagem lateral")
+        confere(not erros, "resumo · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "resumo · roteiro completo", str(e)[:200])
+    finally:
+        await ctx.close()
+
 async def g_instalavel(b):
     ctx, pg, erros = await abre_contexto(b)
     try:
@@ -531,6 +553,7 @@ async def main():
         if "instalavel" in G: await g_instalavel(b)
         if "csat" in G: await g_csat(b)
         if "marco" in G and OFFLINE: await g_marco(b)
+        if "resumo" in G and OFFLINE: await g_resumo(b)
         if "layout" in G:
             for w, escuro in ((390, True), (1280, False)):
                 await g_sempre(b, w, escuro, "layout"); await g_card(b, w, escuro, "layout")
