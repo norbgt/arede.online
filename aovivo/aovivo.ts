@@ -1,4 +1,4 @@
-// AO VIVO (11 nov 2026): confere, a cada 10 minutos, qual transmissão cada canal oficial tem no ar.
+// AO VIVO (11 nov 2026): confere, a cada 30 minutos, qual transmissão cada canal oficial tem no ar.
 // Lê só a página pública "ao vivo" de cada canal no YouTube e guarda o código do vídeo e o estado.
 // Não baixa, não grava e não retransmite nada: quem exibe o vídeo é o player do próprio canal.
 // Só responde a quem traz a chave do coletor (a mesma do agendador do banco).
@@ -32,7 +32,20 @@ Deno.serve(async (req: Request) => {
         status: ((t.match(/"playabilityStatus":\{"status":"([A-Z_]+)"/) || [])[1] || "") };   // consentimento ou bloqueio: não mexe no que está guardado
       if (!v) return { k: c.k, video: null, estado: "fora" };
       const estado = /"isUpcoming":true/.test(t) || /LIVE_STREAM_OFFLINE/.test(t) ? "agendado" : /"isLive":true/.test(t) ? "aovivo" : "fora";
-      return { k: c.k, video: estado === "fora" ? null : v, estado, via: canon.includes("watch") ? "canon" : "dados" };
+      // 21/11 (Amanda): o que está passando e quando começou (ou começa). Vêm da mesma página, sem outra consulta.
+      const ent = (x: string) => x.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+      // o título aparece em lugares diferentes conforme a página (agendada ou no ar); vale o primeiro que existir
+      const js = (x: string) => { try { return JSON.parse('"' + x + '"'); } catch { return ""; } };
+      const bruto = (t.match(/<meta name="title" content="([^"]{1,300})"/) || [])[1] ? ent((t.match(/<meta name="title" content="([^"]{1,300})"/) || [])[1])
+        : (t.match(/<meta property="og:title" content="([^"]{1,300})"/) || [])[1] ? ent((t.match(/<meta property="og:title" content="([^"]{1,300})"/) || [])[1])
+        : js((t.match(new RegExp('"videoDetails":\\{"videoId":"' + v + '","title":"((?:[^"\\\\]|\\\\.){1,400})"')) || [])[1] || "")
+          || js((t.match(/"videoPrimaryInfoRenderer":\{"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.){1,400})"/) || [])[1] || "");
+      const titulo = estado === "fora" ? "" : String(bruto || "").trim().slice(0, 140);
+      const tdbg = estado !== "fora" && !titulo ? ["og:title", '"videoDetails"', "videoPrimaryInfoRenderer", '"title":{"runs"', '"title":{"simpleText"', "liveBroadcastDetails", "startTimestamp", '"isLiveNow"', v].filter((m) => t.includes(m)).join(",") + " kb" + Math.round(t.length / 1024) : undefined;
+      const prog = (t.match(/"scheduledStartTime":"(\d{9,11})"/) || [])[1];
+      const comecou = (t.match(/"startTimestamp":"(\d{4}-\d{2}-\d{2}T[^"]{1,30})"/) || [])[1] || "", marcado = prog ? new Date(Number(prog) * 1000).toISOString() : "";
+      const ini = estado === "agendado" ? (marcado || comecou) : (comecou || marcado);
+      return { k: c.k, video: estado === "fora" ? null : v, estado, titulo, inicio: estado === "fora" ? "" : ini, tdbg, via: canon.includes("watch") ? "canon" : "dados" };
     } catch (e) { return { k: c.k, erro: String(e).slice(0, 80) }; }
   }));
 
