@@ -407,6 +407,13 @@ async def g_seguir(b):
         confere(await pg.locator('#expessoas a[href="#org-u-00000000-0000-4000-8000-000000000002"]').count() == 1, "busca · encontra a pessoa pelo nome")
         await pg.click('#expessoas a.rowitem'); await pg.wait_for_timeout(1500)
         confere("org-u-00000000-0000-4000-8000-000000000002" in pg.url or "/@maria_teste" in pg.url, "busca · tocar abre o perfil da pessoa")
+        # 22/11: aba Conexões no seu perfil: pedidos, pessoas, páginas e quem vê
+        await pg.goto(BASE + "/?teste=1&v=7#perfil"); await pg.wait_for_timeout(1800); await fecha_folha(pg)
+        await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 1500)
+        confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "conexões · escolha de quem vê (3 opções)")
+        await clica(pg, '#conxbody [data-act="conxvis"][data-v="cadastrados"]', 900)
+        confere(await pg.locator('#conxbody [data-act="conxvis"][data-v="cadastrados"][aria-checked="true"]').count() == 1, "conexões · escolha fica marcada")
+        confere(await pg.locator('[data-act="ptab"][data-tab="conexoes"] .tvis').count() == 0, "conexões · aba sem cadeado quando aberta")
     except Exception as e: confere(False, "seguir · erro: " + str(e)[:200])
     confere(not erros, "seguir · sem erros de JS", "; ".join(erros[:3]))
     await ctx.close()
