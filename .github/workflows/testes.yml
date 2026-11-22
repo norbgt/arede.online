@@ -32,7 +32,7 @@ jobs:
         env:
           TESTE_CHAVE: ${{ github.event_name != 'push' && secrets.TESTE_CHAVE || '' }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then BASE=https://arede.online
+          if [ "${{ github.event_name }}" != "push" ]; then BASE=https://arede.online
           else python3 -m http.server 8080 >/dev/null 2>&1 & sleep 1; BASE=http://localhost:8080; fi
           echo "Testando $BASE"
           if [ "${{ github.event_name }}" = "push" ]; then python3 testes/site.py "$BASE"
