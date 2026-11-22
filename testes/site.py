@@ -461,6 +461,11 @@ async def g_seguir(b):
         confere("terça a sábado" in (await pg.evaluate("document.querySelector('#msgtx2').value")), "mensagens · resposta pronta entra na mensagem")
         await clica(pg, '[data-act="msgmanda"]', 1200)
         confere(await pg.locator('#msgsbox .bolha.eu').count() == 1, "mensagens · a página responde como página")
+        # 22/11: quem visita um perfil com Redes aberta vê os mesmos blocos que a dona, sem os botões de ajustar
+        await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); const r = db.t.conta_dados.find(x=>x.user_id === '00000000-0000-4000-8000-000000000002' && x.chave === 'vitrine'); r.valor.redes = [{rede:'github', url:'https://github.com/jim', u:'jim', d:'perfil', n:6, nm:'jim'}, {rede:'letterboxd', url:'https://letterboxd.com/jim'}]; localStorage.setItem('arede-teste-db', JSON.stringify(db)); }")
+        await pg.goto(BASE + "/?teste=1&v=16#org-u-" + jim); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        await clica(pg, '[data-act="pessaba"][data-t="redes"]', 1500)
+        confere(await pg.locator('#orgbody .rbloco').count() == 2 and await pg.locator('#orgbody .rbaj').count() == 0, "redes · quem visita vê os blocos da dona, sem Ajustar", str(await pg.locator('#orgbody .rbloco').count()))
     except Exception as e: confere(False, "seguir · erro: " + str(e)[:200])
     confere(not erros, "seguir · sem erros de JS", "; ".join(erros[:3]))
     await ctx.close()
