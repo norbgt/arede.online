@@ -700,7 +700,8 @@ async def g_logado(b):
             txt = await pg.evaluate("document.body.innerText + ' ' + location.pathname")
             if "jackie.disguise" in txt: break
             await pg.wait_for_timeout(500)
-        confere("jackie.disguise" in txt, "logado · Seu perfil mostra a conta de teste", "sem o @ na tela nem no endereço")
+        diag = await pg.evaluate("(()=>{ const K='sb-zbmzabgdejylpmabujad-auth-token', a=document.querySelector('[data-act=acessar]'); return 'sessão ' + (localStorage.getItem(K) ? 'guardada' : 'sumiu') + ' · topo ' + (a ? (a.innerText||'').trim() : '?') + ' · ' + location.hash; })()")
+        confere("jackie.disguise" in txt, "logado · Seu perfil mostra a conta de teste", diag)
         await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 2000)
         confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "logado · Conexões abre com quem vê")
         await pg.goto(BASE + "/#explorar"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
