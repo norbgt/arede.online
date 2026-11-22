@@ -12,7 +12,7 @@ Grupos:
   filtros       filtro salvo continua depois de recarregar (modo de teste)
   anuncio       card de anúncio e vitrine aberta
   desinfo       aviso de baixa confiança: Ver conteúdos abre a lista
-  abas          Canais, Rádio, Cultura, Oficiais
+  abas          Canais, Rádio, Cultura, Transparência
   eventos       aba Para participar: cartões inteiros
   comunidades   lista e página de comunidade (Regras); sem etiqueta Página
   emalta        Em alta com o gráfico
@@ -306,7 +306,7 @@ async def g_abas(b):
     ctx, pg, erros = await abre_contexto(b)
     try:
         await entra(pg)
-        for k, rot in [("videos", "Canais"), ("radio", "Rádio"), ("arte", "Cultura"), ("documentos", "Oficiais")]:
+        for k, rot in [("videos", "Canais"), ("radio", "Rádio"), ("arte", "Cultura"), ("documentos", "Transparência")]:
             await clica(pg, f'[data-act="ftab"][data-tab="{k}"]', 1500)
             t = await pg.evaluate("document.querySelector('main') ? document.querySelector('main').innerText.length : 0")
             confere(t > 200, f"{nome} · {rot} abre com conteúdo", f"{t} letras")
