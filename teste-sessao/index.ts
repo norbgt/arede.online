@@ -19,7 +19,7 @@ function igual(a: string, b: string) {   // comparação em tempo constante
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ erro: "use POST" }, 405);
   const chave = Deno.env.get("TESTE_CHAVE") || "";
-  if (chave.length < 24) return json({ erro: "teste desligado" }, 503);
+  if (chave.length < 24) return json({ erro: chave ? "teste desligado: a chave tem menos de 24 caracteres" : "teste desligado: sem a chave TESTE_CHAVE" }, 503);
   if (!igual(req.headers.get("x-teste-chave") || "", chave)) return json({ erro: "sem permissão" }, 403);
   const { data: id, error: e1 } = await ADMIN.rpc("conta_teste_id");
   if (e1 || !id) return json({ erro: "conta de teste não definida" }, 500);

@@ -688,9 +688,9 @@ async def g_logado(b):
         sess = json.loads(urllib.request.urlopen(req, timeout=30).read())
     except Exception as e:
         return confere(False, "logado · abre a sessão da conta de teste", type(e).__name__)
-    confere(bool(sess.get("access_token")) and "email" not in json.dumps(sess.get("user", {})), "logado · abre a sessão da conta de teste, sem e-mail")
+    confere(bool(sess.get("access_token")) and "@" not in json.dumps(sess.get("user", {})), "logado · abre a sessão da conta de teste, sem e-mail")
     ctx = await b.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
-    await ctx.add_init_script("s => { try { if (!localStorage.getItem('sb-zbmzabgdejylpmabujad-auth-token')) localStorage.setItem('sb-zbmzabgdejylpmabujad-auth-token', s); } catch (e) {} }", json.dumps(sess))
+    await ctx.add_init_script("(() => { const K = 'sb-zbmzabgdejylpmabujad-auth-token'; try { if (!localStorage.getItem(K)) localStorage.setItem(K, " + json.dumps(json.dumps(sess)) + "); } catch (e) {} })()")
     pg = await ctx.new_page(); erros = []
     pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
     try:
@@ -710,6 +710,8 @@ async def g_logado(b):
         outros = {m for m in outros if not re.search(r"\.(png|jpe?g|webp|svg|js|css)$", m)}
         confere(not outros, "logado · nenhum e-mail na tela", f"{len(outros)} encontrado(s)")
         confere(not erros, "logado · sem erro de JavaScript", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "logado · erro", type(e).__name__ + ": " + str(e)[:160])
     finally:
         await ctx.close()
 
