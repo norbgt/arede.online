@@ -391,6 +391,8 @@ async def g_seguir(b):
         await pg.goto(BASE + "/?teste=1&v=4#perfil"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
         await pg.evaluate("()=>{ const t = [...document.querySelectorAll('.tab')].find(x=>/Pastas|Salvos/.test(x.innerText)); t && t.click(); }"); await pg.wait_for_timeout(700)
         confere(await pg.locator('.bmais[data-f="ideias"]').count() == 0 and await pg.locator('.bmais[data-f="leituras"]').count() == 1, "pastas · pasta apagada não volta depois de recarregar")
+        await clica(pg, '[data-act="lixpastas"]', 700); await clica(pg, '#layer [data-act="lixvolta"]', 900)
+        confere(await pg.locator('.bmais[data-f="ideias"]').count() == 1, "pastas · apagada pode ser recuperada (15 dias)")
         # 22/11: Publicar à mão no seu perfil; no site de verdade o perfil novo nasce sem exemplos
         await pg.goto(BASE + "/?teste=1&v=5#perfil"); await pg.wait_for_timeout(1800); await fecha_folha(pg)
         await clica(pg, '.pfacoes [data-act="create"]', 800)
@@ -468,6 +470,14 @@ async def g_seguir(b):
         await clica(pg, '[data-act="msgresp"]', 900); await clica(pg, '#layer [data-act="msgrespedita"]', 400)
         await pg.fill("#rptxt", "Atendemos de terça a domingo."); await clica(pg, '#layer [data-act="msgrespnova"]', 900)
         confere(await pg.evaluate("document.querySelector('#layer .sheet') && document.querySelector('#layer .sheet').innerText.includes('terça a domingo')"), "mensagens · resposta pronta pode ser editada")
+        await fecha_folha(pg); await pg.goto(BASE + "/?teste=1&v=40#pg-00000000-0000-4000-8000-0000000000ad"); await pg.wait_for_timeout(1800); await fecha_folha(pg)
+        await pg.evaluate("()=>{ const b = [...document.querySelectorAll('main [data-act]')].find(x=>/paginaedita|pgedita/.test(x.dataset.act)); b && b.click(); }"); await pg.wait_for_timeout(800)
+        if await pg.locator('#layer [data-act="equipe"]').count():
+            await clica(pg, '#layer [data-act="equipe"]', 900); await pg.fill("#equsu", "@caio_teste"); await clica(pg, '#layer [data-act="equipepoe"]', 1000)
+            confere(await pg.evaluate("document.querySelector('#layer .sheet').innerText.includes('@caio_teste')"), "equipe · a dona põe alguém pelo @")
+            await clica(pg, '#layer [data-act="equipetira"]', 300); await clica(pg, '#layer [data-act="equipetira"]', 1000)
+            confere(not await pg.evaluate("document.querySelector('#layer .sheet').innerText.includes('@caio_teste')"), "equipe · a dona tira da equipe")
+        else: confere(False, "equipe · Editar página mostra Equipe de atendimento")
         await fecha_folha(pg)
         # 22/11: quem visita um perfil com Redes aberta vê os mesmos blocos que a dona, sem os botões de ajustar
         await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); const r = db.t.conta_dados.find(x=>x.user_id === '00000000-0000-4000-8000-000000000002' && x.chave === 'vitrine'); r.valor.redes = [{rede:'github', url:'https://github.com/jim', u:'jim', d:'perfil', n:6, nm:'jim'}, {rede:'letterboxd', url:'https://letterboxd.com/jim'}]; localStorage.setItem('arede-teste-db', JSON.stringify(db)); }")
