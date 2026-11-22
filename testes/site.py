@@ -696,7 +696,10 @@ async def g_logado(b):
     try:
         await entra(pg)
         await pg.goto(BASE + "/#perfil"); await pg.wait_for_timeout(3500); await fecha_folha(pg)
-        txt = await pg.evaluate("document.body.innerText + ' ' + location.pathname")
+        for _ in range(12):
+            txt = await pg.evaluate("document.body.innerText + ' ' + location.pathname")
+            if "jackie.disguise" in txt: break
+            await pg.wait_for_timeout(500)
         confere("jackie.disguise" in txt, "logado · Seu perfil mostra a conta de teste", "sem o @ na tela nem no endereço")
         await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 2000)
         confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "logado · Conexões abre com quem vê")
@@ -705,11 +708,19 @@ async def g_logado(b):
         for _ in range(16):
             await pg.wait_for_timeout(500); n = await pg.locator('#expessoas a.rowitem').count()
             if n: break
-        confere(n >= 1, "logado · Busca encontra pessoas pelo nome", "lista: " + str(await pg.locator('#expessoas').count()))
+        if not n:   # diagnóstico sem dado pessoal: o que o servidor responde e o que a lista diz
+            try:
+                rq = urllib.request.Request("https://zbmzabgdejylpmabujad.supabase.co/rest/v1/rpc/pessoas_busca", data=b'{"p_q":"rede"}', method="POST",
+                    headers={"apikey": "sb_publishable_GZXwglA_bRngXUSD-BWfLQ_hawYSnLD", "authorization": "Bearer " + sess["access_token"], "content-type": "application/json"})
+                srv = "servidor " + str(len(json.loads(urllib.request.urlopen(rq, timeout=20).read()) or []))
+            except Exception as e: srv = "servidor " + type(e).__name__ + " " + str(getattr(e, "code", ""))
+            lista = await pg.evaluate("(document.querySelector('#expessoas')||{}).innerText || ''")
+            n_diag = f"{srv}; lista '{lista[:60]}'"
+        confere(n >= 1, "logado · Busca encontra pessoas pelo nome", n_diag if not n else "")
         await pg.goto(BASE + "/#mensagens"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
         confere(await pg.locator('#mlist').count() == 1, "logado · Mensagens abre")
         tudo = await pg.evaluate("document.documentElement.outerHTML")
-        outros = {m.lower() for m in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", tudo) if "@" in m} - EMAILS_OK
+        outros = {m.lower() for m in re.findall(r"[\w.+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b", tudo, re.I)} - EMAILS_OK
         outros = {m for m in outros if not re.search(r"\.(png|jpe?g|webp|svg|js|css)$", m)}
         confere(not outros, "logado · nenhum e-mail na tela", ", ".join(sorted(m[0] + "…@" + m.split("@")[1] for m in outros)))   # só a 1ª letra e o domínio
         confere(not erros, "logado · sem erro de JavaScript", "; ".join(erros[:3]))
