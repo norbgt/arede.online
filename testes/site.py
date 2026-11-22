@@ -23,7 +23,7 @@ Grupos:
   busca         busca responde
   institucional Manifesto, Termos, Privacidade, Como funciona (11 regras)
   instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
-  marco         regras de conduta antes do 1º comentário e bloquear pessoa (com --offline, modo de teste)
+  marco         regras de conduta, bloquear pessoa, completar cadastro (Google) e o login novo (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
@@ -376,7 +376,17 @@ async def g_marco(b):
         confere(await pg.locator('#bloqlista [data-act="desbloqueia"]').count() == 1, "marco · Pessoas bloqueadas lista quem foi bloqueado")
         await clica(pg, '#bloqlista [data-act="desbloqueia"]', 1200)
         confere(await pg.locator('#bloqlista [data-act="desbloqueia"]').count() == 0, "marco · desbloquear tira da lista")
-        await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(800)
+        # 22/11: conta nova pelo Google completa o cadastro (nome, 18+ e aceite) antes de usar a rede
+        await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); db.cadIncompleto = true; localStorage.setItem('arede-teste-db', JSON.stringify(db)); }")
+        await pg.goto(BASE + "/?teste=1&cad=1#inicio"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        confere(await pg.locator(".cadcomp #knasc").count() == 1, "marco · cadastro incompleto leva para Completar cadastro")
+        await pg.fill("#knome", "Ana"); await pg.fill("#ksobre", "Teste"); await pg.fill("#knasc", "1990-05-10"); await pg.check("#kok")
+        await pg.wait_for_function("!document.querySelector('[data-act=cadcompleta]').disabled", timeout=5000)
+        await pg.click('[data-act="cadcompleta"]'); await pg.wait_for_timeout(2500)
+        confere(await pg.locator(".cadcomp").count() == 0, "marco · depois de concluir, a conta funciona", await pg.evaluate("[location.hash, (document.querySelector('.ferr:not([hidden])')||{}).innerText, document.querySelector('#knasc') && document.querySelector('#knasc').value, document.querySelector('#kok') && document.querySelector('#kok').checked, document.body.innerText.slice(0,200)].join(' | ')"))
+        await pg.evaluate("document.querySelector('[data-act=sair]') && document.querySelector('[data-act=sair]').click()"); await pg.wait_for_timeout(1500)
+        await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        confere(await pg.locator(".segconta [role=tab]").count() == 2 and await pg.locator(".gbtn").count() == 1, "marco · login com Entrar/Criar conta e botão do Google (na versão de teste)")
         confere(not erros, "marco · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, "marco · roteiro completo", str(e)[:200])
