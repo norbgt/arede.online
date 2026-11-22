@@ -697,6 +697,7 @@ async def g_logado(b):
     await ctx.add_init_script("(() => { const K = 'sb-zbmzabgdejylpmabujad-auth-token'; try { if (!localStorage.getItem(K)) localStorage.setItem(K, " + json.dumps(json.dumps(sess)) + "); } catch (e) {} })()")
     pg = await ctx.new_page(); erros = []
     pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
+    rpcs = []; pg.on("response", lambda rs: rpcs.append(rs.status) if "/rpc/pessoas_busca" in rs.url else None)
     try:
         await entra(pg)
         await pg.goto(BASE + "/#perfil"); await pg.wait_for_timeout(3500); await fecha_folha(pg)
@@ -721,7 +722,7 @@ async def g_logado(b):
                 srv = "servidor " + str(len(json.loads(urllib.request.urlopen(rq, timeout=20).read()) or []))
             except Exception as e: srv = "servidor " + type(e).__name__ + " " + str(getattr(e, "code", ""))
             lista = await pg.evaluate("(document.querySelector('#expessoas')||{}).innerText || ''")
-            n_diag = f"{srv}; lista '{lista[:60]}'"
+            n_diag = f"{srv}; lista '{lista[:60]}'; pedidos do site {rpcs}; versão " + await pg.evaluate("(document.querySelector('script[src*=\"/a/app.\"]')||{}).src || '?'")
         confere(n >= 1, "logado · Busca encontra pessoas pelo nome", n_diag if not n else "")
         await pg.goto(BASE + "/#mensagens"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
         confere(await pg.locator('#mlist').count() == 1, "logado · Mensagens abre")
