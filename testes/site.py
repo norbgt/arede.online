@@ -21,7 +21,7 @@ Grupos:
   publicar      formulário de publicar abre (sem enviar)
   rodape        rodapé da marca: contato e versão
   busca         busca responde
-  institucional Manifesto, Termos, Privacidade, Como funciona (11 regras e os números ao vivo)
+  institucional Manifesto, Termos, Privacidade, Como funciona (11 regras)
   instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
   marco         regras de conduta antes do 1º comentário e bloquear pessoa (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
@@ -341,13 +341,13 @@ async def x_comunidades(pg):
 async def x_emalta(pg):
     confere(await pg.locator("main svg, main canvas, main .emvol, main .abars").count() >= 1, "emalta · gráfico aparece")
 
-# 22/11 (Amanda): Transparência virou parte do Como funciona (números ao vivo e 11 regras); #transparencia leva para lá
+# 22/11 (Amanda): Transparência virou parte do Como funciona (11 regras, sem a faixa de números); #transparencia leva para lá
 async def x_funciona(pg):
-    await pg.wait_for_function("location.hash === '#funciona' && document.querySelector('.env .enumg')", timeout=8000)
+    await pg.wait_for_function("location.hash === '#funciona' && document.querySelector('.env .erow')", timeout=8000)
     n = await pg.locator(".env .erow").count()
     confere(n == 11, "institucional · Como funciona com 11 regras", f"{n} regras")
     t = await pg.evaluate("document.querySelector('.env').innerText")
-    confere("331" in t and "conservadora" in t and "Selo de confiança" in t and "não estão à venda" in t, "institucional · Como funciona mostra os números e as regras novas", t[:120])
+    confere("Selo de confiança" in t and "não estão à venda" in t and "pontos por notícia" not in t and "Em números" not in t, "institucional · Como funciona com as regras novas, sem números nem conta do histórico", t[:120])
 
 # 22/11 (Amanda): marco "Evoluir o produto na web". Aceite das regras antes do 1º comentário e bloqueio completo (só no modo de teste)
 async def g_marco(b):
