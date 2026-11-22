@@ -8,3 +8,6 @@
 !/_headers
 # 19/11 (Amanda): imagem da prévia do link (convite e qualquer link da rede no WhatsApp, Telegram etc.)
 !/marca/*
+# 21/11 (Amanda): site instalável (manifesto e o trabalhador que guarda a casca e recebe os avisos no celular)
+!/sw.js
+!/manifest.webmanifest

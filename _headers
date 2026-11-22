@@ -21,3 +21,10 @@
   Cache-Control: public, max-age=0, must-revalidate
 /marca/*
   Cache-Control: public, max-age=86400
+# 21/11 (Amanda): site instalável. O trabalhador sempre confere se há versão nova; o manifesto vale 1 dia.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=86400
