@@ -465,6 +465,10 @@ async def g_seguir(b):
         confere("terça a sábado" in (await pg.evaluate("document.querySelector('#msgtx2').value")), "mensagens · resposta pronta entra na mensagem")
         await clica(pg, '[data-act="msgmanda"]', 1200)
         confere(await pg.locator('#msgsbox .bolha.eu').count() == 1, "mensagens · a página responde como página")
+        await clica(pg, '[data-act="msgresp"]', 900); await clica(pg, '#layer [data-act="msgrespedita"]', 400)
+        await pg.fill("#rptxt", "Atendemos de terça a domingo."); await clica(pg, '#layer [data-act="msgrespnova"]', 900)
+        confere(await pg.evaluate("document.querySelector('#layer .sheet') && document.querySelector('#layer .sheet').innerText.includes('terça a domingo')"), "mensagens · resposta pronta pode ser editada")
+        await fecha_folha(pg)
         # 22/11: quem visita um perfil com Redes aberta vê os mesmos blocos que a dona, sem os botões de ajustar
         await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); const r = db.t.conta_dados.find(x=>x.user_id === '00000000-0000-4000-8000-000000000002' && x.chave === 'vitrine'); r.valor.redes = [{rede:'github', url:'https://github.com/jim', u:'jim', d:'perfil', n:6, nm:'jim'}, {rede:'letterboxd', url:'https://letterboxd.com/jim'}]; localStorage.setItem('arede-teste-db', JSON.stringify(db)); }")
         await pg.goto(BASE + "/?teste=1&v=16#org-u-" + jim); await pg.wait_for_timeout(2000); await fecha_folha(pg)
@@ -696,12 +700,13 @@ async def g_logado(b):
     try:
         await entra(pg)
         await pg.goto(BASE + "/#perfil"); await pg.wait_for_timeout(3500); await fecha_folha(pg)
+        ok = False
         for _ in range(12):
-            txt = await pg.evaluate("document.body.innerText + ' ' + location.pathname")
-            if "jackie.disguise" in txt: break
+            ok = await pg.locator('.pfacoes [data-act="create"]').count() > 0
+            if ok: break
             await pg.wait_for_timeout(500)
-        diag = await pg.evaluate("(()=>{ const K='sb-zbmzabgdejylpmabujad-auth-token', a=document.querySelector('[data-act=acessar]'); return 'sessão ' + (localStorage.getItem(K) ? 'guardada' : 'sumiu') + ' · topo ' + (a ? (a.innerText||'').trim() : '?') + ' · ' + location.hash; })()")
-        confere("jackie.disguise" in txt, "logado · Seu perfil mostra a conta de teste", diag)
+        diag = await pg.evaluate("(()=>{ const a=document.querySelector('[data-act=acessar]'); return 'topo ' + (a ? (a.innerText||'').replace(/\\s+/g,' ').trim() : '?') + ' · ' + location.hash; })()")
+        confere(ok, "logado · Seu perfil abre com Publicar (só a dona vê)", diag)
         await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 2000)
         confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "logado · Conexões abre com quem vê")
         await pg.goto(BASE + "/#explorar"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
