@@ -23,6 +23,7 @@ Grupos:
   busca         busca responde
   institucional Manifesto, Termos, Privacidade, Como funciona (11 regras e os números ao vivo)
   instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
+  marco         regras de conduta antes do 1º comentário e bloquear pessoa (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
@@ -34,7 +35,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
-GRUPOS_TODOS = ["sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
+GRUPOS_TODOS = ["marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
                 "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
@@ -348,6 +349,40 @@ async def x_funciona(pg):
     t = await pg.evaluate("document.querySelector('.env').innerText")
     confere("331" in t and "conservadora" in t and "Selo de confiança" in t and "não estão à venda" in t, "institucional · Como funciona mostra os números e as regras novas", t[:120])
 
+# 22/11 (Amanda): marco "Evoluir o produto na web". Aceite das regras antes do 1º comentário e bloqueio completo (só no modo de teste)
+async def g_marco(b):
+    ctx, pg, erros = await abre_contexto(b)
+    jim = "00000000-0000-4000-8000-000000000002"
+    try:
+        await entra(pg, teste=True); await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
+        await clica(pg, '[data-act="open"]', 1800)
+        await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste do marco")
+        await clica(pg, ".cnovo .cbt", 1200)
+        confere(await pg.locator(".rgbox li").count() == 5, "marco · regras aparecem antes do 1º comentário")
+        await clica(pg, '[data-act="regrasok"]', 2000)
+        confere(await pg.evaluate("document.body.innerText.includes('Comentário de teste do marco')"), "marco · depois do Concordo o comentário sai")
+        await pg.locator(".cnovo .ctxt").first.fill("Segundo comentário do marco")
+        await clica(pg, ".cnovo .cbt", 2000)
+        confere(await pg.locator(".rgbox").count() == 0, "marco · regras não voltam no 2º comentário")
+        await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        await clica(pg, '[data-act="pessoainfo"]', 800); await clica(pg, '#layer [data-act="bloqpede"]', 800)
+        confere(await folha(pg, "Bloquear"), "marco · confirmação de bloqueio abre")
+        await clica(pg, '#layer [data-act="bloqueia"]', 1500)
+        confere(await pg.evaluate("document.body.innerText.includes('Você bloqueou este perfil')"), "marco · perfil bloqueado mostra o aviso")
+        await pg.goto(BASE + "/?teste=1#inicio"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        confere(not await pg.evaluate("document.body.innerText.includes('Feira de trocas de sementes')"), "marco · publicação de quem foi bloqueado some do feed")
+        await pg.goto(BASE + "/?teste=1#config"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        await clica(pg, '[data-act="bloqueados"]', 1500)
+        confere(await pg.locator('#bloqlista [data-act="desbloqueia"]').count() == 1, "marco · Pessoas bloqueadas lista quem foi bloqueado")
+        await clica(pg, '#bloqlista [data-act="desbloqueia"]', 1200)
+        confere(await pg.locator('#bloqlista [data-act="desbloqueia"]').count() == 0, "marco · desbloquear tira da lista")
+        await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(800)
+        confere(not erros, "marco · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "marco · roteiro completo", str(e)[:200])
+    finally:
+        await ctx.close()
+
 async def g_instalavel(b):
     ctx, pg, erros = await abre_contexto(b)
     try:
@@ -470,6 +505,7 @@ async def main():
             await g_rota(b, "institucional", "#transparencia", x_funciona, teste=True)
         if "instalavel" in G: await g_instalavel(b)
         if "csat" in G: await g_csat(b)
+        if "marco" in G and OFFLINE: await g_marco(b)
         if "layout" in G:
             for w, escuro in ((390, True), (1280, False)):
                 await g_sempre(b, w, escuro, "layout"); await g_card(b, w, escuro, "layout")
