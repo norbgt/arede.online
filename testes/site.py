@@ -21,7 +21,7 @@ Grupos:
   publicar      formulário de publicar abre (sem enviar)
   rodape        rodapé da marca: contato e versão
   busca         busca responde
-  institucional Manifesto, Termos, Privacidade, Transparência (6 blocos e os números)
+  institucional Manifesto, Termos, Privacidade, Como funciona (11 regras e os números ao vivo)
   instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   layout        repete sempre + card no celular escuro e no computador
@@ -340,12 +340,13 @@ async def x_comunidades(pg):
 async def x_emalta(pg):
     confere(await pg.locator("main svg, main canvas, main .emvol, main .abars").count() >= 1, "emalta · gráfico aparece")
 
-# 21/11 (Amanda): Transparência, site instalável e CSAT semanal
-async def x_transparencia(pg):
+# 22/11 (Amanda): Transparência virou parte do Como funciona (números ao vivo e 11 regras); #transparencia leva para lá
+async def x_funciona(pg):
+    await pg.wait_for_function("location.hash === '#funciona' && document.querySelector('.env .enumg')", timeout=8000)
     n = await pg.locator(".env .erow").count()
-    confere(n == 6, "institucional · Transparência com 6 blocos", f"{n} blocos")
+    confere(n == 11, "institucional · Como funciona com 11 regras", f"{n} regras")
     t = await pg.evaluate("document.querySelector('.env').innerText")
-    confere("331 fontes" in t and "conservadora" in t and "progressista" in t, "institucional · Transparência mostra os números", t[:120])
+    confere("331" in t and "conservadora" in t and "Selo de confiança" in t and "não estão à venda" in t, "institucional · Como funciona mostra os números e as regras novas", t[:120])
 
 async def g_instalavel(b):
     ctx, pg, erros = await abre_contexto(b)
@@ -466,7 +467,7 @@ async def main():
         if "busca" in G: await g_busca(b)
         if "institucional" in G:
             for r in ["#manifesto", "#termos", "#privacidade"]: await g_rota(b, "institucional", r)
-            await g_rota(b, "institucional", "#transparencia", x_transparencia, teste=True)
+            await g_rota(b, "institucional", "#transparencia", x_funciona, teste=True)
         if "instalavel" in G: await g_instalavel(b)
         if "csat" in G: await g_csat(b)
         if "layout" in G:
