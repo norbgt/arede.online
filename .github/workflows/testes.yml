@@ -1,7 +1,7 @@
 name: Testes do site
 
 # A cada envio: testa a versão enviada (servida aqui mesmo, com os dados reais do Supabase).
-# Todo dia às 06h37 de Brasília: testa o site no ar (arede.online).
+# Todo dia às 06h37 de Brasília: testa o site no ar (arede.online), também logado com a conta de teste (chave TESTE_CHAVE nos segredos).
 # Sem custo: repositório público, o GitHub não cobra os minutos. O vigia lê o resultado e avisa no painel e por e-mail.
 on:
   push:
@@ -29,11 +29,14 @@ jobs:
       - name: Instala o navegador
         run: pip install -q playwright && python -m playwright install --with-deps chromium >/dev/null
       - name: Testa
+        env:
+          TESTE_CHAVE: ${{ github.event_name != 'push' && secrets.TESTE_CHAVE || '' }}
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then BASE=https://arede.online
           else python3 -m http.server 8080 >/dev/null 2>&1 & sleep 1; BASE=http://localhost:8080; fi
           echo "Testando $BASE"
-          python3 testes/site.py "$BASE"
+          if [ "${{ github.event_name }}" = "push" ]; then python3 testes/site.py "$BASE"
+          else python3 testes/site.py "$BASE" --grupos logado; fi
       - name: Guarda as telas e o resultado
         if: always()
         uses: actions/upload-artifact@v4

@@ -27,6 +27,7 @@ Grupos:
   resumo        resumo da semana e do mês, faixa de quem volta e Em alta por período (com --offline, modo de teste)
   marco         regras de conduta, bloquear pessoa, completar cadastro (Google) e o login novo (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
+  logado        conta de teste logada de verdade (só com TESTE_CHAVE; só lê, sem fotos da tela)
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
 
@@ -37,7 +38,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
-GRUPOS_TODOS = ["seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
+GRUPOS_TODOS = ["logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
                 "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
@@ -671,6 +672,44 @@ async def g_busca(b):
     finally:
         await ctx.close()
 
+async def g_logado(b):
+    """22/11: teste diário com a conta de teste (@jackie.disguise), logada de verdade no site.
+    Só roda com a chave TESTE_CHAVE no ambiente. Só lê: não cria, não envia, não segue ninguém.
+    Não tira foto da tela nem imprime e-mail ou token (o resultado do GitHub fica aberto)."""
+    chave = os.environ.get("TESTE_CHAVE", "")
+    if not chave: return avisa("logado", "sem TESTE_CHAVE, pulei o teste logado")
+    import urllib.request
+    try:
+        req = urllib.request.Request("https://zbmzabgdejylpmabujad.supabase.co/functions/v1/teste-sessao", data=b"{}", method="POST",
+                                     headers={"x-teste-chave": chave, "content-type": "application/json"})
+        sess = json.loads(urllib.request.urlopen(req, timeout=30).read())
+    except Exception as e:
+        return confere(False, "logado · abre a sessão da conta de teste", type(e).__name__)
+    confere(bool(sess.get("access_token")) and "email" not in json.dumps(sess.get("user", {})), "logado · abre a sessão da conta de teste, sem e-mail")
+    ctx = await b.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    await ctx.add_init_script("s => { try { if (!localStorage.getItem('sb-zbmzabgdejylpmabujad-auth-token')) localStorage.setItem('sb-zbmzabgdejylpmabujad-auth-token', s); } catch (e) {} }", json.dumps(sess))
+    pg = await ctx.new_page(); erros = []
+    pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
+    try:
+        await entra(pg)
+        await pg.goto(BASE + "/#perfil"); await pg.wait_for_timeout(3500); await fecha_folha(pg)
+        txt = await pg.evaluate("document.body.innerText")
+        confere("@jackie.disguise" in txt, "logado · Seu perfil mostra a conta de teste")
+        await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 2000)
+        confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "logado · Conexões abre com quem vê")
+        await pg.goto(BASE + "/#explorar"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        await pg.fill("#q", "rede"); await pg.wait_for_timeout(2500)
+        confere(await pg.locator('#expessoas a.rowitem').count() >= 1, "logado · Busca encontra pessoas pelo nome")
+        await pg.goto(BASE + "/#mensagens"); await pg.wait_for_timeout(2500); await fecha_folha(pg)
+        confere(await pg.locator('#mlist').count() == 1, "logado · Mensagens abre")
+        tudo = await pg.evaluate("document.documentElement.outerHTML")
+        outros = {m.lower() for m in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", tudo) if "@" in m} - EMAILS_OK
+        outros = {m for m in outros if not re.search(r"\.(png|jpe?g|webp|svg|js|css)$", m)}
+        confere(not outros, "logado · nenhum e-mail na tela", f"{len(outros)} encontrado(s)")
+        confere(not erros, "logado · sem erro de JavaScript", "; ".join(erros[:3]))
+    finally:
+        await ctx.close()
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
@@ -701,6 +740,7 @@ async def main():
         if "marco" in G and OFFLINE: await g_marco(b)
         if "resumo" in G and OFFLINE: await g_resumo(b)
         if "redes" in G and OFFLINE: await g_redes(b)
+        if "logado" in G and not OFFLINE: await g_logado(b)
         if "layout" in G:
             for w, escuro in ((390, True), (1280, False)):
                 await g_sempre(b, w, escuro, "layout"); await g_card(b, w, escuro, "layout")
