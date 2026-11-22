@@ -192,28 +192,40 @@ async function leAnilist(a: Alvo) {
 
 // 21/11 · xadrez: partidas recentes. Lichess (API aberta) e Chess.com (dados publicados, sem chave).
 const RITMO: Record<string, string> = { bullet: "bullet", blitz: "blitz", rapid: "rápida", classical: "clássica", daily: "por correspondência", correspondence: "por correspondência" };
+// 22/11 (Amanda): partidas com resultado, adversário e pontuação, ritmo, abertura e a posição final (FEN) para desenhar o tabuleiro.
+// Chess.com: a liga (quando o perfil público traz) e a pontuação de cada ritmo. Sem "valendo pontos".
+const LIGA: Record<string, string> = { wood: "Madeira", stone: "Pedra", bronze: "Bronze", silver: "Prata", crystal: "Cristal", elite: "Elite", champion: "Campeão", legend: "Lenda" };
+const FEN_OK = /^[pnbrqkPNBRQK1-8/]{15,90}\s[wb]\b/;
+const fen = (f: any) => (typeof f === "string" && FEN_OK.test(f.trim()) ? f.trim().split(" ").slice(0, 2).join(" ") : null);
+function controle(tc: any): string { const t = String(tc || ""); if (/^1\/\d+$/.test(t)) return Math.round(+t.split("/")[1] / 86400) + " dia(s) por lance";
+  const [b, inc] = t.split("+").map(Number); if (!isFinite(b)) return ""; const m = b >= 60 ? (b % 60 ? (b / 60).toFixed(1).replace(".", ",") : String(b / 60)) + " min" : b + " s"; return inc ? `${m} + ${inc} s` : m; }
+const abre = (n: any) => String(n || "").replace(/\s+/g, " ").replace(/\s*[:,]\s*$/, "").trim().slice(0, 80);
 function resultado(meu: string, outro: string, vencedor: string | null, empate: boolean) {
   return empate ? `Empatou com ${outro}` : vencedor === meu ? `Venceu ${outro}` : vencedor ? `Perdeu para ${outro}` : `Jogou contra ${outro}`;
 }
 async function leLichess(a: Alvo) {
   const p = await json(`https://lichess.org/api/user/${encodeURIComponent(a.usuario)}`); if (!p.ok || !p.d || p.d.disabled) return falha(p.status || 404);
-  const g = await get(`https://lichess.org/api/games/user/${encodeURIComponent(a.usuario)}?max=12&moves=false&opening=true`, false, { accept: "application/x-ndjson" });
+  const g = await get(`https://lichess.org/api/games/user/${encodeURIComponent(a.usuario)}?max=12&moves=false&opening=true&lastFen=true`, false, { accept: "application/x-ndjson" });
   const eu = String(p.d.username || a.usuario).toLowerCase();
   const itens = (g.ok ? g.txt.split("\n") : []).filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).map((x: any) => {
     const b = x.players?.white?.user?.name || "anônimo", w = x.players?.black?.user?.name || "anônimo";
     const minha = String(b).toLowerCase() === eu ? "white" : "black", outro = minha === "white" ? w : b;
     const empate = x.status === "draw" || x.status === "stalemate" || (!x.winner && x.status !== "started" && x.status !== "aborted");
+    const ven = x.winner ? (x.winner === minha ? "v" : "d") : empate ? "e" : "";
+    const ritmo = [RITMO[x.speed] || x.speed, x.clock ? controle(`${x.clock.initial}+${x.clock.increment}`) : ""].filter(Boolean).join(" · ");
     return { titulo: resultado(minha, outro, x.winner || null, empate), ano: "", url: `https://lichess.org/${x.id}`,
-      texto: [RITMO[x.speed] || x.speed, x.opening?.name, x.rated ? "valendo pontos" : ""].filter(Boolean).join(" · "), imagem: null,
-      data: iso(x.lastMoveAt || x.createdAt), tipo: "partida", nota: null, repost: false };
+      texto: [ritmo, abre(x.opening?.name)].filter(Boolean).join(" · "), imagem: null,
+      data: iso(x.lastMoveAt || x.createdAt), tipo: "partida", nota: null, repost: false,
+      xadrez: { res: ven, adv: outro, advRating: x.players?.[minha === "white" ? "black" : "white"]?.rating || null, meuRating: x.players?.[minha]?.rating || null,
+        ritmo, abertura: abre(x.opening?.name), fen: fen(x.lastFen ? x.lastFen + " w" : null), cor: minha === "white" ? "w" : "b" } };
   });
   const perfs = p.d.perfs || {}, melhor = ["blitz", "rapid", "bullet", "classical"].map((k) => [k, perfs[k]?.rating]).filter((x) => x[1]).sort((x: any, y: any) => y[1] - x[1])[0];
   return { rede: a.rede, usuario: p.d.username || a.usuario, perfil: a.perfil, nome: p.d.username || a.usuario, foto: null, itens,
-    resumo: melhor ? `Rating ${melhor[1]} em ${RITMO[melhor[0] as string] || melhor[0]}` : "" };
+    resumo: melhor ? `${melhor[1]} na ${RITMO[melhor[0] as string] || melhor[0]}` : "" };
 }
 async function leChesscom(a: Alvo) {
   const p = await json(`https://api.chess.com/pub/player/${a.usuario}`); if (!p.ok || !p.d) return falha(p.status || 404);
-  const ar = await json(`https://api.chess.com/pub/player/${a.usuario}/games/archives`);
+  const [ar, st] = await Promise.all([json(`https://api.chess.com/pub/player/${a.usuario}/games/archives`), json(`https://api.chess.com/pub/player/${a.usuario}/stats`)]);
   const ult = String((ar.d?.archives || []).slice(-1)[0] || "");
   const seguro = new RegExp(`^https://api\\.chess\\.com/pub/player/${a.usuario}/games/\\d{4}/\\d{2}$`, "i").test(ult);   // só o arquivo de partidas da própria pessoa
   const gs = seguro ? await json(ult) : { d: { games: [] } };
@@ -222,11 +234,18 @@ async function leChesscom(a: Alvo) {
     const r = String(eu?.result || ""), empate = /agreed|repetition|stalemate|insufficient|50move|timevsinsufficient/.test(r);
     const venc = r === "win" ? "eu" : empate ? null : "outro";
     const abertura = (String(x.eco || "").match(/openings\/([^/?#]+)/) || [])[1]?.replace(/-/g, " ") || "";
+    const ritmo = [RITMO[x.time_class] || x.time_class, controle(x.time_control)].filter(Boolean).join(" · ");
     return { titulo: resultado("eu", outro?.username || "alguém", venc, empate), ano: "", url: https(x.url) || a.perfil,
-      texto: [RITMO[x.time_class] || x.time_class, abertura, x.rated ? "valendo pontos" : ""].filter(Boolean).join(" · "), imagem: null,
-      data: iso((x.end_time || 0) * 1000), tipo: "partida", nota: null, repost: false };
+      texto: [ritmo, abre(abertura)].filter(Boolean).join(" · "), imagem: null,
+      data: iso((x.end_time || 0) * 1000), tipo: "partida", nota: null, repost: false,
+      xadrez: { res: venc === "eu" ? "v" : empate ? "e" : venc ? "d" : "", adv: outro?.username || "alguém", advRating: outro?.rating || null, meuRating: eu?.rating || null,
+        ritmo, abertura: abre(abertura), fen: fen(x.fen), cor: souBranco ? "w" : "b" } };
   });
-  return { rede: a.rede, usuario: p.d.username || a.usuario, perfil: https(p.d.url) || a.perfil, nome: p.d.name || p.d.username || a.usuario, foto: https(p.d.avatar), itens };
+  const S = st.d || {}, melhor = [["chess_rapid", "rápida"], ["chess_blitz", "blitz"], ["chess_bullet", "bullet"], ["chess_daily", "por correspondência"]]
+    .map(([k, n]) => [n, S[k]?.last?.rating]).filter((x) => x[1]).sort((x: any, y: any) => y[1] - x[1])[0];
+  const liga = LIGA[String(p.d.league || "").toLowerCase()] || "";
+  const resumo = [liga ? "Liga " + liga : "", melhor ? `${melhor[1]} na ${melhor[0]}` : ""].filter(Boolean).join(" · ");
+  return { rede: a.rede, usuario: p.d.username || a.usuario, perfil: https(p.d.url) || a.perfil, nome: p.d.name || p.d.username || a.usuario, foto: https(p.d.avatar), itens, resumo };
 }
 
 // 21/11 · Steam: jogos das últimas 2 semanas, com capa e horas. Precisa da chave gratuita da Steam (segredo STEAM_KEY)
