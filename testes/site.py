@@ -37,7 +37,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
-GRUPOS_TODOS = ["redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
+GRUPOS_TODOS = ["seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
                 "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
@@ -352,6 +352,48 @@ async def x_funciona(pg):
     confere("Selo de confiança" in t and "não estão à venda" in t and "pontos por notícia" not in t and "Em números" not in t, "institucional · Como funciona com as regras novas, sem números nem conta do histórico", t[:120])
 
 # 22/11 (Amanda): marco "Evoluir o produto na web". Aceite das regras antes do 1º comentário e bloqueio completo (só no modo de teste)
+async def g_seguir(b):
+    """22/11: seguir entre pessoas é pedido e aceite; topo com pílula, Compartilhar e ⋯; pastas editáveis e apagáveis."""
+    ctx, pg, erros = await abre_contexto(b)
+    jim, c3 = "00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"
+    pil = '.phacoes .topacao.pil'
+    try:
+        await entra(pg, teste=True); await pg.goto(BASE + "/?teste=1#org-u-" + c3); await pg.wait_for_timeout(2200); await fecha_folha(pg)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · pessoa mostra a pílula Seguir")
+        confere(await pg.locator('.phacoes [data-act="share"] + [data-act="topomais"]').count() == 1, "seguir · Compartilhar vem antes do ⋯")
+        await clica(pg, pil, 1500)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Pedido enviado", "seguir · tocar em Seguir envia o pedido")
+        await clica(pg, pil, 1500)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · tocar de novo cancela o pedido")
+        await pg.goto(BASE + "/?teste=1&v=2#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Aceitar", "seguir · quem pediu aparece com Aceitar")
+        await clica(pg, '.phacoes [data-act="topomais"]', 700)
+        confere(await pg.locator('#layer [data-act="topolink"]').count() == 1 and await pg.locator('#layer [data-act="segrecusa"]').count() == 1 and await pg.locator('#layer [data-act="bloqpede"]').count() == 1, "seguir · ⋯ tem Copiar link, Recusar e Bloquear")
+        await fecha_folha(pg)
+        await clica(pg, pil, 1500)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Seguindo", "seguir · aceitar cria o vínculo dos dois lados")
+        await clica(pg, pil, 700); await clica(pg, '#layer [data-act="segdesfaz"]', 1500)
+        confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · deixar de seguir desfaz o vínculo")
+        await pg.goto(BASE + "/?teste=1#alta"); await pg.wait_for_timeout(1500)
+        confere(await pg.locator('[data-act="altarec"]').count() == 0, "seguir · Em alta sem Atualizar")
+        # pastas: ⋯ no card abre editar; renomear e apagar ficam guardados
+        await pg.goto(BASE + "/?teste=1#perfil"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        await pg.evaluate("()=>{ const t = [...document.querySelectorAll('.tab')].find(x=>/Pastas|Salvos/.test(x.innerText)); t && t.click(); }"); await pg.wait_for_timeout(700)
+        confere(await pg.locator('.bmais[data-f="salvos"]').count() == 0, "pastas · Salvos não tem ⋯")
+        await clica(pg, '.bmais[data-f="ideias"]', 700)
+        confere(await folha(pg, "Editar pasta"), "pastas · ⋯ no card abre Editar pasta")
+        await pg.fill("#pastanome", "Ideias do bairro"); await clica(pg, '#layer [data-act="pastasalva"]', 800)
+        await pg.goto(BASE + "/?teste=1&v=3#perfil"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        await pg.evaluate("()=>{ const t = [...document.querySelectorAll('.tab')].find(x=>/Pastas|Salvos/.test(x.innerText)); t && t.click(); }"); await pg.wait_for_timeout(700)
+        confere(await pg.evaluate("document.body.innerText.includes('Ideias do bairro')"), "pastas · nome novo continua depois de recarregar")
+        await clica(pg, '.bmais[data-f="ideias"]', 700); await clica(pg, '#layer [data-act="pastaapaga"]', 400); await clica(pg, '#layer [data-act="pastaapaga"]', 900)
+        await pg.goto(BASE + "/?teste=1&v=4#perfil"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        await pg.evaluate("()=>{ const t = [...document.querySelectorAll('.tab')].find(x=>/Pastas|Salvos/.test(x.innerText)); t && t.click(); }"); await pg.wait_for_timeout(700)
+        confere(await pg.locator('.bmais[data-f="ideias"]').count() == 0 and await pg.locator('.bmais[data-f="leituras"]').count() == 1, "pastas · pasta apagada não volta depois de recarregar")
+    except Exception as e: confere(False, "seguir · erro: " + str(e)[:200])
+    confere(not erros, "seguir · sem erros de JS", "; ".join(erros[:3]))
+    await ctx.close()
+
 async def g_marco(b):
     ctx, pg, erros = await abre_contexto(b)
     jim = "00000000-0000-4000-8000-000000000002"
@@ -571,6 +613,7 @@ async def main():
             await g_rota(b, "institucional", "#transparencia", x_funciona, teste=True)
         if "instalavel" in G: await g_instalavel(b)
         if "csat" in G: await g_csat(b)
+        if "seguir" in G and OFFLINE: await g_seguir(b)
         if "marco" in G and OFFLINE: await g_marco(b)
         if "resumo" in G and OFFLINE: await g_resumo(b)
         if "redes" in G and OFFLINE: await g_redes(b)
