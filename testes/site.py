@@ -18,6 +18,7 @@ Grupos:
   emalta        Em alta com o gráfico
   config        Configurações › Seu feed
   primeiro      primeiro acesso: idioma e país
+  boasvindas    boas-vindas de quem chega sem conta: 4 passos, depois idioma; por link direto, a faixa
   publicar      formulário de publicar abre (sem enviar)
   rodape        rodapé da marca: contato e versão
   busca         busca responde
@@ -39,7 +40,7 @@ from playwright.async_api import async_playwright
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
 GRUPOS_TODOS = ["logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
-                "emalta", "config", "primeiro", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
+                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
 for x in GRUPOS:
@@ -678,12 +679,43 @@ async def g_primeiro(b):
     ctx, pg, erros = await abre_contexto(b)
     try:
         await pg.goto(BASE + "/#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(1500)
+        if await pg.locator("#bvbox").count():   # no site de verdade, quem chega sem conta vê as boas-vindas antes do idioma
+            for _ in range(3): await pg.locator('#bvbox [data-act="bvvai"].primary').evaluate("e=>e.click()"); await pg.wait_for_timeout(300)
+            await pg.locator('#bvbox [data-act="bvexplora"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1500)
         c = pg.locator("#layer button", has_text="Continuar")
         confere(await c.count() >= 1, f"{nome} · escolha de idioma e país aparece")
         confere(await pg.locator("#layer select").count() >= 1, f"{nome} · escolha de país")
         if await c.count():
             await c.first.click(); await pg.wait_for_timeout(800)
             confere(await pg.locator("#layer button", has_text="Continuar").count() == 0, f"{nome} · Continuar fecha")
+        confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, f"{nome} · roteiro completo", str(e)[:200])
+    finally:
+        await ctx.close()
+
+async def g_boasvindas(b):
+    """23/11: quem chega sem conta vê as boas-vindas (o que a rede faz e o que a diferencia) antes do idioma; por link direto, a faixa."""
+    nome = "boasvindas"
+    ctx, pg, erros = await abre_contexto(b)
+    try:
+        await pg.goto(BASE + "/?real=1#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(6000)
+        confere(await pg.locator("#bvbox").count() == 1, f"{nome} · primeira visita sem conta abre as boas-vindas")
+        tit = []
+        for i in range(4):
+            tit.append(await pg.evaluate("(document.querySelector('#bvbox .tut-t')||{}).innerText || ''"))
+            if i < 3: await pg.locator('#bvbox [data-act="bvvai"].primary').evaluate("e=>e.click()"); await pg.wait_for_timeout(300)
+        confere(tit[0].startswith("Saia da bolha") and "algoritmo" in tit[1] and len(set(tit)) == 4, f"{nome} · quatro passos, do Saia da bolha ao participar", " | ".join(tit))
+        confere(await pg.locator('#bvbox [data-act="bvconta"]').count() == 1 and await pg.locator('#bvbox [data-act="bvexplora"]').count() == 1, f"{nome} · último passo: Criar conta e Explorar")
+        await pg.locator('#bvbox [data-act="bvexplora"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1600)
+        confere(await pg.locator("#layer button", has_text="Continuar").count() >= 1, f"{nome} · depois vem a escolha de idioma e país")
+        await pg.goto(BASE + "/?real=1#inicio"); await pg.wait_for_timeout(5000)
+        confere(await pg.locator("#bvbox").count() == 0, f"{nome} · não volta na segunda visita")
+        await ctx.close(); ctx, pg, erros2 = await abre_contexto(b); erros += erros2
+        await pg.goto(BASE + "/?real=1#transparencia", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(6000)
+        confere(await pg.locator("#bvbar").count() == 1 and await pg.locator("#bvbox").count() == 0, f"{nome} · por link direto, a faixa Primeira vez aqui? sem interromper")
+        await pg.locator('#bvbar [data-act="bvabre"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(800)
+        confere(await pg.locator("#bvbox").count() == 1 and await pg.locator("#bvbar").count() == 0, f"{nome} · Conhecer abre os mesmos passos")
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
@@ -778,6 +810,7 @@ async def main():
         if "emalta" in G: await g_rota(b, "emalta", "#em-alta", x_emalta)
         if "config" in G: await g_rota(b, "config", "#config", x_config, teste=True)
         if "primeiro" in G: await g_primeiro(b)
+        if "boasvindas" in G: await g_boasvindas(b)
         if "publicar" in G: await g_rota(b, "publicar", "#inicio", x_publicar, teste=True)
         if "rodape" in G: await g_rota(b, "rodape", "#inicio", x_rodape)
         if "busca" in G: await g_busca(b)
