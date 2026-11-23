@@ -359,12 +359,13 @@ async def g_seguir(b):
     """22/11: seguir entre pessoas é pedido e aceite; topo com pílula, Compartilhar e ⋯; pastas editáveis e apagáveis."""
     ctx, pg, erros = await abre_contexto(b)
     jim, c3 = "00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"
-    pil = '.phacoes .topacao.pil'
+    pil = '.phd .pfacoes .btn:first-child'
     try:
         await entra(pg, teste=True); await pg.goto(BASE + "/?teste=1#org-u-" + c3); await pg.wait_for_timeout(2200); await fecha_folha(pg)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · pessoa mostra a pílula Seguir")
-        confere(await pg.locator('.phacoes .topacao.pil + [data-act="topomais"] + .topfixo').count() == 1, "seguir · topo: pílula, ⋯ e, na ponta, Mensagens e Notificações")
-        confere(await pg.locator('.phacoes > [data-act="share"]').count() == 0, "seguir · Compartilhar fica dentro do ⋯")
+        confere(await pg.locator('.phacoes > [data-act="topomais"] + .topfixo').count() == 1 and await pg.locator('.phacoes .topacao.pil').count() == 0, "seguir · topo: só o ⋯ e, na ponta, o sino")
+        confere(await pg.locator('.phd .pfacoes [data-act="msgcom"] + .pfshare[data-act="share"]').count() == 1, "seguir · Seguir, Mensagem e Compartilhar numa linha só, abaixo do nome")
+        confere(await pg.locator('#topconta a').count() == 1, "seguir · mensagens e notificações num ícone só")
         await clica(pg, pil, 1500)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Pedido enviado", "seguir · tocar em Seguir envia o pedido")
         await clica(pg, pil, 1500)
@@ -449,10 +450,12 @@ async def g_seguir(b):
         confere(await pg.evaluate("(document.querySelector('.stravabox iframe')||{}).src || ''") == "https://strava-embeds.com/activity/1234567890", "strava · ao tocar, abre o quadro oficial do Strava")
         # 22/11: mensagens entre pessoas (pedido) e atendimento da página com respostas prontas
         await pg.goto(BASE + "/?teste=1&v=12#inicio"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
-        confere(await pg.locator('#topconta a[href="#mensagens"] .ncount').count() == 1, "mensagens · ícone no topo conta a conversa nova da página")
+        confere(await pg.locator('#topconta a[href="#notificacoes"] .ncount').count() == 1, "mensagens · o sino conta a conversa nova da página")
+        await pg.goto(BASE + "/?teste=1&v=12b#notificacoes"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        confere(await pg.locator('.nfil a[href="#mensagens"] .rdn').count() == 1, "mensagens · em Notificações, a pílula Mensagens mostra a conversa nova")
         await pg.goto(BASE + "/?teste=1&v=13#org-u-" + c3); await pg.wait_for_timeout(2000); await fecha_folha(pg)
-        await clica(pg, '.phacoes [data-act="topomais"]', 700); await clica(pg, '#layer [data-act="msgcom"]', 1500)
-        confere("msg-" in pg.url and await pg.locator('#msgtx2').count() == 1 and await pg.locator('#layer .maislist').count() == 0, "mensagens · Mandar mensagem, no ⋯, abre a conversa e fecha a folha", pg.url)
+        await clica(pg, '.pfacoes [data-act="msgcom"]', 1500)
+        confere("msg-" in pg.url and await pg.locator('#msgtx2').count() == 1, "mensagens · o botão Mensagem, abaixo do nome, abre a conversa", pg.url)
         confere(await pg.evaluate("document.body.innerText.includes('a mensagem chega como pedido')"), "mensagens · sem vínculo, avisa que é pedido")
         await pg.fill("#msgtx2", "Oi, tudo bem?"); await clica(pg, '[data-act="msgmanda"]', 1200)
         confere(await pg.locator('#msgsbox .bolha.eu').count() == 1, "mensagens · a mensagem enviada aparece")
