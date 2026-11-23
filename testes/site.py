@@ -99,7 +99,7 @@ async def abre_card_com_selo(pg, teste=False, contestar=False):
     n = await pg.locator('[data-act="open"], [data-act="topen"]').count(); achou = False
     for i in range(min(n, 12)):
         await entra(pg, teste); await pg.wait_for_timeout(300)
-        await pg.locator('[data-act="open"], [data-act="topen"]').nth(i).click(); await pg.wait_for_timeout(1100)
+        await pg.locator('[data-act="open"], [data-act="topen"]').nth(i).evaluate("e => e.click()"); await pg.wait_for_timeout(1100)   # 23/11: clique direto (o topo fixo cobria o card ao rolar)
         if await pg.locator(".pinseal .sealbox").count():
             achou = True
             if not contestar or await pg.locator('.pinseal [data-act="contestar"], .pinseal [data-act="contest"]').count(): return True
@@ -348,7 +348,7 @@ async def x_emalta(pg):
 
 # 22/11 (Amanda): Transparência virou parte do Como funciona (11 regras, sem a faixa de números); #transparencia leva para lá
 async def x_funciona(pg):
-    await pg.wait_for_function("location.hash === '#funciona' && document.querySelector('.env .erow')", timeout=8000)
+    await pg.wait_for_function("(location.hash === '#funciona' || location.pathname === '/funciona') && document.querySelector('.env .erow')", timeout=8000)   # 23/11: endereço limpo
     n = await pg.locator(".env .erow").count()
     confere(n == 11, "institucional · Como funciona com 11 regras", f"{n} regras")
     t = await pg.evaluate("document.querySelector('.env').innerText")
@@ -452,7 +452,7 @@ async def g_seguir(b):
         confere(await pg.locator('#topconta a[href="#mensagens"] .ncount').count() == 1, "mensagens · ícone no topo conta a conversa nova da página")
         await pg.goto(BASE + "/?teste=1&v=13#org-u-" + c3); await pg.wait_for_timeout(2000); await fecha_folha(pg)
         await clica(pg, '.phacoes [data-act="topomais"]', 700); await clica(pg, '#layer [data-act="msgcom"]', 1500)
-        confere("#msg-" in pg.url and await pg.locator('#msgtx2').count() == 1 and await pg.locator('#layer .maislist').count() == 0, "mensagens · Mandar mensagem, no ⋯, abre a conversa e fecha a folha", pg.url)
+        confere("msg-" in pg.url and await pg.locator('#msgtx2').count() == 1 and await pg.locator('#layer .maislist').count() == 0, "mensagens · Mandar mensagem, no ⋯, abre a conversa e fecha a folha", pg.url)
         confere(await pg.evaluate("document.body.innerText.includes('a mensagem chega como pedido')"), "mensagens · sem vínculo, avisa que é pedido")
         await pg.fill("#msgtx2", "Oi, tudo bem?"); await clica(pg, '[data-act="msgmanda"]', 1200)
         confere(await pg.locator('#msgsbox .bolha.eu').count() == 1, "mensagens · a mensagem enviada aparece")
