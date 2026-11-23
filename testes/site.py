@@ -22,7 +22,7 @@ Grupos:
   rodape        rodapé da marca: contato e versão
   busca         busca responde
   institucional Manifesto, Termos, Privacidade, Como funciona (11 regras)
-  instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações sem "Fora do site" enquanto estiver desligado
+  instalavel    site instalável: manifesto, ícones e trabalhador no ar; Notificações com o resumo por e-mail (só com o "sim" da pessoa) e sem avisos no celular enquanto estiver desligado
   redes         redes conectadas: prévia antes de conectar e xadrez com tabuleiro (com --offline, modo de teste)
   resumo        resumo da semana e do mês, faixa de quem volta e Em alta por período (com --offline, modo de teste)
   marco         regras de conduta, bloquear pessoa, completar cadastro (Google) e o login novo (com --offline, modo de teste)
@@ -614,10 +614,12 @@ async def g_instalavel(b):
         await pg.goto(BASE + "/?teste=1#notificacoes"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
         await pg.evaluate("location.hash='#inicio'"); await pg.wait_for_timeout(400); await pg.evaluate("location.hash='#notificacoes'"); await pg.wait_for_timeout(1200)
         conv = await pg.evaluate("(document.querySelector('#nconvite') || {}).innerText || ''")
-        confere(conv.strip() == "", "instalavel · sem convite do resumo enquanto estiver desligado", conv[:80])
+        confere("Receber o resumo da semana?" in conv and "celular" not in conv and await pg.locator('#nconvite [data-act="resumosim"]').count() == 1 and await pg.locator('#nconvite [data-act="resumonao"]').count() == 1,
+                "instalavel · convite do resumo pergunta antes (Quero receber / Agora não), sem falar de celular", conv[:80])
         await clica(pg, '[data-act="notifprefs"]', 1200)
-        fora = await pg.locator("#layer .sheet", has_text="Fora do site").count()
-        confere(fora == 0, "instalavel · Notificações sem \"Fora do site\" enquanto estiver desligado")
+        sw = await pg.evaluate("[...document.querySelectorAll('#layer [data-act=resumopref], #layer [data-act=resumomensal]')].map(b=>b.getAttribute('aria-checked'))")
+        confere(sw == ["false", "false"], "instalavel · resumos por e-mail aparecem desligados até a pessoa ligar", str(sw))
+        confere(await pg.locator('#layer [data-act="pushpref"]').count() == 0, "instalavel · sem avisos no celular enquanto estiver desligado")
         confere(not erros, "instalavel · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, "instalavel · roteiro completo", str(e)[:200])
