@@ -540,6 +540,12 @@ async def g_marco(b):
         confere(await pg.locator('#tutbox [data-act="tutfim"]').count() == 1 and await pg.locator('#tutbox .pfcheck li').count() == 6, "marco · boas-vindas em 5 passos, o último com o que falta no perfil")
         await clica(pg, '#tutbox [data-act="tutfim"]', 700)
         confere(await pg.locator(".cadcomp").count() == 0, "marco · depois de concluir, a conta funciona", await pg.evaluate("[location.hash, (document.querySelector('.ferr:not([hidden])')||{}).innerText, document.querySelector('#knasc') && document.querySelector('#knasc').value, document.querySelector('#kok') && document.querySelector('#kok').checked, document.body.innerText.slice(0,200)].join(' | ')"))
+        # 23/11: conta nova (até 3 dias) que confirmou o e-mail em outro aparelho vê as boas-vindas na primeira visita, uma vez só
+        await pg.evaluate("()=>{ const db = JSON.parse(localStorage.getItem('arede-teste-db')); (db.t.perfis || []).forEach(x=>{ if (String(x.id).endsWith('000000000001')) x.criado_em = new Date().toISOString(); }); localStorage.setItem('arede-teste-db', JSON.stringify(db)); Object.keys(localStorage).filter(k=>/tutVisto/.test(k)).forEach(k=>localStorage.removeItem(k)); }")
+        await pg.goto(BASE + "/?teste=1#inicio"); await pg.wait_for_timeout(5000)
+        confere(await folha(pg, "Primeiros passos"), "marco · conta nova vê as boas-vindas na primeira visita, mesmo sem voltar pelo link do e-mail")
+        await fecha_folha(pg); await pg.goto(BASE + "/?teste=1#inicio"); await pg.wait_for_timeout(4000)
+        confere(not await folha(pg, "Primeiros passos"), "marco · as boas-vindas não voltam depois de vistas")
         await pg.goto(BASE + "/?teste=1&cad=1#config"); await pg.wait_for_timeout(1200); await fecha_folha(pg)
         await pg.evaluate("document.querySelector('main [data-act=sair]') && document.querySelector('main [data-act=sair]').click()"); await pg.wait_for_timeout(1500)
         await pg.goto(BASE + "/?teste=1#conta"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
