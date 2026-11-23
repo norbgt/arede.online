@@ -363,7 +363,8 @@ async def g_seguir(b):
     try:
         await entra(pg, teste=True); await pg.goto(BASE + "/?teste=1#org-u-" + c3); await pg.wait_for_timeout(2200); await fecha_folha(pg)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · pessoa mostra a pílula Seguir")
-        confere(await pg.locator('.phacoes [data-act="share"] + [data-act="topomais"]').count() == 1, "seguir · Compartilhar vem antes do ⋯")
+        confere(await pg.locator('.phacoes .topacao.pil + [data-act="topomais"] + .topfixo').count() == 1, "seguir · topo: pílula, ⋯ e, na ponta, Mensagens e Notificações")
+        confere(await pg.locator('.phacoes > [data-act="share"]').count() == 0, "seguir · Compartilhar fica dentro do ⋯")
         await clica(pg, pil, 1500)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Pedido enviado", "seguir · tocar em Seguir envia o pedido")
         await clica(pg, pil, 1500)
@@ -450,8 +451,8 @@ async def g_seguir(b):
         await pg.goto(BASE + "/?teste=1&v=12#inicio"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
         confere(await pg.locator('#topconta a[href="#mensagens"] .ncount').count() == 1, "mensagens · ícone no topo conta a conversa nova da página")
         await pg.goto(BASE + "/?teste=1&v=13#org-u-" + c3); await pg.wait_for_timeout(2000); await fecha_folha(pg)
-        await clica(pg, '.phacoes [data-act="msgcom"]', 1500)
-        confere("#msg-" in pg.url and await pg.locator('#msgtx2').count() == 1, "mensagens · botão Mensagem abre a conversa", pg.url)
+        await clica(pg, '.phacoes [data-act="topomais"]', 700); await clica(pg, '#layer [data-act="msgcom"]', 1500)
+        confere("#msg-" in pg.url and await pg.locator('#msgtx2').count() == 1 and await pg.locator('#layer .maislist').count() == 0, "mensagens · Mandar mensagem, no ⋯, abre a conversa e fecha a folha", pg.url)
         confere(await pg.evaluate("document.body.innerText.includes('a mensagem chega como pedido')"), "mensagens · sem vínculo, avisa que é pedido")
         await pg.fill("#msgtx2", "Oi, tudo bem?"); await clica(pg, '[data-act="msgmanda"]', 1200)
         confere(await pg.locator('#msgsbox .bolha.eu').count() == 1, "mensagens · a mensagem enviada aparece")
@@ -473,7 +474,7 @@ async def g_seguir(b):
         await pg.fill("#rptxt", "Atendemos de terça a domingo."); await clica(pg, '#layer [data-act="msgrespnova"]', 900)
         confere(await pg.evaluate("document.querySelector('#layer .sheet') && document.querySelector('#layer .sheet').innerText.includes('terça a domingo')"), "mensagens · resposta pronta pode ser editada")
         await fecha_folha(pg); await pg.goto(BASE + "/?teste=1&v=40#pg-00000000-0000-4000-8000-0000000000ad"); await pg.wait_for_timeout(1800); await fecha_folha(pg)
-        await pg.evaluate("()=>{ const b = [...document.querySelectorAll('main [data-act]')].find(x=>/paginaedita|pgedita/.test(x.dataset.act)); b && b.click(); }"); await pg.wait_for_timeout(800)
+        await clica(pg, '.phacoes [data-act="topomais"]', 700); await clica(pg, '#layer [data-act="paginaedita"]', 800)   # 23/11: Editar página fica no ⋯
         if await pg.locator('#layer [data-act="equipe"]').count():
             await clica(pg, '#layer [data-act="equipe"]', 900); await pg.fill("#equsu", "@caio_teste"); await clica(pg, '#layer [data-act="equipepoe"]', 1000)
             confere(await pg.evaluate("document.querySelector('#layer .sheet').innerText.includes('@caio_teste')"), "equipe · a dona põe alguém pelo @")
