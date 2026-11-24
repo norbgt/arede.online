@@ -214,6 +214,15 @@ async def g_fontes(b):
         confere(await pg.locator('#layer #origordem').count() == 0 and await pg.locator('#layer [data-act="sugfonte"]').count() == 0, f"{nome} · Países e línguas só com idiomas e país")
         confere(await pg.locator("#layer .sheet select").count() >= 1, f"{nome} · Países e línguas abre com a escolha de país")
         confere(await pg.locator("#layer .sheet .aclist button").count() >= 2, f"{nome} · idiomas em etiquetas")
+        # 24/11: convite para sugerir fontes, uma vez só, depois do convite dos temas leves
+        await pg.evaluate("()=>{ localStorage.setItem('arede-levesConvite', '1'); localStorage.removeItem('arede-fontesConvite'); }")
+        await pg.goto(BASE + "/#inicio"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        tem = await pg.locator("#fontesconv").count()
+        txt = (await pg.locator("#fontesconv").inner_text()) if tem else ""
+        confere(tem == 1 and "Sugira fontes confiáveis" in txt, f"{nome} · convite para sugerir fontes aparece", txt[:80])
+        if tem: await pg.locator('#fontesconv [data-act="fontesconvfecha"]').evaluate("e => e.click()"); await pg.wait_for_timeout(300)
+        await pg.goto(BASE + "/#inicio"); await pg.wait_for_timeout(1200)
+        confere(await pg.locator("#fontesconv").count() == 0, f"{nome} · convite some depois de fechar")
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
