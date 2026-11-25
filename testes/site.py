@@ -19,7 +19,7 @@ Grupos:
   emalta        Em alta com o gráfico
   config        Configurações › Seu feed
   primeiro      primeiro acesso: idioma e país
-  boasvindas    boas-vindas de quem chega sem conta: 4 passos, depois idioma; por link direto, a faixa
+  boasvindas    boas-vindas de quem chega sem conta: 5 passos até 31/12 (o último, dos convites), depois idioma; por link direto, a faixa
   publicar      formulário de publicar abre (sem enviar)
   rodape        rodapé da marca: contato e versão
   busca         busca responde
@@ -729,11 +729,13 @@ async def g_boasvindas(b):
     try:
         await pg.goto(BASE + "/?real=1#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(6000)
         confere(await pg.locator("#bvbox").count() == 1, f"{nome} · primeira visita sem conta abre as boas-vindas")
-        tit = []
-        for i in range(4):
+        tit = []; npas = await pg.locator("#bvbox .tutdots i").count()   # 25/11: 5 passos até 31/12/2026 (o 5º é o dos convites), 4 depois
+        for i in range(npas):
             tit.append(await pg.evaluate("(document.querySelector('#bvbox .tut-t')||{}).innerText || ''"))
-            if i < 3: await pg.locator('#bvbox [data-act="bvvai"].primary').evaluate("e=>e.click()"); await pg.wait_for_timeout(300)
-        confere(tit[0].startswith("Saia da bolha") and "algoritmo" in tit[1] and len(set(tit)) == 4, f"{nome} · quatro passos, do Saia da bolha ao participar", " | ".join(tit))
+            if i < npas - 1: await pg.locator('#bvbox [data-act="bvvai"].primary').evaluate("e=>e.click()"); await pg.wait_for_timeout(300)
+        import datetime as _dt
+        conv = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-3))) < _dt.datetime(2027, 1, 1, tzinfo=_dt.timezone(_dt.timedelta(hours=-3)))
+        confere(npas == (5 if conv else 4) and tit[0].startswith("Saia da bolha") and "algoritmo" in tit[1] and len(set(tit)) == npas and (not conv or "Convites ilimitados" in tit[-1]), f"{nome} · {npas} passos, do Saia da bolha {'aos convites' if conv else 'ao participar'}", " | ".join(tit))
         confere(await pg.locator('#bvbox [data-act="bvconta"]').count() == 1 and await pg.locator('#bvbox [data-act="bvexplora"]').count() == 1, f"{nome} · último passo: Criar conta e Explorar")
         await pg.locator('#bvbox [data-act="bvexplora"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1600)
         confere(await pg.locator("#layer button", has_text="Continuar").count() >= 1, f"{nome} · depois vem a escolha de idioma e país")
