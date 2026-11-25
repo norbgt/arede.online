@@ -429,7 +429,8 @@ const SUF2 = /\.(com|org|gov|net|jus|leg|mp|edu|jor|art|blog|eco|co|gob|ac|or|ne
 const raiz = (h: string) => { h = h.toLowerCase().replace(/^www\./, ""); const p = h.split("."); return p.slice(SUF2.test(h) ? -3 : -2).join("."); };
 const doSite = (u: string, dominio: string) => {
   let h = ""; try { const x = new URL(u); if (x.protocol !== "https:" && x.protocol !== "http:") return false; h = x.hostname.toLowerCase(); } catch { return false; }
-  const d = dominio.split("/")[0].toLowerCase(), ok = [raiz(d), ...(IRMAOS[d] || []), ...(IRMAOS[d.replace(/^www\./, "")] || [])];
+  if (!dominio) return true;   // fonte sem domínio cadastrado: segue como antes (não derruba a coleta)
+  const d = String(dominio).split("/")[0].toLowerCase(), ok = [raiz(d), ...(IRMAOS[d] || []), ...(IRMAOS[d.replace(/^www\./, "")] || [])];
   return ok.some((r) => h === r || h.endsWith("." + r));
 };
 async function coleta(f: any) {
@@ -556,7 +557,7 @@ Deno.serve(async (req) => {
   }
   await taxonomia();
   // 21/11 (performance): na coleta, só as colunas que ela usa (antes vinham todas as colunas de todas as fontes a cada rodada)
-  const { data: todas } = await SB.from("fontes").select(modo === "descobrir" ? "*" : "id,feed_url,feed_tipo,lingua,nota,feed_hash,ultima_coleta,ultimo_erro").eq("ativa", true).order("id");
+  const { data: todas } = await SB.from("fontes").select(modo === "descobrir" ? "*" : "id,dominio,feed_url,feed_tipo,lingua,nota,feed_hash,ultima_coleta,ultimo_erro").eq("ativa", true).order("id");
   const fontes = (todas || []).filter((f: any, i: number) => i % LOTES === lote);
   const agora = new Date().toISOString(), rel: any[] = [];
   if (modo === "descobrir") {
