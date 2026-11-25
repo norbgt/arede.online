@@ -565,8 +565,9 @@ async def g_marco(b):
         await pg.wait_for_function("!document.querySelector('[data-act=cadcompleta]').disabled", timeout=5000)
         await pg.click('[data-act="cadcompleta"]'); await pg.wait_for_timeout(2500)
         confere(await folha(pg, "Primeiros passos"), "marco · depois de completar o cadastro, as boas-vindas abrem")
-        for _ in range(4): await clica(pg, '#tutbox [data-act="tutvai"].primary', 500)
-        confere(await pg.locator('#tutbox [data-act="tutfim"]').count() == 1 and await pg.locator('#tutbox .pfcheck li').count() == 6, "marco · boas-vindas em 5 passos, o último com o que falta no perfil")
+        npas = await pg.locator("#tutbox .tutdots i").count()   # 25/11: 6 passos até 31/12/2026 (o 4º é o dos convites), 5 depois
+        for _ in range(npas - 1): await clica(pg, '#tutbox [data-act="tutvai"].primary', 500)
+        confere(npas in (5, 6) and await pg.locator('#tutbox [data-act="tutfim"]').count() == 1 and await pg.locator('#tutbox .pfcheck li').count() == 6, f"marco · boas-vindas em {npas} passos, o último com o que falta no perfil")
         await clica(pg, '#tutbox [data-act="tutfim"]', 700)
         confere(await pg.locator(".cadcomp").count() == 0, "marco · depois de concluir, a conta funciona", await pg.evaluate("[location.hash, (document.querySelector('.ferr:not([hidden])')||{}).innerText, document.querySelector('#knasc') && document.querySelector('#knasc').value, document.querySelector('#kok') && document.querySelector('#kok').checked, document.body.innerText.slice(0,200)].join(' | ')"))
         # 23/11: conta nova (até 3 dias) que confirmou o e-mail em outro aparelho vê as boas-vindas na primeira visita, uma vez só
