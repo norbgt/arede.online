@@ -381,11 +381,11 @@ async def g_seguir(b):
         await clica(pg, pil, 1500)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · tocar de novo cancela o pedido")
         await pg.goto(BASE + "/?teste=1&v=2#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
-        confere((await pg.locator(pil).first.inner_text()).strip() == "Aceitar", "seguir · quem pediu aparece com Aceitar")
+        confere(await pg.locator('.segped [data-act="segaceita"]').count() == 1 and await pg.locator('.segped [data-act="segrecusa"]').count() == 1, "seguir · quem pediu aparece com Aceitar e Recusar")   # 25/11: faixa no perfil
         await clica(pg, '.phacoes [data-act="topomais"]', 700)
         confere(await pg.locator('#layer [data-act="topolink"]').count() == 1 and await pg.locator('#layer [data-act="segrecusa"]').count() == 1 and await pg.locator('#layer [data-act="bloqpede"]').count() == 1, "seguir · ⋯ tem Copiar link, Recusar e Bloquear")
         await fecha_folha(pg)
-        await clica(pg, pil, 1500)
+        await clica(pg, '.segped [data-act="segaceita"]', 1500)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Seguindo", "seguir · aceitar cria o vínculo dos dois lados")
         await clica(pg, pil, 700); await clica(pg, '#layer [data-act="segdesfaz"]', 1500)
         confere((await pg.locator(pil).first.inner_text()).strip() == "Seguir", "seguir · deixar de seguir desfaz o vínculo")
