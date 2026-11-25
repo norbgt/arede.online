@@ -1,0 +1,53 @@
+// arede.online · ESPERA-CONVIDA: manda convites para a lista de espera, pelo Brevo, como contato@arede.online.
+// 25/11 (Amanda): a partir de 1/1/2027 a rede cresce por convite. Quem chama: o painel, com a sessão de quem administra
+// (papel e duas etapas conferidos no banco, bo_espera_autoriza). Os e-mails só passam por aqui: o painel nunca os recebe.
+// Enviado: o e-mail sai da lista. Falhou: volta para a fila. Cada convite vale para uma pessoa.
+// Segredo usado: BREVO_API_KEY. POST {n}
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const URL_SB = Deno.env.get("SUPABASE_URL")!;
+const CHAVE_PUBLICA = Deno.env.get("SUPABASE_ANON_KEY") || "sb_publishable_GZXwglA_bRngXUSD-BWfLQ_hawYSnLD";
+const ADMIN = createClient(URL_SB, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+const PAINEL = "https://painel.arede.online";
+const REMETENTE = { name: "arede.online", email: "contato@arede.online" };
+const cab = (origem: string) => ({ "access-control-allow-origin": origem === PAINEL ? origem : PAINEL,
+  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info", "access-control-allow-methods": "POST, OPTIONS",
+  "vary": "origin", "cache-control": "no-store", "content-type": "application/json; charset=utf-8" });
+
+Deno.serve(async (req: Request) => {
+  const H = cab(req.headers.get("origin") || "");
+  const resp = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status, headers: H });
+  if (req.method === "OPTIONS") return new Response(null, { headers: H });
+  if (req.method !== "POST") return resp({ erro: "método não aceito" }, 405);
+  const auth = req.headers.get("authorization") || "";
+  if (!/^Bearer\s+\S+/.test(auth)) return resp({ erro: "sem_acesso" }, 401);
+  let d: Record<string, unknown>;
+  try { d = await req.json(); } catch (_e) { return resp({ erro: "pedido inválido" }, 400); }
+  const eu = createClient(URL_SB, CHAVE_PUBLICA, { auth: { persistSession: false }, global: { headers: { Authorization: auth } } });
+  const { data: ok, error: e1 } = await eu.rpc("bo_espera_autoriza", { p_n: Number(d.n) || 0 });
+  if (e1 || !ok) return resp({ erro: (e1 && e1.message) || "sem_acesso" }, 403);
+  const chave = Deno.env.get("BREVO_API_KEY");
+  if (!chave) return resp({ erro: "o envio ainda não está configurado (falta a chave do Brevo)" }, 503);
+  const { data: lista, error: e2 } = await ADMIN.rpc("bo_espera_prepara", { p_n: ok.n });
+  if (e2) return resp({ erro: "não foi possível separar a lista" }, 500);
+  let enviados = 0, falhas = 0;
+  for (const p of (lista || []) as { id: number; email: string; codigo: string }[]) {
+    const link = `https://arede.online/convite/${p.codigo}`;
+    const texto = `Abriu uma vaga para você na rede.online.\n\nCrie sua conta por este link de convite:\n${link}\n\nO convite vale para uma pessoa. Se não foi você que pediu, é só ignorar este e-mail.\n\n—\narede.online · contato@arede.online`;
+    const html = `<!DOCTYPE html><html lang="pt-BR"><body style="margin:0;padding:24px;background:#fff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#141615">
+<p style="margin:0 0 14px;font-size:20px;font-weight:700">Abriu uma vaga para você na rede.online.</p>
+<p style="margin:0 0 18px">Crie sua conta por este link de convite:</p>
+<p style="margin:0 0 18px"><a href="${link}" style="display:inline-block;background:#8D9BFF;color:#0F1110;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:999px">Criar minha conta</a></p>
+<p style="margin:0 0 14px;color:#565C58;font-size:13px">O convite vale para uma pessoa. Se não foi você que pediu, é só ignorar este e-mail.</p>
+<p style="margin:18px 0 0;color:#565C58;font-size:13px">— arede.online · <a href="https://arede.online" style="color:#565C58">arede.online</a></p></body></html>`;
+    let certo = false;
+    try {
+      const r = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": chave, "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ sender: REMETENTE, replyTo: REMETENTE, to: [{ email: p.email }], subject: "Seu convite para a rede.online", textContent: texto, htmlContent: html }) });
+      certo = r.ok; if (!r.ok) console.error("brevo recusou", r.status);
+    } catch (_e) { certo = false; }
+    await ADMIN.rpc("espera_resultado", { p_id: p.id, p_ok: certo });
+    if (certo) enviados++; else falhas++;
+  }
+  return resp({ ok: true, enviados, falhas });
+});
