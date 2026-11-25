@@ -157,6 +157,44 @@ const CONHECIDOS: Record<string, string[]> = {
   "eluniversal.com.mx": ["https://www.eluniversal.com.mx/arc/outboundfeeds/rss/?outputType=xml"],
   "emol.com": ["https://www.emol.com/rss/rss.asp"],
   "documents.un.org": ["https://news.un.org/feed/subscribe/pt/news/all/rss.xml"],
+  // 24/11: feeds conferidos no servidor (e no robots.txt) para as fontes novas sugeridas pela curadoria
+  "estadao.com.br/estadao-verifica": ["https://www.estadao.com.br/arc/outboundfeeds/feeds/rss/sections/estadao-verifica/"],
+  "poligrafo.sapo.pt": ["https://poligrafo.sapo.pt/rss"],
+  "publico.pt": ["https://feeds.feedburner.com/PublicoRSS"],
+  "observador.pt": ["https://observador.pt/feed/"],
+  "rtp.pt/noticias": ["https://www.rtp.pt/noticias/rss"],
+  "pt.euronews.com": ["https://pt.euronews.com/rss"],
+  "agenciabrasil.ebc.com.br/radioagencia-nacional": ["https://agenciabrasil.ebc.com.br/radioagencia-nacional/rss/ultimasnoticias/feed.xml"],
+  "portalamazonia.com": ["https://www.portalamazonia.com/feed"],
+  "cartamz.com": ["https://cartamz.com/index.php/feed"],
+  "dailymaverick.co.za": ["https://www.dailymaverick.co.za/dmrss/"],
+  "premiumtimesng.com": ["https://www.premiumtimesng.com/feed"],
+  "spiegel.de/international": ["https://www.spiegel.de/international/index.rss"],
+  "aljazeera.com": ["https://www.aljazeera.com/xml/rss/all.xml"],
+  "thehindu.com": ["https://www.thehindu.com/news/international/feeder/default.rss"],
+  "scmp.com": ["https://www.scmp.com/rss/91/feed"],
+  "en.yna.co.kr": ["https://en.yna.co.kr/RSS/news.xml"],
+  "asia.nikkei.com": ["https://asia.nikkei.com/rss/feed/nar"],
+  "rappler.com": ["https://www.rappler.com/feed/"],
+  "africanews.com": ["https://www.africanews.com/feed/rss"],
+  "ladiaria.com.uy": ["https://ladiaria.com.uy/feeds/articulos/"],
+  "prensalibre.com": ["https://www.prensalibre.com/feed/"],
+  "nation.africa": ["https://nation.africa/kenya/rss.xml"],
+  "expressodasilhas.cv": ["https://expressodasilhas.cv/feed"],
+  "tatoli.tl": ["https://www.tatoli.tl/feed/"],
+  "nonada.com.br": ["https://www.nonada.com.br/feed/"],
+  "folhabv.com.br": ["https://folhabv.com.br/feed/"],
+  "oimparcial.com.br": ["https://oimparcial.com.br/feed/"],
+  "jornaldaparaiba.com.br": ["https://jornaldaparaiba.com.br/feed/"],
+  "cidadeverde.com": ["https://www.cidadeverde.com/rss"],
+  "correiodoestado.com.br": ["https://correiodoestado.com.br/rss/"],
+  "jornalopcao.com.br": ["https://www.jornalopcao.com.br/feed/"],
+  "jornaldebrasilia.com.br": ["https://www.jornaldebrasilia.com.br/feed/"],
+  "bemparana.com.br": ["https://www.bemparana.com.br/feed/"],
+  "folhadelondrina.com.br": ["https://www.folhadelondrina.com.br/rss"],
+  "cnnbrasil.com.br": ["https://www.cnnbrasil.com.br/feed/"],
+  "diariodopara.com.br": ["https://www.diariodopara.com.br/feed/"],
+  "extraclasse.org.br": ["https://www.extraclasse.org.br/feed/"],
 };
 const absoluto = (h: string, base: string) => { try { return new URL(h.replace(/&amp;/g, "&"), base).href; } catch { return ""; } };
 function linksDeFeed(html: string, base: string): string[] {
@@ -379,6 +417,21 @@ const limpaUrl = (u: string) => { try { const x = new URL(u); x.hash = ""; for (
 // texto que não é chamada: aviso de assinante, linha de publicação, descrição do próprio site
 const GENERICA = /exclusiv[ao] para assinantes|published online:|search, browse and learn/i;
 const ehYt = (x: any) => /youtube\.com\/watch/.test(x.url || "");
+
+// 24/11 (segurança): a notícia só entra se o link for do próprio site da fonte (ou de um site irmão conhecido).
+// Um feed adulterado não consegue pôr no feed, nem fazer o coletor abrir, links de outros sites.
+const IRMAOS: Record<string, string[]> = {
+  "folha.uol.com.br": ["folha.com.br"], "noticias.uol.com.br": ["folha.com.br"], "bbc.com": ["bbc.co.uk"], "matinaljornalismo.com.br": ["matinal.org"],
+  "lupa.uol.com.br": ["agencialupa.org"], "em.com.br": ["noataque.com.br"], "nosmulheresdaperiferia.com.br": ["nosmulheresdaperiferia.org.br"],
+  "jornaldaparaiba.com.br": ["jornaldaparaiba.com"],
+};
+const SUF2 = /\.(com|org|gov|net|jus|leg|mp|edu|jor|art|blog|eco|co|gob|ac|or|ne|go)\.[a-z]{2}$/;
+const raiz = (h: string) => { h = h.toLowerCase().replace(/^www\./, ""); const p = h.split("."); return p.slice(SUF2.test(h) ? -3 : -2).join("."); };
+const doSite = (u: string, dominio: string) => {
+  let h = ""; try { const x = new URL(u); if (x.protocol !== "https:" && x.protocol !== "http:") return false; h = x.hostname.toLowerCase(); } catch { return false; }
+  const d = dominio.split("/")[0].toLowerCase(), ok = [raiz(d), ...(IRMAOS[d] || []), ...(IRMAOS[d.replace(/^www\./, "")] || [])];
+  return ok.some((r) => h === r || h.endsWith("." + r));
+};
 async function coleta(f: any) {
   const r = await get(f.feed_url, 12000);
   if (!r.ok || !pareceFeed(r.txt)) return { erro: r.ok ? "O feed não está mais no formato esperado" : "Feed não respondeu (" + (r.status || r.err) + ")", novas: 0 };
@@ -387,8 +440,9 @@ async function coleta(f: any) {
   if (f.feed_hash && f.feed_hash === hash) return { erro: null, novas: 0, igual: true };
   const { lingua, itens } = leFeed(r.txt, r.url);
   const limite = Date.now() - DIAS * 864e5;
-  const frescos = itens.filter((i: any) => !i.publicada_em || isNaN(+i.publicada_em) || +i.publicada_em >= limite).map((i: any) => ({ ...i, url: limpaUrl(i.url) }));
-  if (!frescos.length) return { erro: null, novas: 0, itens: itens.length, frescos: 0, hash };
+  const doFeed = itens.filter((i: any) => doSite(i.url, f.dominio)), foraDoSite = itens.length - doFeed.length;
+  const frescos = doFeed.filter((i: any) => !i.publicada_em || isNaN(+i.publicada_em) || +i.publicada_em >= limite).map((i: any) => ({ ...i, url: limpaUrl(i.url) }));
+  if (!frescos.length) return { erro: null, novas: 0, itens: itens.length, frescos: 0, foraDoSite, hash };
   const { data: ja } = await SB.from("noticias").select("url,resumo,chamada,titulo,imagem_url,previa_em").in("url", frescos.map((i: any) => i.url));
   const temUrl = new Set((ja || []).map((x: any) => x.url));
   // resumo nulo = ainda não revisado com o divisor de frases atual; "" = revisado, o feed não tem mais texto
@@ -438,7 +492,7 @@ async function coleta(f: any) {
   for (const n of novas) if (n.chamada) vistas.set(n.chamada, (vistas.get(n.chamada) || 0) + 1);
   for (const n of novas) if (n.chamada && (GENERICA.test(n.chamada) || (vistas.get(n.chamada) || 0) >= 3)) n.chamada = null;
   if (novas.length) { const { error } = await SB.from("noticias").upsert(novas, { onConflict: "url", ignoreDuplicates: true }); if (error) return { erro: "Banco: " + error.message, novas: 0 }; }
-  return { erro: null, novas: novas.length, itens: itens.length, frescos: frescos.length, chamadas: pags, hash };
+  return { erro: null, novas: novas.length, itens: itens.length, frescos: frescos.length, chamadas: pags, foraDoSite, hash };
 }
 
 Deno.serve(async (req) => {
