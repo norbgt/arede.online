@@ -5,6 +5,7 @@ Não cria nada e não envia nada: nenhum formulário é enviado, nenhuma denúnc
 
 Grupos:
   sempre        roda em toda publicação: segurança (e-mail e painel), feed, card abre com selo, sem erro, sem rolagem lateral
+  voltar        o Voltar do aparelho fecha a folha aberta (25/11)
   card          card aberto: selo, (i) da nota, Contestar, Ajustar do card, Denunciar na barra
   ajustar       folha Ajustar: 4 abas, Selecionar tudo, Limpar, Ver N conteúdos
   fontes        Ajustar › Fontes › Países e línguas
@@ -39,7 +40,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
-GRUPOS_TODOS = ["logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
+GRUPOS_TODOS = ["voltar", "logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
                 "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
@@ -107,6 +108,24 @@ async def abre_card_com_selo(pg, teste=False, contestar=False):
     return achou
 
 # ---------- grupos ----------
+
+async def g_voltar(b):
+    """25/11 (revisão): o Voltar do aparelho fecha a folha aberta e não deixa folha por cima de outra tela."""
+    ctx, pg, erros = await abre_contexto(b)
+    try:
+        await entra(pg, teste=True, rota="#perfil"); await pg.wait_for_timeout(1200)
+        ed = pg.locator('#main [data-act]').filter(has_text="Editar").first
+        if not await ed.count(): return avisa("voltar", "sem botão Editar no perfil")
+        antes = await pg.evaluate("location.pathname")
+        await ed.evaluate("e => e.click()"); await pg.wait_for_timeout(600)
+        confere(await folha(pg), "voltar · a folha abre")
+        await pg.go_back(); await pg.wait_for_timeout(800)
+        confere(not await folha(pg) and await pg.evaluate("location.pathname") == antes and not await pg.evaluate("document.body.classList.contains('locked')"), "voltar · o Voltar fecha a folha e fica na mesma tela")
+        await ed.evaluate("e => e.click()"); await pg.wait_for_timeout(600); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(600)
+        await pg.go_back(); await pg.wait_for_timeout(900)
+        confere(await pg.evaluate("location.pathname") != antes, "voltar · depois de fechar a folha, o Voltar troca de tela de primeira")
+        confere(not erros, "voltar · sem erro de código", "; ".join(erros[:2]))
+    finally: await ctx.close()
 
 async def g_seguranca(b):
     ctx, pg, _ = await abre_contexto(b, 1280)
@@ -807,6 +826,7 @@ async def main():
         await g_seguranca(b); await g_sempre(b)
         G = set(GRUPOS)
         if "card" in G: await g_card(b)
+        if "voltar" in G: await g_voltar(b)
         if "ajustar" in G: await g_ajustar(b)
         if "fontes" in G: await g_fontes(b)
         if "conta" in G: await g_conta(b)
