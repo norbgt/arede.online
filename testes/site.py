@@ -399,7 +399,7 @@ async def g_acoes(b):
         await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
         await clica(pg, '[data-act="open"]', 1800)
         if await pg.locator(".cnovo .ctxt").count():
-            await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste das ações"); await clica(pg, ".cnovo .cbt", 1200)
+            await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste das ações"); await pg.locator(".cnovo .ctxt").first.dispatch_event("input"); await clica(pg, ".cnovo .cbt", 1600)
             if await pg.locator('[data-act="regrasok"]').count(): await clica(pg, '[data-act="regrasok"]', 2000)
             k = await pg.evaluate("""(() => { const c = [...document.querySelectorAll('.com')].pop(); if (!c) return null; const a = c.querySelector('.cacts');
               return {apoio: !!c.querySelector('.cacts [data-act="comutil"]'), menu: !!c.querySelector('.comh .dmenu'), pos: a ? getComputedStyle(a).position : '', util: c.innerText.includes('Útil')}; })()""")
@@ -618,14 +618,16 @@ async def g_marco(b):
     try:
         await entra(pg, teste=True); await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
         await clica(pg, '[data-act="open"]', 1800)
-        await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste do marco")
-        await clica(pg, ".cnovo .cbt", 1200)
-        confere(await pg.locator(".rgbox li").count() == 5, "marco · regras aparecem antes do 1º comentário")
-        await clica(pg, '[data-act="regrasok"]', 2000)
-        confere(await pg.evaluate("document.body.innerText.includes('Comentário de teste do marco')"), "marco · depois do Concordo o comentário sai")
-        await pg.locator(".cnovo .ctxt").first.fill("Segundo comentário do marco")
+        # 26/11 (Amanda): comentar mais simples. Antes do 1º comentário, uma linha avisa que é público e segue as Regras de conduta (link);
+        # comentar vale como concordar, sem caixa de regras nem confirmação extra
+        confere(await pg.locator(".cnovo .cregra [data-act=\"regrasver\"]").count() == 1, "marco · antes do 1º comentário, a linha das Regras de conduta")
+        await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste do marco"); await pg.locator(".cnovo .ctxt").first.dispatch_event("input")
         await clica(pg, ".cnovo .cbt", 2000)
-        confere(await pg.locator(".rgbox").count() == 0, "marco · regras não voltam no 2º comentário")
+        confere(await pg.locator(".rgbox").count() == 0 and await pg.evaluate("document.body.innerText.includes('Comentário de teste do marco')"), "marco · 1º comentário sai direto, sem caixa de regras")
+        confere(await pg.locator(".cnovo .cregra").count() == 0, "marco · a linha das regras some depois do 1º comentário")
+        await pg.locator(".cnovo .ctxt").first.fill("Segundo comentário do marco"); await pg.locator(".cnovo .ctxt").first.dispatch_event("input")
+        await clica(pg, ".cnovo .cbt", 2000)
+        confere(await pg.evaluate("document.body.innerText.includes('Segundo comentário do marco')"), "marco · 2º comentário sai")
         await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(1500); await fecha_folha(pg)
         await clica(pg, '[data-act="pessoainfo"]', 800); await clica(pg, '#layer [data-act="bloqpede"]', 800)
         confere(await folha(pg, "Bloquear"), "marco · confirmação de bloqueio abre")
