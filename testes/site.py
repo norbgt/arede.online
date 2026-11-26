@@ -30,6 +30,8 @@ Grupos:
   marco         regras de conduta, bloquear pessoa, completar cadastro (Google) e o login novo (com --offline, modo de teste)
   csat          pesquisa de satisfação: aparece uma vez e só volta depois de 7 dias (relógio adiantado)
   logado        conta de teste logada de verdade (só com TESTE_CHAVE; só lê, sem fotos da tela)
+  acoes         padrão de ações e o que entrou em 26/11: botões de 40 px e sem "0", comentário com Apoio e ⋯, card de texto sem sobrepor,
+                pastas com cartões (sem mosaico), Canais e Rádio com busca e filtros, seção Discussões, pedido de localização
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
 
@@ -41,7 +43,7 @@ from playwright.async_api import async_playwright
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
 GRUPOS_TODOS = ["voltar", "logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
-                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "layout"]
+                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "acoes", "layout"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
 for x in GRUPOS:
@@ -341,6 +343,85 @@ async def g_abas(b):
             confere(t > 200, f"{nome} · {rot} abre com conteúdo", f"{t} letras")
             confere(await sem_rolagem_lateral(pg), f"{nome} · {rot} sem rolagem lateral")
         await clica(pg, '[data-act="ftab"][data-tab="tudo"]', 500)
+        confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, f"{nome} · roteiro completo", str(e)[:200])
+    finally:
+        await ctx.close()
+
+async def g_acoes(b):
+    """26/11: um padrão de ações no site todo e o que entrou no mesmo dia. Só lê e abre telas; o único envio é um comentário no modo de teste (simulado)."""
+    nome = "acoes"
+    ctx, pg, erros = await abre_contexto(b)
+    try:
+        await entra(pg, teste=True); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        # botões do card: 40 px, e o tipo do card de texto não fica embaixo deles
+        med = await pg.evaluate("""(() => { const b = [...document.querySelectorAll('#feed .cdacts .cact')]; if (!b.length) return null; const r = b[0].getBoundingClientRect();
+          let sobre = 0; document.querySelectorAll('#feed .facewrap').forEach(w => { const a = w.querySelector(':scope > .cdacts'), k = w.querySelector('.thead .fkind, .thead .tseal'); if (!a || !k || w.querySelector('img,video')) return;
+            const x = a.getBoundingClientRect(); w.querySelectorAll('.thead > *').forEach(e => { const y = e.getBoundingClientRect(); if (y.width && y.right > x.left + 2 && y.top < x.bottom - 2 && y.bottom > x.top + 2) sobre++; }); });
+          return {w: Math.round(r.width), h: Math.round(r.height), sobre, mosaico: document.querySelectorAll('#feed .tile').length}; })()""")
+        if med:
+            confere(med["w"] >= 40 and med["h"] >= 40, f"{nome} · Salvar e Curtir do card com 40 px", f"{med['w']}x{med['h']}")
+            confere(med["sobre"] == 0, f"{nome} · no card de texto nada fica embaixo de Salvar e Curtir", f"{med['sobre']} sobreposição(ões)")
+            confere(med["mosaico"] == 0, f"{nome} · feed sem o mosaico aposentado", f"{med['mosaico']} blocos")
+        else: confere(False, f"{nome} · Salvar e Curtir no card", "não achei os botões")
+        # card aberto: curtir sem "0"
+        await clica(pg, '#feed [data-act="open"]', 1200)
+        cnt = await pg.evaluate("[...document.querySelectorAll('.pinbar [data-act=\"like\"] .cnt')].map(e => e.textContent.trim())")
+        confere("0" not in cnt, f"{nome} · card aberto sem o número 0 no coração", str(cnt))
+        await fecha_folha(pg); await pg.keyboard.press("Escape")
+        # pastas: os mesmos cartões do Início, sem mosaico
+        await pg.goto(BASE + "/?teste=1#perfil"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        await clica(pg, '[data-act="ptab"][data-tab="salvos"]', 900)
+        if await clica(pg, '#pbody [data-act="openfolder"][data-f]:not([data-f=""]):not([data-f^="aovivo"])', 1200):
+            t = await pg.evaluate("[document.querySelectorAll('#pfeed .tile').length, document.querySelectorAll('#pfeed [data-act=\"open\"]').length]")
+            confere(t[0] == 0 and t[1] >= 1, f"{nome} · pasta mostra cartões, sem mosaico", f"{t[0]} blocos, {t[1]} cartões")
+        else: avisa(f"{nome} · pasta", "nenhuma pasta para abrir no modo de teste")
+        # Canais e Rádio: busca, filtros e lista
+        await pg.goto(BASE + "/?teste=1#inicio"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        await clica(pg, '[data-act="ftab"][data-tab="videos"]', 1800)
+        c = await pg.evaluate("[!!document.querySelector('#aovivo #lvq'), (document.querySelector('#aovivo .cnfil .rdf') || {}).textContent || '', document.querySelectorAll('#aovivo .cnrow').length]")
+        confere(c[0] and "No ar agora" in c[1], f"{nome} · Canais com busca e No ar agora primeiro", f"busca {c[0]}, 1º filtro {c[1][:20]!r}")
+        await clica(pg, '#aovivo [data-act="vivofil"][data-f="todos"]', 500)
+        n0 = await pg.locator("#aovivo .cnrow").count()
+        confere(n0 >= 3, f"{nome} · Canais › Todos lista os canais", f"{n0} canais")
+        await pg.locator("#lvq").fill("senado"); await pg.wait_for_timeout(400)
+        n1 = await pg.locator("#aovivo .cnrow").count()
+        confere(1 <= n1 < n0, f"{nome} · busca de canal filtra a lista", f"{n0} → {n1}")
+        await pg.locator("#lvq").fill(""); await pg.wait_for_timeout(300)
+        confere(await sem_rolagem_lateral(pg), f"{nome} · Canais sem rolagem lateral")
+        await clica(pg, '[data-act="ftab"][data-tab="radio"]', 1500)
+        r = await pg.evaluate("[!!document.querySelector('#radio #rdq'), document.querySelectorAll('#radio .cnrow').length]")
+        confere(r[0] and r[1] >= 1, f"{nome} · Rádio com busca e lista", f"busca {r[0]}, {r[1]} rádios")
+        confere(await sem_rolagem_lateral(pg), f"{nome} · Rádio sem rolagem lateral")
+        # comentário: Apoio embaixo e ⋯ no topo, com as ações à vista (o erro de 26/11 jogava tudo para o canto)
+        jim = "00000000-0000-4000-8000-000000000002"
+        await pg.goto(BASE + "/?teste=1#org-u-" + jim); await pg.wait_for_timeout(2200); await fecha_folha(pg)
+        await clica(pg, '[data-act="open"]', 1800)
+        if await pg.locator(".cnovo .ctxt").count():
+            await pg.locator(".cnovo .ctxt").first.fill("Comentário de teste das ações"); await clica(pg, ".cnovo .cbt", 1200)
+            if await pg.locator('[data-act="regrasok"]').count(): await clica(pg, '[data-act="regrasok"]', 2000)
+            k = await pg.evaluate("""(() => { const c = [...document.querySelectorAll('.com')].pop(); if (!c) return null; const a = c.querySelector('.cacts');
+              return {apoio: !!c.querySelector('.cacts [data-act="comutil"]'), menu: !!c.querySelector('.comh .dmenu'), pos: a ? getComputedStyle(a).position : '', util: c.innerText.includes('Útil')}; })()""")
+            if k:
+                confere(k["apoio"] and k["menu"], f"{nome} · comentário com Apoio embaixo e ⋯ no topo", str(k))
+                confere(k["pos"] == "static", f"{nome} · ações do comentário no lugar (não no canto)", k["pos"])
+                confere(not k["util"], f"{nome} · comentário diz Apoio, não Útil")
+            else: confere(False, f"{nome} · comentário publicado", "não apareceu")
+        else: avisa(f"{nome} · comentário", "sem campo de comentário no modo de teste")
+        # seção Discussões e pedido de localização: só quando há dados
+        await pg.goto(BASE + "/?teste=1#organizacoes"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
+        if await pg.locator("#discsec .dsc").count():
+            await clica(pg, "#discsec .dsc", 900)
+            confere(await pg.locator("#layer .ddet").count() == 1, f"{nome} · cartão da discussão abre o detalhe")
+            await fecha_folha(pg)
+        else: avisa(f"{nome} · seção Discussões", "sem discussões no modo de teste")
+        await pg.goto(BASE + "/?teste=1#inicio"); await pg.wait_for_timeout(1500); await fecha_folha(pg)
+        if await pg.locator("#locconv").count():
+            await clica(pg, '#locconv [data-act="locpede"]', 600)
+            confere(await pg.locator('#layer [data-act="localescreve"]').count() == 1, f"{nome} · Permitir abre a folha com Escrever a cidade")
+            await fecha_folha(pg)
+        else: avisa(f"{nome} · pedido de localização", "a conta de teste já tem cidade")
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
@@ -837,6 +918,7 @@ async def main():
         if "anuncio" in G: await g_anuncio(b)
         if "desinfo" in G: await g_desinfo(b)
         if "abas" in G: await g_abas(b)
+        if "acoes" in G and OFFLINE: await g_acoes(b)
         if "eventos" in G: await g_rota(b, "eventos", "#participar", x_eventos)
         if "comunidades" in G: await g_rota(b, "comunidades", "#organizacoes", x_comunidades)
         if "emalta" in G: await g_rota(b, "emalta", "#em-alta", x_emalta)
