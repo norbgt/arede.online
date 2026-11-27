@@ -361,11 +361,22 @@ async def g_mapa(b):
             await pg.evaluate("location.hash = '#organizacoes/cultura'"); await pg.wait_for_timeout(1500)
             confere(await pg.locator('#evsec .partchips .mpchip[data-act="mapabox"][data-t="eventos"]').count() == 1, f"{nome} · {w} · botão Mapa em Eventos, primeiro da fila",
                     "faltou")
+            confere(await pg.locator('#evsec .mpbox').count() == 1, f"{nome} · {w} · Atividades abre no mapa", "abriu nos cartões")
+            confere(await pg.locator('#evsec #evq').count() == 1, f"{nome} · {w} · Atividades tem busca", "faltou")
+            await clica(pg, '#evsec [data-act="mapabox"]', 800)
+            confere(await pg.locator('#evsec .mpbox').count() == 0 and await pg.locator('#evsec .partgrid, #evsec .empty').count() >= 1, f"{nome} · {w} · Mapa de novo mostra os cartões", "")
             await clica(pg, '#evsec [data-act="mapabox"]', 2500)
             cx = await pg.evaluate("(() => { const m = document.querySelector('#evsec .mpbox'); return {caixa: !!m, rota: location.pathname, alt: m ? m.getBoundingClientRect().height : 0, lateral: document.documentElement.scrollWidth <= innerWidth + 1}; })()")
             confere(cx["caixa"] and "mapa-" not in cx["rota"] and cx["alt"] >= 300 and cx["lateral"], f"{nome} · {w} · mapa de Eventos abre dentro da caixa, sem trocar de página", str(cx))
             await clica(pg, '#evsec [data-act="mapabox"]', 600)
-            confere(await pg.locator('#evsec .mpbox').count() == 0, f"{nome} · {w} · Mapa de novo volta aos cartões",
+            for aba, mt in (("paginas", "paginas"), ("orgs", "grupos")):
+                await clica(pg, f'.tab[data-t="{aba}"]', 1200)
+                ordem = await pg.evaluate("[...document.querySelectorAll('.qf > *')].slice(0, 2).map(b => (b.dataset.act || '') + ':' + b.textContent.trim())")
+                confere(len(ordem) == 2 and "Tod" in ordem[0] and ordem[1] == "mapabox:Mapa", f"{nome} · {w} · {aba}: primeiro Todos, depois Mapa", str(ordem))
+                await clica(pg, '.qf [data-act="mapabox"]', 2500)
+                confere(await pg.locator('.container > .mpbox').count() == 1 and "mapa-" not in await pg.evaluate("location.pathname"), f"{nome} · {w} · {aba}: mapa no lugar da lista, sem trocar de página", "")
+            await clica(pg, '.tab[data-t="cultura"]', 1500)
+            confere(await pg.locator('#evsec .mpbox').count() >= 0, f"{nome} · {w} · volta para Eventos",
                     "faltou")
             await pg.evaluate("location.hash = '#mapa-museus'"); await pg.wait_for_timeout(4000)
             r = await pg.evaluate("""(() => ({mpv: !!document.querySelector('#mpv'), fil: document.querySelectorAll('#mpfil .chip').length, busca: !!document.querySelector('#mpq'),
