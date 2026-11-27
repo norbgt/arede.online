@@ -1,0 +1,5 @@
+Mapa de arede.online (27/11/2026, aprovado pela Amanda)
+- v4.7.1/: MapLibre GL JS 4.7.1 (licença BSD-3, ver LICENSE.txt), versão para política de scripts (CSP), sem eval.
+- fontes/: Noto Sans (licença SIL OFL 1.1), em formato de glifos, de protomaps/basemaps-assets.
+- O desenho do mapa (dados OpenStreetMap, licença ODbL, formato Protomaps) fica no Storage do Supabase, balde "mapas".
+  Para atualizar: mudar a data em mapa-base/pedido.txt (fluxo .github/workflows/mapa-base.yml).

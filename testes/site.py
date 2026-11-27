@@ -32,6 +32,7 @@ Grupos:
   logado        conta de teste logada de verdade (só com TESTE_CHAVE; só lê, sem fotos da tela)
   acoes         padrão de ações e o que entrou em 26/11: botões de 40 px e sem "0", comentário com Apoio e ⋯, card de texto sem sobrepor,
                 pastas com cartões (sem mosaico), Canais e Rádio com busca e filtros, seção Discussões, pedido de localização
+  mapa          mapa de Museus, Eventos, Páginas e Comunidades: estrutura no celular e no computador, Lista/Mapa, leitor do mapa do próprio site
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
 
@@ -43,7 +44,7 @@ from playwright.async_api import async_playwright
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
 GRUPOS_TODOS = ["voltar", "logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
-                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "acoes", "layout"]
+                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "acoes", "layout", "mapa"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
 for x in GRUPOS:
@@ -348,6 +349,40 @@ async def g_abas(b):
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
     finally:
         await ctx.close()
+
+async def g_mapa(b):
+    """27/11: mapa (Museus, Eventos, Páginas, Comunidades). Só abre telas. Confere a estrutura nos dois tamanhos, o botão Mapa nas abas,
+    Lista/Mapa no celular e que o leitor do mapa (MapLibre, servido pelo próprio site) carrega. O desenho vem do Supabase (não testado sem internet)."""
+    nome = "mapa"
+    for w in (390, 1280):
+        ctx, pg, erros = await abre_contexto(b, w)
+        try:
+            await entra(pg, teste=True); await pg.wait_for_timeout(800); await fecha_folha(pg)
+            await pg.evaluate("location.hash = '#organizacoes/eventos'"); await pg.wait_for_timeout(1200)
+            confere(await pg.locator('.partchips .mpchip[data-t="eventos"]').count() == 1, f"{nome} · {w} · botão Mapa em Eventos, primeiro da fila",
+                    "faltou")
+            await pg.evaluate("location.hash = '#mapa-museus'"); await pg.wait_for_timeout(4000)
+            r = await pg.evaluate("""(() => ({mpv: !!document.querySelector('#mpv'), fil: document.querySelectorAll('#mpfil .chip').length, busca: !!document.querySelector('#mpq'),
+              zoom: document.querySelectorAll('.mpzoom button').length, perto: !!document.querySelector('.mpperto[aria-label]'), cred: (document.querySelector('.mpcred') || {}).href || '',
+              lib: !!window.maplibregl, canvas: !!document.querySelector('#mpgl canvas'), alt: document.querySelector('#mpcorpo') ? document.querySelector('#mpcorpo').getBoundingClientRect().height : 0,
+              lateral: document.documentElement.scrollWidth <= innerWidth + 1, alterna: getComputedStyle(document.querySelector('#mpalterna')).display}))()""")
+            confere(r["mpv"] and r["fil"] >= 2 and r["busca"] and r["zoom"] == 2 and r["perto"], f"{nome} · {w} · filtros, busca, zoom e perto de você", str(r))
+            confere("openstreetmap.org/copyright" in r["cred"], f"{nome} · {w} · crédito do OpenStreetMap com link", r["cred"])
+            confere(r["lib"] and r["canvas"], f"{nome} · {w} · leitor do mapa carrega do próprio site", str(r))
+            confere(r["alt"] >= 380 and r["lateral"], f"{nome} · {w} · mapa com altura e sem rolagem lateral", str(r))
+            if w == 390:
+                confere(r["alterna"] != "none", f"{nome} · celular · botão Lista/Mapa", r["alterna"])
+                await clica(pg, "#mpalterna", 500)
+                m = await pg.evaluate("document.querySelector('#mpv').dataset.modo + '|' + getComputedStyle(document.querySelector('#mplista')).display")
+                confere(m.startswith("lista|") and not m.endswith("none"), f"{nome} · celular · Lista mostra a lista", m)
+            else:
+                d = await pg.evaluate("getComputedStyle(document.querySelector('#mplista')).display + '|' + getComputedStyle(document.querySelector('#mpmapa')).display + '|' + getComputedStyle(document.querySelector('#mpalterna')).display")
+                confere(d.split("|")[0] != "none" and d.split("|")[1] != "none" and d.split("|")[2] == "none", f"{nome} · computador · lista e mapa lado a lado", d)
+            await pg.evaluate("location.hash = '#mapa-grupos'"); await pg.wait_for_timeout(1500)
+            confere(await pg.locator('#mpv[data-t="grupos"]').count() == 1, f"{nome} · {w} · mapa de Comunidades abre", "")
+            confere(not erros, f"{nome} · {w} · sem erro de JavaScript", "; ".join(erros[:3]))
+        finally:
+            await ctx.close()
 
 async def g_acoes(b):
     """26/11: um padrão de ações no site todo e o que entrou no mesmo dia. Só lê e abre telas; o único envio é um comentário no modo de teste (simulado)."""
@@ -921,6 +956,7 @@ async def main():
         if "desinfo" in G: await g_desinfo(b)
         if "abas" in G: await g_abas(b)
         if "acoes" in G and OFFLINE: await g_acoes(b)
+        if "mapa" in G: await g_mapa(b)
         if "eventos" in G: await g_rota(b, "eventos", "#participar", x_eventos)
         if "comunidades" in G: await g_rota(b, "comunidades", "#organizacoes", x_comunidades)
         if "emalta" in G: await g_rota(b, "emalta", "#em-alta", x_emalta)

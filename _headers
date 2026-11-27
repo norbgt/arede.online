@@ -28,3 +28,6 @@
 /manifest.webmanifest
   Content-Type: application/manifest+json
   Cache-Control: public, max-age=86400
+# 27/11 (Amanda): mapa. O leitor e as fontes mudam de pasta quando mudam, então podem ficar guardados por 1 ano.
+/mapa/*
+  Cache-Control: public, max-age=31536000, immutable
