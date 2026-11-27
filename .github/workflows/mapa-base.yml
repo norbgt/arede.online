@@ -49,7 +49,8 @@ jobs:
           echo "{\"build\":\"$BUILD\",\"parte\":33554432,\"partes\":$N,\"tamanho\":$T,\"maxzoom\":15,\"criado\":\"$(date -u +%FT%TZ)\"}" > partes/manifesto.json
           cat partes/manifesto.json
       - name: Publicação temporária
-        run: gh release create "mapa-$BUILD" partes/* --title "Mapa base $BUILD (temporário)" --notes "Temporário: o Supabase copia as partes e esta publicação é apagada em seguida." --prerelease
+        run: |
+          gh release create "mapa-$BUILD" partes/* --title "Mapa base $BUILD (temporário)" --notes "Temporário, o Supabase copia as partes e esta publicação é apagada em seguida." --prerelease
       - name: Supabase copia as partes
         run: |
           for f in $(ls partes | grep '^p'); do
