@@ -358,8 +358,14 @@ async def g_mapa(b):
         ctx, pg, erros = await abre_contexto(b, w)
         try:
             await entra(pg, teste=True); await pg.wait_for_timeout(800); await fecha_folha(pg)
-            await pg.evaluate("location.hash = '#organizacoes/eventos'"); await pg.wait_for_timeout(1200)
-            confere(await pg.locator('.partchips .mpchip[data-t="eventos"]').count() == 1, f"{nome} · {w} · botão Mapa em Eventos, primeiro da fila",
+            await pg.evaluate("location.hash = '#organizacoes/cultura'"); await pg.wait_for_timeout(1500)
+            confere(await pg.locator('#evsec .partchips .mpchip[data-act="mapabox"][data-t="eventos"]').count() == 1, f"{nome} · {w} · botão Mapa em Eventos, primeiro da fila",
+                    "faltou")
+            await clica(pg, '#evsec [data-act="mapabox"]', 2500)
+            cx = await pg.evaluate("(() => { const m = document.querySelector('#evsec .mpbox'); return {caixa: !!m, rota: location.pathname, alt: m ? m.getBoundingClientRect().height : 0, lateral: document.documentElement.scrollWidth <= innerWidth + 1}; })()")
+            confere(cx["caixa"] and "mapa-" not in cx["rota"] and cx["alt"] >= 300 and cx["lateral"], f"{nome} · {w} · mapa de Eventos abre dentro da caixa, sem trocar de página", str(cx))
+            await clica(pg, '#evsec [data-act="mapabox"]', 600)
+            confere(await pg.locator('#evsec .mpbox').count() == 0, f"{nome} · {w} · Mapa de novo volta aos cartões",
                     "faltou")
             await pg.evaluate("location.hash = '#mapa-museus'"); await pg.wait_for_timeout(4000)
             r = await pg.evaluate("""(() => ({mpv: !!document.querySelector('#mpv'), fil: document.querySelectorAll('#mpfil .chip').length, busca: !!document.querySelector('#mpq'),
@@ -378,6 +384,8 @@ async def g_mapa(b):
             else:
                 d = await pg.evaluate("getComputedStyle(document.querySelector('#mplista')).display + '|' + getComputedStyle(document.querySelector('#mpmapa')).display + '|' + getComputedStyle(document.querySelector('#mpalterna')).display")
                 confere(d.split("|")[0] != "none" and d.split("|")[1] != "none" and d.split("|")[2] == "none", f"{nome} · computador · lista e mapa lado a lado", d)
+            await pg.evaluate("location.hash = '#mapa-cultura'"); await pg.wait_for_timeout(1500)
+            confere(await pg.locator('#mpv[data-t="cultura"] .mpleg span').count() == 2, f"{nome} · {w} · mapa de Eventos e cultura com museus e eventos", "")
             await pg.evaluate("location.hash = '#mapa-grupos'"); await pg.wait_for_timeout(1500)
             confere(await pg.locator('#mpv[data-t="grupos"]').count() == 1, f"{nome} · {w} · mapa de Comunidades abre", "")
             confere(not erros, f"{nome} · {w} · sem erro de JavaScript", "; ".join(erros[:3]))
