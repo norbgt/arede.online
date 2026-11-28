@@ -354,7 +354,7 @@ async def g_abas(b):
 
 async def g_mapa(b):
     """27/11: mapa (Museus, Eventos, Páginas, Comunidades). Só abre telas. Confere a estrutura nos dois tamanhos, o botão Mapa nas abas,
-    Lista/Mapa no celular e que o leitor do mapa (MapLibre, servido pelo próprio site) carrega. O desenho vem do Supabase (não testado sem internet)."""
+    Lista/Mapa no celular e que o leitor do mapa (MapLibre, servido pelo próprio site) carrega. O desenho vem do OpenFreeMap (sem internet, o mapa abre só com o fundo e os pontos)."""
     nome = "mapa"
     for w in (390, 1280):
         ctx, pg, erros = await abre_contexto(b, w)
