@@ -620,8 +620,11 @@ async def g_seguir(b):
         confere(await pg.locator('.bmais[data-f="ideias"]').count() == 1, "pastas · apagada pode ser recuperada (15 dias)")
         # 22/11: Publicar à mão no seu perfil; no site de verdade o perfil novo nasce sem exemplos
         await pg.goto(BASE + "/?teste=1&v=5#perfil"); await pg.wait_for_timeout(1800); await fecha_folha(pg)
+        # 28/11 (Amanda): o botão sempre se chama Criar; o convite, só Convidar
+        rot = await pg.evaluate("(()=>{ const t=s=>{ const e=document.querySelector(s); return e ? e.innerText.replace(/\\s+/g,' ').trim() : ''; }; return [t('.pfacoes [data-act=create]'), t('.pfacoes [data-act=convidar]')]; })()")
+        confere(rot == ["Criar", "Convidar"], "perfil · botões se chamam Criar e Convidar", str(rot))
         await clica(pg, '.pfacoes [data-act="create"]', 800)
-        confere(await folha(pg, "Criar"), "perfil · botão Publicar abre Criar")
+        confere(await folha(pg, "Criar"), "perfil · botão Criar abre Criar")
         ctx2 = await b.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR"); pg2 = await ctx2.new_page()
         await pg2.route("**/*", lambda r: r.continue_() if ("localhost" in r.request.url) else r.abort())
         await pg2.goto(BASE + "/?real=1#perfil"); await pg2.wait_for_timeout(2500)
@@ -988,7 +991,7 @@ async def g_logado(b):
             if ok: break
             await pg.wait_for_timeout(500)
         diag = await pg.evaluate("(()=>{ const a=document.querySelector('[data-act=acessar]'); return 'topo ' + (a ? (a.innerText||'').replace(/\\s+/g,' ').trim() : '?') + ' · ' + location.hash; })()")
-        confere(ok, "logado · Seu perfil abre com Publicar (só a dona vê)", diag)
+        confere(ok, "logado · Seu perfil abre com Criar (só a dona vê)", diag)
         await clica(pg, '[data-act="ptab"][data-tab="conexoes"]', 2000)
         confere(await pg.locator('#conxbody [data-act="conxvis"]').count() == 3, "logado · Conexões abre com quem vê")
         await pg.goto(BASE + "/#explorar"); await pg.wait_for_timeout(2000); await fecha_folha(pg)
