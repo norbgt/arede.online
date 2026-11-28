@@ -15,6 +15,9 @@ O Supabase não deixa trocar esses modelos por aqui: é preciso colar cada arqui
 | Confirm signup | Confirme seu e-mail · a rede.online | confirmar-cadastro.html |
 | Reset password | Crie uma nova senha · a rede.online | nova-senha.html |
 | Change email address | Confirme o novo e-mail · a rede.online | trocar-email.html |
+| Security notifications › Password changed (ligado) | Sua senha foi alterada · a rede.online | senha-alterada.html |
+
+28/11/2026 (Amanda): os quatro colados no Supabase. No aviso de senha alterada, "Não foi você?" fica separado e a ação vai no botão (Pedir nova senha).
 
 Os avisos que a própria rede manda (moderação, resumo, alertas do painel) saem pela função avisos-envia,
 com o mesmo desenho. Essa parte já está no ar.
