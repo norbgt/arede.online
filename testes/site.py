@@ -417,7 +417,7 @@ async def g_acoes(b):
             const x = a.getBoundingClientRect(); w.querySelectorAll('.thead > *').forEach(e => { const y = e.getBoundingClientRect(); if (y.width && y.right > x.left + 2 && y.top < x.bottom - 2 && y.bottom > x.top + 2) sobre++; }); });
           return {w: Math.round(r.width), h: Math.round(r.height), sobre, mosaico: document.querySelectorAll('#feed .tile').length}; })()""")
         if med:
-            confere(med["w"] >= 40 and med["h"] >= 40, f"{nome} · Salvar e Curtir do card com 40 px", f"{med['w']}x{med['h']}")
+            confere(med["w"] >= 34 and med["h"] >= 40, f"{nome} · Repostar, Salvar e Curtir do card com 34 × 40 px (28/11: três ações numa linha)", f"{med['w']}x{med['h']}")
             confere(med["sobre"] == 0, f"{nome} · no card de texto nada fica embaixo de Salvar e Curtir", f"{med['sobre']} sobreposição(ões)")
             confere(med["mosaico"] == 0, f"{nome} · feed sem o mosaico aposentado", f"{med['mosaico']} blocos")
         else: confere(False, f"{nome} · Salvar e Curtir no card", "não achei os botões")
