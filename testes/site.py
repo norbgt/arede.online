@@ -64,8 +64,8 @@ def confere(cond, nome, det=""):
 def avisa(nome, det):
     avisos.append(f"{nome}: {det}"); print(f"AVISO {nome} ({det})", flush=True)
 
-async def abre_contexto(b, w=390, escuro=False):
-    ctx = await b.new_context(viewport={"width": w, "height": 844 if w < 600 else 900}, color_scheme="dark" if escuro else "light", locale="pt-BR")
+async def abre_contexto(b, w=390, escuro=False, locale="pt-BR"):
+    ctx = await b.new_context(viewport={"width": w, "height": 844 if w < 600 else 900}, color_scheme="dark" if escuro else "light", locale=locale)
     pg = await ctx.new_page(); erros = []
     pg.on("pageerror", lambda e: erros.append(str(e)[:200]))
     if OFFLINE:
@@ -762,9 +762,13 @@ async def g_marco(b):
         await pg.wait_for_function("!document.querySelector('[data-act=cadcompleta]').disabled", timeout=5000)
         await pg.click('[data-act="cadcompleta"]'); await pg.wait_for_timeout(2500)
         confere(await folha(pg, "Primeiros passos"), "marco · depois de completar o cadastro, as boas-vindas abrem")
-        npas = await pg.locator("#tutbox .tutdots i").count()   # 25/11: 6 passos até 31/12/2026 (o 4º é o dos convites), 5 depois
-        for _ in range(npas - 1): await clica(pg, '#tutbox [data-act="tutvai"].primary', 500)
-        confere(npas in (5, 6) and await pg.locator('#tutbox [data-act="tutfim"]').count() == 1 and await pg.locator('#tutbox .pfcheck li').count() == 6, f"marco · boas-vindas em {npas} passos, o último com o que falta no perfil")
+        npas = await pg.locator("#tutbox .tutdots i").count()   # 28/11: 4 passos sem repetir as boas-vindas, mais "Comece seguindo" quando há sugestões
+        pf = 0
+        for _ in range(npas - 1):
+            pf = max(pf, await pg.locator('#tutbox .pfcheck li').count()); await clica(pg, '#tutbox [data-act="tutvai"].primary', 500)
+        pf = max(pf, await pg.locator('#tutbox .pfcheck li').count())
+        tits = await pg.evaluate("(document.querySelector('#tutbox .tut-t')||{}).innerText || ''")
+        confere(npas in (4, 5) and await pg.locator('#tutbox [data-act="tutfim"]').count() == 1 and pf == 6 and (npas == 4 or tits == "Comece seguindo"), f"marco · Primeiros passos em {npas} passos, com o que falta no perfil{' e o que seguir' if npas == 5 else ''}", tits)
         await clica(pg, '#tutbox [data-act="tutfim"]', 700)
         confere(await pg.locator(".cadcomp").count() == 0, "marco · depois de concluir, a conta funciona", await pg.evaluate("[location.hash, (document.querySelector('.ferr:not([hidden])')||{}).innerText, document.querySelector('#knasc') && document.querySelector('#knasc').value, document.querySelector('#kok') && document.querySelector('#kok').checked, document.body.innerText.slice(0,200)].join(' | ')"))
         # 23/11: conta nova (até 3 dias) que confirmou o e-mail em outro aparelho vê as boas-vindas na primeira visita, uma vez só
@@ -901,24 +905,33 @@ async def x_rodape(pg):
     confere(bool(re.search(r"versão\s*\S+", txt)), "rodape · versão no rodapé")
 
 async def g_primeiro(b):
+    """28/11: quem chega em português do Brasil entra direto, sem a folha de idioma; nos outros idiomas a folha aparece,
+    e tocar no idioma já marcado não desmarca nem avisa."""
     nome = "primeiro"
-    ctx, pg, erros = await abre_contexto(b)
-    try:
-        await pg.goto(BASE + "/#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(1500)
-        if await pg.locator("#bvbox").count():   # no site de verdade, quem chega sem conta vê as boas-vindas antes do idioma
-            for _ in range(3): await pg.locator('#bvbox [data-act="bvvai"].primary').evaluate("e=>e.click()"); await pg.wait_for_timeout(300)
-            await pg.locator('#bvbox [data-act="bvexplora"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1500)
-        c = pg.locator("#layer button", has_text="Continuar")
-        confere(await c.count() >= 1, f"{nome} · escolha de idioma e país aparece")
-        confere(await pg.locator("#layer select").count() >= 1, f"{nome} · escolha de país")
-        if await c.count():
-            await c.first.click(); await pg.wait_for_timeout(800)
-            confere(await pg.locator("#layer button", has_text="Continuar").count() == 0, f"{nome} · Continuar fecha")
-        confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
-    except Exception as e:
-        confere(False, f"{nome} · roteiro completo", str(e)[:200])
-    finally:
-        await ctx.close()
+    for loc in ("pt-BR", "en-US"):
+        ctx, pg, erros = await abre_contexto(b, locale=loc)
+        try:
+            await pg.goto(BASE + "/#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(1500)
+            if await pg.locator("#bvbox").count():   # no site de verdade, quem chega sem conta vê as boas-vindas antes do idioma
+                await pg.locator('#bvbox [data-act="bvpula"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1500)
+            c = pg.locator("#layer button", has_text="Continuar")
+            if loc == "pt-BR":
+                confere(await c.count() == 0, f"{nome} · em português do Brasil, entra sem a escolha de idioma")
+            else:
+                confere(await c.count() >= 1, f"{nome} · em outro idioma, a escolha de idioma e país aparece")
+                confere(await pg.locator("#layer select").count() >= 1, f"{nome} · escolha de país")
+                m = pg.locator('#layer .acopt[aria-checked="true"]')
+                if await m.count() == 1:
+                    k = await m.get_attribute("data-k"); await m.click(); await pg.wait_for_timeout(400)
+                    confere(await pg.locator(f'#layer .acopt[data-k="{k}"]').get_attribute("aria-checked") == "true", f"{nome} · tocar no idioma marcado não desmarca")
+                if await c.count():
+                    await c.first.click(); await pg.wait_for_timeout(800)
+                    confere(await pg.locator("#layer button", has_text="Continuar").count() == 0, f"{nome} · Continuar fecha")
+            confere(not erros, f"{nome} · sem erro de código ({loc})", "; ".join(erros[:3]))
+        except Exception as e:
+            confere(False, f"{nome} · roteiro completo ({loc})", str(e)[:200])
+        finally:
+            await ctx.close()
 
 async def g_boasvindas(b):
     """23/11: quem chega sem conta vê as boas-vindas (o que a rede faz e o que a diferencia) antes do idioma; por link direto, a faixa."""
@@ -927,6 +940,7 @@ async def g_boasvindas(b):
     try:
         await pg.goto(BASE + "/?real=1#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(6000)
         confere(await pg.locator("#bvbox").count() == 1, f"{nome} · primeira visita sem conta abre as boas-vindas")
+        confere(await pg.locator('#bvbox [data-act="bvconta"]').count() == 1, f"{nome} · Criar conta já no primeiro passo")   # 28/11
         tit = []; npas = await pg.locator("#bvbox .tutdots i").count()   # 25/11: 5 passos até 31/12/2026 (o 5º é o dos convites), 4 depois
         for i in range(npas):
             tit.append(await pg.evaluate("(document.querySelector('#bvbox .tut-t')||{}).innerText || ''"))
@@ -936,7 +950,7 @@ async def g_boasvindas(b):
         confere(npas == (5 if conv else 4) and tit[0].startswith("Saia da bolha") and "algoritmo" in tit[1] and len(set(tit)) == npas and (not conv or "Convites ilimitados" in tit[-1]), f"{nome} · {npas} passos, do Saia da bolha {'aos convites' if conv else 'ao participar'}", " | ".join(tit))
         confere(await pg.locator('#bvbox [data-act="bvconta"]').count() == 1 and await pg.locator('#bvbox [data-act="bvexplora"]').count() == 1, f"{nome} · último passo: Criar conta e Explorar")
         await pg.locator('#bvbox [data-act="bvexplora"]').evaluate("e=>e.click()"); await pg.wait_for_timeout(1600)
-        confere(await pg.locator("#layer button", has_text="Continuar").count() >= 1, f"{nome} · depois vem a escolha de idioma e país")
+        confere(await pg.locator("#layer button", has_text="Continuar").count() == 0, f"{nome} · depois, em português do Brasil, entra direto no Início")
         await pg.goto(BASE + "/?real=1#inicio"); await pg.wait_for_timeout(5000)
         confere(await pg.locator("#bvbox").count() == 0, f"{nome} · não volta na segunda visita")
         await ctx.close(); ctx, pg, erros2 = await abre_contexto(b); erros += erros2
