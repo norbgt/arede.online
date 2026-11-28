@@ -502,22 +502,23 @@ async def g_atividades(b):
         confere(r["br"] and r["mundo"], "atividades · chips Brasil e Mundo", str(r))
         confere(r["mapa"], "atividades · Brasil tem o botão Mapa")
         if OFFLINE: confere(r["ex"] >= 1, "atividades · sem conteúdo real, aparece cartão com a etiqueta exemplo", f"{r['ex']} etiquetas")
+        # 28/11 (Amanda): Brasil e Mundo no mesmo padrão; mapa continua mapa, cartões continuam cartões
         await clica(pg, '#evsec [data-act="evonde"][data-v="mundo"]', 1500)
-        for _ in range(10):
-            m = await pg.evaluate("""() => { const s = document.querySelector('#evsec'), e = s.querySelector('.evmundo');
-              return {sub: (s.querySelector('.dsech p') || {}).innerText || '', mapa: !!s.querySelector('[data-act=mapabox]'), busca: !!s.querySelector('#evq'),
-                cid: s.querySelectorAll('h3.evcid').length, cards: s.querySelectorAll('.evmundo .pcard').length, fonte: [...s.querySelectorAll('.evmundo .pcfonte')].length,
-                txt: e ? e.innerText.slice(0, 80) : ''}; }""")
-            if m["cid"] or "Carregando" not in m["txt"]: break
+        m = await pg.evaluate("""() => { const s = document.querySelector('#evsec');
+          return {sub: (s.querySelector('.dsech p') || {}).innerText || '', mapa: !!s.querySelector('[data-act=mapabox][data-t=mundo]'), busca: !!s.querySelector('#evq'),
+            caixa: !!s.querySelector('.mpbox'), cid: !!s.querySelector('[data-act=evcid]'), setas: !!s.querySelector('.dsarr')}; }""")
+        confere("fora do Brasil" in m["sub"] and m["mapa"] and m["busca"] and m["setas"], "atividades · Mundo com a mesma faixa de Brasil (Mapa, busca, setas)", str(m))
+        confere(m["caixa"], "atividades · de Brasil no mapa para Mundo: continua no mapa", str(m))
+        await clica(pg, '#evsec [data-act="mapabox"][data-t="mundo"]', 1200)   # Mundo em cartões
+        for _ in range(8):
+            t = await pg.evaluate("(document.querySelector('#evsec .evmundo') || {}).innerText || ''")
+            if "Carregando" not in t: break
             await pg.wait_for_timeout(1000)
-        confere("fora do Brasil" in m["sub"] and not m["mapa"] and m["busca"], "atividades · Mundo: lista sem Mapa e com busca", str(m))
-        if m["cid"]: confere(m["cards"] >= 1 and m["fonte"] == m["cards"], "atividades · Mundo agrupado por cidade, cada cartão diz a fonte", str(m))
-        elif OFFLINE: confere("Carregando" in m["txt"] or "Nenhuma" in m["txt"], "atividades · Mundo sem internet não quebra", m["txt"])
-        else: confere(False, "atividades · Mundo traz atividades de fora do Brasil", m["txt"])
+        confere(await pg.locator("#evsec .evmundo").count() == 1 and await pg.locator("#evsec .mpbox").count() == 0, "atividades · Mundo em cartões", t[:80])
         await clica(pg, '#evsec [data-act="evonde"][data-v="br"]', 1000)
-        confere(await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"]').count() == 1, "atividades · volta para Brasil com o Mapa")
-        await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200)   # sai do mapa para a lista
-        if await pg.locator("#evsec .atpcard").count() == 0 and await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"][aria-pressed="true"]').count():
+        confere(await pg.locator("#evsec .mpbox").count() == 0 and await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"]').count() == 1, "atividades · de Mundo em cartões para Brasil: continua em cartões")
+        await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200); await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200)   # mapa e volta
+        if await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"][aria-pressed="true"]').count():
             await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200)
         if await clica(pg, "#evsec .atpcard", 1000):
             f = await pg.evaluate("""() => { const s = document.querySelector('#layer .sheet'); if (!s) return null; const ex = !!s.querySelector('.extag');
