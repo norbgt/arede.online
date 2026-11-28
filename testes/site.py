@@ -33,6 +33,8 @@ Grupos:
   acoes         padrão de ações e o que entrou em 26/11: botões de 40 px e sem "0", comentário com Apoio e ⋯, card de texto sem sobrepor,
                 pastas com cartões (sem mosaico), Canais e Rádio com busca e filtros, seção Discussões, pedido de localização
   mapa          mapa de Museus, Eventos, Páginas e Comunidades: estrutura no celular e no computador, Lista/Mapa, leitor do mapa do próprio site
+  atividades    Cultura › Atividades no modo real: Brasil | Mundo (Mundo em lista por cidade, sem Mapa, com busca), cartões de exemplo
+                com a etiqueta exemplo enquanto não há conteúdo real (Atividades e Organizações), folha da atividade (27/11)
   layout        repete sempre + card no celular escuro e no computador
   tudo          todos os grupos (antes de cada #DISPARAR SYNC)
 
@@ -44,7 +46,7 @@ from playwright.async_api import async_playwright
 BASE = sys.argv[1].rstrip("/") if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "https://arede.online"
 OFFLINE = "--offline" in sys.argv
 GRUPOS_TODOS = ["voltar", "logado", "seguir", "redes", "resumo", "marco", "sempre", "card", "ajustar", "fontes", "conta", "filtros", "anuncio", "desinfo", "abas", "eventos", "comunidades",
-                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "acoes", "layout", "mapa"]
+                "emalta", "config", "primeiro", "boasvindas", "publicar", "rodape", "busca", "institucional", "instalavel", "csat", "acoes", "layout", "mapa", "atividades"]
 _g = next((a.split("=", 1)[1] if "=" in a else (sys.argv[sys.argv.index(a) + 1] if sys.argv.index(a) + 1 < len(sys.argv) else "")) for a in sys.argv if a.startswith("--grupos")) if any(a.startswith("--grupos") for a in sys.argv) else "sempre"
 GRUPOS = GRUPOS_TODOS if _g == "tudo" else ["sempre"] + [x for x in _g.split(",") if x and x != "sempre"]
 for x in GRUPOS:
@@ -479,6 +481,60 @@ async def g_acoes(b):
         confere(not erros, f"{nome} · sem erro de código", "; ".join(erros[:3]))
     except Exception as e:
         confere(False, f"{nome} · roteiro completo", str(e)[:200])
+    finally:
+        await ctx.close()
+
+# 27/11 (Amanda, item 3): atividades, Mundo e cartões de exemplo. Só lê: não marca Vou, não cria, não denuncia.
+async def g_atividades(b):
+    ctx, pg, erros = await abre_contexto(b)
+    real = "" if "arede.online" in BASE else "?real=1"
+    try:
+        await pg.goto(BASE + "/" + real + "#inicio", wait_until="domcontentloaded", timeout=45000); await pg.wait_for_timeout(1200)
+        c = pg.locator("#layer button", has_text="Continuar")
+        if await c.count(): await c.first.click(); await pg.wait_for_timeout(400)
+        await fecha_folha(pg)
+        await pg.evaluate("location.hash = '#organizacoes/cultura'"); await pg.wait_for_timeout(2500)
+        r = await pg.evaluate("""() => { const s = document.querySelector('#evsec'); if (!s) return null;
+          return {h: (s.querySelector('h2') || {}).innerText || '', br: !!s.querySelector('[data-act=evonde][data-v=br]'), mundo: !!s.querySelector('[data-act=evonde][data-v=mundo]'),
+            mapa: !!s.querySelector('[data-act=mapabox][data-t=eventos]'), ex: s.querySelectorAll('.extag').length}; }""")
+        confere(bool(r) and r["h"] == "Atividades", "atividades · seção Atividades em Cultura", str(r))
+        if not r: return
+        confere(r["br"] and r["mundo"], "atividades · chips Brasil e Mundo", str(r))
+        confere(r["mapa"], "atividades · Brasil tem o botão Mapa")
+        if OFFLINE: confere(r["ex"] >= 1, "atividades · sem conteúdo real, aparece cartão com a etiqueta exemplo", f"{r['ex']} etiquetas")
+        await clica(pg, '#evsec [data-act="evonde"][data-v="mundo"]', 1500)
+        for _ in range(10):
+            m = await pg.evaluate("""() => { const s = document.querySelector('#evsec'), e = s.querySelector('.evmundo');
+              return {sub: (s.querySelector('.dsech p') || {}).innerText || '', mapa: !!s.querySelector('[data-act=mapabox]'), busca: !!s.querySelector('#evq'),
+                cid: s.querySelectorAll('h3.evcid').length, cards: s.querySelectorAll('.evmundo .pcard').length, fonte: [...s.querySelectorAll('.evmundo .pcfonte')].length,
+                txt: e ? e.innerText.slice(0, 80) : ''}; }""")
+            if m["cid"] or "Carregando" not in m["txt"]: break
+            await pg.wait_for_timeout(1000)
+        confere("fora do Brasil" in m["sub"] and not m["mapa"] and m["busca"], "atividades · Mundo: lista sem Mapa e com busca", str(m))
+        if m["cid"]: confere(m["cards"] >= 1 and m["fonte"] == m["cards"], "atividades · Mundo agrupado por cidade, cada cartão diz a fonte", str(m))
+        elif OFFLINE: confere("Carregando" in m["txt"] or "Nenhuma" in m["txt"], "atividades · Mundo sem internet não quebra", m["txt"])
+        else: confere(False, "atividades · Mundo traz atividades de fora do Brasil", m["txt"])
+        await clica(pg, '#evsec [data-act="evonde"][data-v="br"]', 1000)
+        confere(await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"]').count() == 1, "atividades · volta para Brasil com o Mapa")
+        await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200)   # sai do mapa para a lista
+        if await pg.locator("#evsec .atpcard").count() == 0 and await pg.locator('#evsec [data-act="mapabox"][data-t="eventos"][aria-pressed="true"]').count():
+            await clica(pg, '#evsec [data-act="mapabox"][data-t="eventos"]', 1200)
+        if await clica(pg, "#evsec .atpcard", 1000):
+            f = await pg.evaluate("""() => { const s = document.querySelector('#layer .sheet'); if (!s) return null; const ex = !!s.querySelector('.extag');
+              return {ex, vou: !!s.querySelector('[data-act=atpvou]'), den: !!s.querySelector('[data-act=atpden]'), nota: s.innerText.includes('Atividade de exemplo'), quem: !!s.querySelector('a.setting')}; }""")
+            confere(bool(f) and f["quem"], "atividades · folha da atividade abre com quem organiza", str(f))
+            if f: confere((f["ex"] and f["nota"] and not f["vou"] and not f["den"]) or (not f["ex"] and f["vou"] and f["den"]),
+                          "atividades · exemplo sem Vou nem Denunciar; real com Vou e Denunciar", str(f))
+            await fecha_folha(pg)
+        else: avisa("atividades · folha", "nenhuma atividade de página na lista agora")
+        await pg.evaluate("location.hash = '#organizacoes'"); await pg.wait_for_timeout(2000)
+        o = await pg.evaluate("() => ({vila: document.querySelector('main').innerText.includes('Vila Aurora'), ex: document.querySelectorAll('main .extag').length})")
+        if OFFLINE: confere(o["vila"] and o["ex"] >= 1, "atividades · Organizações: organização de exemplo com a etiqueta", str(o))
+        elif o["vila"]: confere(o["ex"] >= 1, "atividades · Organizações: exemplo sempre com a etiqueta", str(o))
+        confere(await sem_rolagem_lateral(pg), "atividades · sem rolagem lateral")
+        confere(not erros, "atividades · sem erro de código", "; ".join(erros[:3]))
+    except Exception as e:
+        confere(False, "atividades · roteiro completo", str(e)[:200])
     finally:
         await ctx.close()
 
@@ -976,6 +1032,7 @@ async def main():
         if "abas" in G: await g_abas(b)
         if "acoes" in G and OFFLINE: await g_acoes(b)
         if "mapa" in G: await g_mapa(b)
+        if "atividades" in G: await g_atividades(b)
         if "eventos" in G: await g_rota(b, "eventos", "#participar", x_eventos)
         if "comunidades" in G: await g_rota(b, "comunidades", "#organizacoes", x_comunidades)
         if "emalta" in G: await g_rota(b, "emalta", "#em-alta", x_emalta)
